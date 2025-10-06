@@ -1,0 +1,51 @@
+{
+  "name": "server-v2",
+  "version": "1.0.0",
+  "description": "Clean PostgreSQL + Drizzle + Express server",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+  "seed": "tsx scripts/seed-data.ts",
+  "dev:scan-mappings": "tsx scripts/dev/scan-field-mappings.ts",
+  "db:run-sql": "tsx scripts/run-sql.ts",
+  "db:fix-sequences": "tsx scripts/db/fix-all-sequences.ts",
+  "db:create": "tsx scripts/drizzle/create-db.ts rental_inventory_v2",
+  "db:migrate": "tsx scripts/drizzle/apply-migrations.ts",
+  "db:fresh:v2": "npm run db:create && npm run db:migrate && npm run seed",
+  "db:rebuild:inventory": "tsx scripts/drizzle/rebuild-inventory.ts rebuild",
+  "db:create:inventory": "tsx scripts/drizzle/rebuild-inventory.ts create",
+  "db:drop:inventory": "tsx scripts/drizzle/rebuild-inventory.ts drop",
+  "db:seed:inventory": "tsx scripts/drizzle/rebuild-inventory.ts seed",
+  "seed:numeric": "tsx scripts/drizzle/preset-manager.ts run-numeric rebuild",
+  "seed:table": "tsx scripts/drizzle/preset-manager.ts seed-table",
+  "seed:preset": "tsx scripts/drizzle/preset-manager.ts run",
+  "realtime:setup": "tsx scripts/realtime/setup-realtime.ts",
+  "realtime:setup:tables": "tsx scripts/realtime/setup-realtime.ts products,inventory_items,locations,homes,product_components,vendors,brands,skus,sku_components",
+  "rls:check": "tsx scripts/rls/check-rls.ts",
+  "rls:setup-role": "tsx scripts/rls/setup-app-role.ts",
+  "rls:apply": "tsx scripts/rls/apply-rls.ts",
+    "rls:apply:v2": "tsx scripts/rls/apply-rls-v2.ts"
+  },
+  "dependencies": {
+    "@postgress/shared": "file:../drizzle/shared",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^24.3.1",
+    "@types/pg": "^8.15.5",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

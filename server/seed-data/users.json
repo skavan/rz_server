@@ -1,0 +1,116 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "email": "suresh.kavan@gmail.com",
+      "emailVerified": "2022-01-01T00:00:00Z",
+      "image": "https://lh3.googleusercontent.com/a/default-user=s96-c",
+      "customerId": 1,
+      "firstName": "Suresh",
+      "lastName": "Kavan",
+      "phone": "917 365 4705",
+      "role": "admin",
+      "timezone": "America/New_York",
+      "onboardingCompleted": true,
+      "isActive": true,
+      "lastLogin": "2024-09-12T09:30:00Z",
+      "passwordHash": null,
+      "createdAt": "2022-01-01T00:00:00Z",
+      "updatedAt": "2024-09-12T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "email": "chris@kavan.us",
+      "emailVerified": "2023-06-15T00:00:00Z",
+      "image": null,
+      "customerId": 1,
+      "firstName": "Chris",
+      "lastName": "Jones",
+      "phone": null,
+      "role": "cleaner",
+      "timezone": "UTC",
+      "onboardingCompleted": false,
+      "isActive": true,
+      "lastLogin": "2024-09-10T14:22:00Z",
+      "passwordHash": null,
+      "createdAt": "2023-06-15T00:00:00Z",
+      "updatedAt": "2024-09-10T14:22:00Z"
+    },
+    {
+      "id": 3,
+      "email": "john.doe@kavan.us",
+      "emailVerified": "2023-01-01T00:00:00Z",
+      "image": "https://api.dicebear.com/7.x/avataaars/svg?seed=JohnD",
+      "customerId": 2,
+      "firstName": "John",
+      "lastName": "Doe",
+      "phone": "555 555 5555",
+      "role": "admin",
+      "timezone": "America/Los_Angeles",
+      "onboardingCompleted": true,
+      "isActive": true,
+      "lastLogin": "2024-09-11T16:45:00Z",
+      "passwordHash": null,
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2024-09-11T16:45:00Z"
+    }
+  ],
+  "accounts": [
+    {
+      "id": 1,
+      "userId": 1,
+      "type": "oauth",
+      "provider": "google",
+      "providerAccountId": "google_account_suresh_001",
+      "refresh_token": "refresh_token_encrypted_001",
+      "access_token": "access_token_encrypted_001",
+      "expires_at": 1726233600,
+      "token_type": "Bearer",
+      "scope": "openid email profile",
+      "id_token": "id_token_jwt_001",
+      "session_state": null
+    },
+    {
+      "id": 2,
+      "userId": 2,
+      "type": "oauth",
+      "provider": "microsoft",
+      "providerAccountId": "microsoft_account_chris_002",
+      "refresh_token": "refresh_token_encrypted_002",
+      "access_token": "access_token_encrypted_002",
+      "expires_at": 1726233600,
+      "token_type": "Bearer",
+      "scope": "openid email profile",
+      "id_token": "id_token_jwt_002",
+      "session_state": null
+    },
+    {
+      "id": 3,
+      "userId": 3,
+      "type": "oauth",
+      "provider": "github",
+      "providerAccountId": "github_account_john_003",
+      "refresh_token": "refresh_token_encrypted_003",
+      "access_token": "access_token_encrypted_003",
+      "expires_at": 1726233600,
+      "token_type": "Bearer",
+      "scope": "user:email",
+      "id_token": null,
+      "session_state": null
+    }
+  ],
+  "sessions": [
+    {
+      "id": 1,
+      "sessionToken": "session_token_suresh_active_001",
+      "userId": 1,
+      "expires": "2024-10-12T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "sessionToken": "session_token_john_active_003",
+      "userId": 3,
+      "expires": "2024-10-11T16:45:00Z"
+    }
+  ]
+}

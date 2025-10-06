@@ -1,0 +1,6 @@
+{
+  "user_home_access": [
+    { "user_id": 1, "home_id": 1, "role": "admin" },
+    { "user_id": 1, "home_id": 2, "role": "admin" }
+  ]
+}

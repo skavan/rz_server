@@ -1,0 +1,60 @@
+{
+	"user_home_access": [
+		{
+			"id": 1,
+			"user_id": 1,
+			"home_id": 1,
+			"role": "admin",
+			"granted_by": null,
+			"granted_at": "2025-09-08T18:02:37.958603+00:00"
+		},
+		{
+			"id": 2,
+			"user_id": 1,
+			"home_id": 2,
+			"role": "admin",
+			"granted_by": null,
+			"granted_at": "2025-09-08T18:02:38.055075+00:00"
+		},
+		{
+			"id": 4,
+			"user_id": 2,
+			"home_id": 2,
+			"role": "manager",
+			"granted_by": null,
+			"granted_at": "2025-09-08T18:02:38.242409+00:00"
+		},
+		{
+			"id": 5,
+			"user_id": 3,
+			"home_id": 3,
+			"role": "admin",
+			"granted_by": null,
+			"granted_at": "2025-09-08T18:02:38.337592+00:00"
+		},
+		{
+			"id": 6,
+			"user_id": 3,
+			"home_id": 4,
+			"role": "admin",
+			"granted_by": null,
+			"granted_at": "2025-09-08T18:02:38.443767+00:00"
+		},
+		{
+			"id": 7,
+			"user_id": 4,
+			"home_id": 1,
+			"role": "admin",
+			"granted_by": null,
+			"granted_at": "2025-09-08T18:02:38.537463+00:00"
+		},
+		{
+			"id": 8,
+			"user_id": 4,
+			"home_id": 2,
+			"role": "admin",
+			"granted_by": null,
+			"granted_at": "2025-09-08T18:02:38.658685+00:00"
+		}
+	]
+}

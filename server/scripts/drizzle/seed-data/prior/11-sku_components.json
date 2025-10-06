@@ -1,0 +1,125 @@
+{
+	"sku_components": [
+		{
+			"id": 1,
+			"parent_sku_id": 8,
+			"component_sku_id": 11,
+			"quantity": 1,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.11611"
+		},
+		{
+			"id": 2,
+			"parent_sku_id": 8,
+			"component_sku_id": 12,
+			"quantity": 1,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.213777"
+		},
+		{
+			"id": 3,
+			"parent_sku_id": 8,
+			"component_sku_id": 13,
+			"quantity": 2,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.304933"
+		},
+		{
+			"id": 4,
+			"parent_sku_id": 9,
+			"component_sku_id": 11,
+			"quantity": 1,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.39848"
+		},
+		{
+			"id": 5,
+			"parent_sku_id": 9,
+			"component_sku_id": 12,
+			"quantity": 1,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.495209"
+		},
+		{
+			"id": 6,
+			"parent_sku_id": 9,
+			"component_sku_id": 13,
+			"quantity": 2,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.593601"
+		},
+		{
+			"id": 7,
+			"parent_sku_id": 10,
+			"component_sku_id": 14,
+			"quantity": 4,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.685352"
+		},
+		{
+			"id": 8,
+			"parent_sku_id": 10,
+			"component_sku_id": 15,
+			"quantity": 4,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.778909"
+		},
+		{
+			"id": 9,
+			"parent_sku_id": 10,
+			"component_sku_id": 16,
+			"quantity": 8,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.873644"
+		},
+		{
+			"id": 10,
+			"parent_sku_id": 19,
+			"component_sku_id": 20,
+			"quantity": 8,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:26.969877"
+		},
+		{
+			"id": 11,
+			"parent_sku_id": 19,
+			"component_sku_id": 21,
+			"quantity": 8,
+			"is_required": true,
+			"sort_order": 0,
+			"cost_allocation": null,
+			"notes": null,
+			"created_at": "2025-09-08 18:02:27.072514"
+		}
+	]
+}

@@ -1,0 +1,38 @@
+{
+  "user_invites": [
+    {
+      "id": 1,
+      "email": "invitee1@example.com",
+      "customer_id": 1,
+      "home_id": 1,
+      "role": "viewer",
+      "status": "pending",
+      "invited_by": 1,
+      "invited_at": "2025-09-15T00:00:00Z",
+      "approved_by": null,
+      "approved_at": null,
+      "expires_at": null,
+      "invite_token": null,
+      "note": "Initial test invite",
+      "created_at": "2025-09-15T00:00:00Z",
+      "updated_at": "2025-09-15T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "email": "invitee2@example.com",
+      "customer_id": 1,
+      "home_id": 2,
+      "role": "manager",
+      "status": "approved",
+      "invited_by": 1,
+      "invited_at": "2025-09-15T01:00:00Z",
+      "approved_by": 1,
+      "approved_at": "2025-09-15T02:00:00Z",
+      "expires_at": null,
+      "invite_token": null,
+      "note": "Pre-approved invite for Home 2",
+      "created_at": "2025-09-15T01:00:00Z",
+      "updated_at": "2025-09-15T02:00:00Z"
+    }
+  ]
+}

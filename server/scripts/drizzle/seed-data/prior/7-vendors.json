@@ -1,0 +1,136 @@
+{
+  "vendors": [
+    {
+      "id": 1,
+      "customer_id": 1,
+      "name": "Best Buy",
+      "slug": "best-buy",
+      "website_url": "https://bestbuy.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-08 18:02:06.900142",
+      "updated_at": "2025-09-08 18:02:06.900142"
+    },
+    {
+      "id": 2,
+      "customer_id": 1,
+      "name": "Amazon",
+      "slug": "amazon",
+      "website_url": "https://amazon.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-08 18:02:06.998111",
+      "updated_at": "2025-09-08 18:02:06.998111"
+    },
+    {
+      "id": 3,
+      "customer_id": 1,
+      "name": "Pottery Barn",
+      "slug": "pottery-barn-vendor",
+      "website_url": "https://potterybarn.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-08 18:02:07.093292",
+      "updated_at": "2025-09-08 18:02:07.093292"
+    },
+    {
+      "id": 4,
+      "customer_id": 1,
+      "name": "IKEA",
+      "slug": "ikea-vendor",
+      "website_url": "https://ikea.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-08 18:02:07.185215",
+      "updated_at": "2025-09-08 18:02:07.185215"
+    },
+    {
+      "id": 5,
+      "customer_id": 1,
+      "name": "BrandSmart",
+      "slug": "brandsmart",
+      "website_url": "https://brandsmart.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-13 18:00:00.000000",
+      "updated_at": "2025-09-13 18:00:00.000000"
+    },
+    {
+      "id": 6,
+      "customer_id": 1,
+      "name": "Sonos",
+      "slug": "sonos-vendor",
+      "website_url": "https://sonos.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-13 18:00:00.000000",
+      "updated_at": "2025-09-13 18:00:00.000000"
+    },
+    {
+      "id": 7,
+      "customer_id": 2,
+      "name": "Best Buy",
+      "slug": "best-buy",
+      "website_url": "https://bestbuy.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-08 18:02:07.671165",
+      "updated_at": "2025-09-08 18:02:07.671165"
+    },
+    {
+      "id": 8,
+      "customer_id": 2,
+      "name": "Amazon",
+      "slug": "amazon",
+      "website_url": "https://amazon.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-08 18:02:07.766042",
+      "updated_at": "2025-09-08 18:02:07.766042"
+    },
+    {
+      "id": 9,
+      "customer_id": 2,
+      "name": "Pottery Barn",
+      "slug": "pottery-barn-vendor",
+      "website_url": "https://potterybarn.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-08 18:02:07.872872",
+      "updated_at": "2025-09-08 18:02:07.872872"
+    },
+    {
+      "id": 10,
+      "customer_id": 2,
+      "name": "IKEA",
+      "slug": "ikea-vendor",
+      "website_url": "https://ikea.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-08 18:02:07.965031",
+      "updated_at": "2025-09-08 18:02:07.965031"
+    },
+    {
+      "id": 11,
+      "customer_id": 2,
+      "name": "BrandSmart",
+      "slug": "brandsmart",
+      "website_url": "https://brandsmart.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-13 18:00:00.000000",
+      "updated_at": "2025-09-13 18:00:00.000000"
+    },
+    {
+      "id": 12,
+      "customer_id": 2,
+      "name": "Sonos",
+      "slug": "sonos-vendor",
+      "website_url": "https://sonos.com",
+      "payment_terms": null,
+      "is_active": true,
+      "created_at": "2025-09-13 18:00:00.000000",
+      "updated_at": "2025-09-13 18:00:00.000000"
+    }
+  ]
+}

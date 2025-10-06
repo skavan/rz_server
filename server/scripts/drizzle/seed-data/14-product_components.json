@@ -1,0 +1,114 @@
+{
+	"product_components": [
+		{
+			"id": 1,
+			"parent_product_id": 8,
+			"component_product_id": 11,
+			"quantity": 1,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:38.755376+00:00"
+		},
+		{
+			"id": 5,
+			"parent_product_id": 8,
+			"component_product_id": 12,
+			"quantity": 1,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:39.135861+00:00"
+		},
+		{
+			"id": 9,
+			"parent_product_id": 8,
+			"component_product_id": 13,
+			"quantity": 2,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:39.512234+00:00"
+		},
+		{
+			"id": 13,
+			"parent_product_id": 9,
+			"component_product_id": 11,
+			"quantity": 1,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:39.892414+00:00"
+		},
+		{
+			"id": 17,
+			"parent_product_id": 9,
+			"component_product_id": 12,
+			"quantity": 1,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:40.263416+00:00"
+		},
+		{
+			"id": 21,
+			"parent_product_id": 9,
+			"component_product_id": 13,
+			"quantity": 2,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:40.640456+00:00"
+		},
+		{
+			"id": 25,
+			"parent_product_id": 10,
+			"component_product_id": 14,
+			"quantity": 4,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:41.015216+00:00"
+		},
+		{
+			"id": 29,
+			"parent_product_id": 10,
+			"component_product_id": 15,
+			"quantity": 4,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:41.396941+00:00"
+		},
+		{
+			"id": 33,
+			"parent_product_id": 10,
+			"component_product_id": 16,
+			"quantity": 8,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:41.774227+00:00"
+		},
+		{
+			"id": 37,
+			"parent_product_id": 19,
+			"component_product_id": 20,
+			"quantity": 8,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:42.152184+00:00"
+		},
+		{
+			"id": 41,
+			"parent_product_id": 19,
+			"component_product_id": 21,
+			"quantity": 8,
+			"is_required": true,
+			"sort_order": 0,
+			"notes": null,
+			"created_at": "2025-09-08T18:02:42.523733+00:00"
+		}
+	]
+}

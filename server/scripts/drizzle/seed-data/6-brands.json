@@ -1,0 +1,204 @@
+{
+	"brands": [
+		{
+			"id": 1,
+			"customer_id": 1,
+			"name": "Samsung",
+			"slug": "samsung",
+			"website_url": "https://samsung.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:06.514124",
+			"updated_at": "2025-09-08 18:02:06.514124"
+		},
+		{
+			"id": 2,
+			"customer_id": 1,
+			"name": "TCL",
+			"slug": "tcl",
+			"website_url": "https://tcl.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:06.609379",
+			"updated_at": "2025-09-08 18:02:06.609379"
+		},
+		{
+			"id": 3,
+			"customer_id": 1,
+			"name": "Pottery Barn",
+			"slug": "pottery-barn",
+			"website_url": "https://potterybarn.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:06.709299",
+			"updated_at": "2025-09-08 18:02:06.709299"
+		},
+		{
+			"id": 4,
+			"customer_id": 1,
+			"name": "IKEA",
+			"slug": "ikea",
+			"website_url": "https://ikea.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:06.800402",
+			"updated_at": "2025-09-08 18:02:06.800402"
+		},
+		{
+			"id": 5,
+			"customer_id": 2,
+			"name": "Samsung",
+			"slug": "samsung",
+			"website_url": "https://samsung.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:07.277103",
+			"updated_at": "2025-09-08 18:02:07.277103"
+		},
+		{
+			"id": 6,
+			"customer_id": 2,
+			"name": "TCL",
+			"slug": "tcl",
+			"website_url": "https://tcl.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:07.36956",
+			"updated_at": "2025-09-08 18:02:07.36956"
+		},
+		{
+			"id": 7,
+			"customer_id": 2,
+			"name": "Pottery Barn",
+			"slug": "pottery-barn",
+			"website_url": "https://potterybarn.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:07.46223",
+			"updated_at": "2025-09-08 18:02:07.46223"
+		},
+		{
+			"id": 8,
+			"customer_id": 2,
+			"name": "IKEA",
+			"slug": "ikea",
+			"website_url": "https://ikea.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:07.55894",
+			"updated_at": "2025-09-08 18:02:07.55894"
+		},
+		{
+			"id": 9,
+			"customer_id": 1,
+			"name": "Utopia Bedding",
+			"slug": "utopia-bedding",
+			"website_url": "https://www.amazon.com/stores/UTOPIABEDDING/page/79964788-E114-433C-9E86-CE0136B7D494",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:07.65894",
+			"updated_at": "2025-09-08 18:02:07.65894"
+		},
+		{
+			"id": 10,
+			"customer_id": 1,
+			"name": "Threadmill",
+			"slug": "threadmill",
+			"website_url": "https://www.amazon.com/stores/ThreadmillHomeLinen/page/EDF80683-8115-4F05-9F50-901F14CCEB39",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:07.75894",
+			"updated_at": "2025-09-08 18:02:07.75894"
+		},
+		{
+			"id": 11,
+			"customer_id": 1,
+			"name": "Hisense",
+			"slug": "hisense",
+			"website_url": "https://www.hisense-usa.com/",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:07.85894",
+			"updated_at": "2025-09-08 18:02:07.85894"
+		},
+		{
+			"id": 12,
+			"customer_id": 1,
+			"name": "Amazon Basics",
+			"slug": "amazon-basics",
+			"website_url": "https://amazon.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:07.95894",
+			"updated_at": "2025-09-08 18:02:07.95894"
+		},
+		{
+			"id": 13,
+			"customer_id": 1,
+			"name": "Sonos",
+			"slug": "sonos",
+			"website_url": "https://sonos.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:08.05894",
+			"updated_at": "2025-09-08 18:02:08.05894"
+		},
+		{
+			"id": 14,
+			"customer_id": 1,
+			"name": "Generic",
+			"slug": "generic",
+			"website_url": null,
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:08.15894",
+			"updated_at": "2025-09-08 18:02:08.15894"
+		},
+		{
+			"id": 15,
+			"customer_id": 2,
+			"name": "Utopia Bedding",
+			"slug": "utopia-bedding",
+			"website_url": "https://www.amazon.com/stores/UTOPIABEDDING/page/79964788-E114-433C-9E86-CE0136B7D494",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:08.25894",
+			"updated_at": "2025-09-08 18:02:08.25894"
+		},
+		{
+			"id": 16,
+			"customer_id": 2,
+			"name": "Threadmill",
+			"slug": "threadmill",
+			"website_url": "https://www.amazon.com/stores/ThreadmillHomeLinen/page/EDF80683-8115-4F05-9F50-901F14CCEB39",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:08.35894",
+			"updated_at": "2025-09-08 18:02:08.35894"
+		},
+		{
+			"id": 17,
+			"customer_id": 2,
+			"name": "Hisense",
+			"slug": "hisense",
+			"website_url": "https://www.hisense-usa.com/",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:08.45894",
+			"updated_at": "2025-09-08 18:02:08.45894"
+		},
+		{
+			"id": 18,
+			"customer_id": 2,
+			"name": "Amazon Basics",
+			"slug": "amazon-basics",
+			"website_url": "https://amazon.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:08.55894",
+			"updated_at": "2025-09-08 18:02:08.55894"
+		},
+		{
+			"id": 19,
+			"customer_id": 2,
+			"name": "Sonos",
+			"slug": "sonos",
+			"website_url": "https://sonos.com",
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:08.65894",
+			"updated_at": "2025-09-08 18:02:08.65894"
+		},
+		{
+			"id": 20,
+			"customer_id": 2,
+			"name": "Generic",
+			"slug": "generic",
+			"website_url": null,
+			"is_active": true,
+			"created_at": "2025-09-08 18:02:08.75894",
+			"updated_at": "2025-09-08 18:02:08.75894"
+		}
+	]
+}

@@ -1,0 +1,99 @@
+{
+  "customers": [
+    {
+      "id": 1,
+      "firstName": "Suresh",
+      "lastName": "Kavan",
+      "companyName": null,
+      "slug": "skavan",
+      "email": "suresh.kavan@gmail.com",
+      "phone": "917 365 4705",
+      "subscriptionStatus": "active",
+      "subscriptionPlan": "annual",
+      "maxHomes": 5,
+      "stripeCustomerId": "cus_test_suresh_kavan_001",
+      "stripeData": {
+        "customer": {
+          "id": "cus_test_suresh_kavan_001",
+          "email": "suresh.kavan@gmail.com",
+          "created": 1640995200,
+          "currency": "usd",
+          "balance": 0
+        },
+        "subscription": {
+          "id": "sub_test_suresh_001",
+          "status": "active",
+          "current_period_start": 1640995200,
+          "current_period_end": 1672531200
+        }
+      },
+      "timezone": "America/New_York",
+      "avatarUrl": null,
+      "onboardingCompleted": true,
+      "trialEndsAt": null,
+      "subscriptionStartsAt": "2022-01-01T00:00:00Z",
+      "lastPaymentDate": "2024-01-01T00:00:00Z",
+      "paymentFailedCount": 0,
+      "supportPriority": "high",
+      "billingAddress": {
+        "line1": "123 Main Street",
+        "line2": "Apt 4B",
+        "city": "New York",
+        "state": "NY",
+        "postal_code": "10001",
+        "country": "US"
+      },
+      "settings": {
+        "notifications": {
+          "email": true,
+          "sms": false,
+          "push": true
+        },
+        "features": {
+          "beta_features": true,
+          "advanced_analytics": true
+        },
+        "preferences": {
+          "theme": "light",
+          "language": "en"
+        }
+      },
+      "communicationPreferences": {
+        "marketing_emails": true,
+        "product_updates": true,
+        "billing_notifications": true,
+        "security_alerts": true,
+        "frequency": "weekly"
+      },
+      "createdAt": "2022-01-01T00:00:00Z",
+      "updatedAt": "2024-09-12T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "firstName": "John",
+      "lastName": "Doe",
+      "companyName": null,
+      "slug": "JohnD",
+      "email": "john.doe@kavan.us",
+      "phone": "555 555 5555",
+      "subscriptionStatus": "active",
+      "subscriptionPlan": "annual",
+      "maxHomes": 1,
+      "stripeCustomerId": null,
+      "stripeData": null,
+      "timezone": "UTC",
+      "avatarUrl": null,
+      "onboardingCompleted": false,
+      "trialEndsAt": null,
+      "subscriptionStartsAt": null,
+      "lastPaymentDate": null,
+      "paymentFailedCount": 0,
+      "supportPriority": "standard",
+      "billingAddress": null,
+      "settings": null,
+      "communicationPreferences": null,
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2024-09-12T10:00:00Z"
+    }
+  ]
+}

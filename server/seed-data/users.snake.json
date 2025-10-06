@@ -1,0 +1,58 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "email": "suresh.kavan@gmail.com",
+      "email_verified": "2022-01-01T00:00:00Z",
+      "image": "https://lh3.googleusercontent.com/a/default-user=s96-c",
+      "customer_id": 1,
+      "first_name": "Suresh",
+      "last_name": "Kavan",
+      "phone": "917 365 4705",
+      "role": "admin",
+      "timezone": "America/New_York",
+      "onboarding_completed": true,
+      "is_active": true,
+      "last_login": "2024-09-12T09:30:00Z",
+      "password_hash": null,
+      "created_at": "2022-01-01T00:00:00Z",
+      "updated_at": "2024-09-12T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "email": "chris@kavan.us",
+      "email_verified": "2023-06-15T00:00:00Z",
+      "image": null,
+      "customer_id": 1,
+      "first_name": "Chris",
+      "last_name": "Jones",
+      "phone": null,
+      "role": "cleaner",
+      "timezone": "UTC",
+      "onboarding_completed": false,
+      "is_active": true,
+      "last_login": "2024-09-10T14:22:00Z",
+      "password_hash": null,
+      "created_at": "2023-06-15T00:00:00Z",
+      "updated_at": "2024-09-10T14:22:00Z"
+    },
+    {
+      "id": 3,
+      "email": "john.doe@kavan.us",
+      "email_verified": "2023-01-01T00:00:00Z",
+      "image": "https://api.dicebear.com/7.x/avataaars/svg?seed=JohnD",
+      "customer_id": 2,
+      "first_name": "John",
+      "last_name": "Doe",
+      "phone": "555 555 5555",
+      "role": "admin",
+      "timezone": "America/Los_Angeles",
+      "onboarding_completed": true,
+      "is_active": true,
+      "last_login": "2024-09-11T16:45:00Z",
+      "password_hash": null,
+      "created_at": "2023-01-01T00:00:00Z",
+      "updated_at": "2024-09-11T16:45:00Z"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "users": [
+    {
+      "id": 4,
+      "email": "alice.smith@example.com",
+      "email_verified": "2024-01-15T00:00:00Z",
+      "image": "https://api.dicebear.com/7.x/avataaars/svg?seed=Alice",
+      "customer_id": 1,
+      "first_name": "Alice",
+      "last_name": "Smith",
+      "phone": "555 123 4567",
+      "role": "user",
+      "timezone": "America/New_York",
+      "onboarding_completed": true,
+      "is_active": true,
+      "last_login": "2024-09-12T14:30:00Z",
+      "password_hash": null,
+      "created_at": "2024-01-15T00:00:00Z",
+      "updated_at": "2024-09-12T14:30:00Z"
+    },
+    {
+      "id": 5,
+      "email": "bob.wilson@example.com", 
+      "email_verified": "2024-02-20T00:00:00Z",
+      "image": null,
+      "customer_id": 2,
+      "first_name": "Bob",
+      "last_name": "Wilson",
+      "phone": "555 987 6543",
+      "role": "cleaner",
+      "timezone": "America/Chicago",
+      "onboarding_completed": false,
+      "is_active": true,
+      "last_login": "2024-09-11T10:15:00Z",
+      "password_hash": null,
+      "created_at": "2024-02-20T00:00:00Z",
+      "updated_at": "2024-09-11T10:15:00Z"
+    },
+    {
+      "id": 6,
+      "email": "carol.davis@example.com",
+      "email_verified": "2024-03-10T00:00:00Z", 
+      "image": "https://api.dicebear.com/7.x/avataaars/svg?seed=Carol",
+      "customer_id": 1,
+      "first_name": "Carol",
+      "last_name": "Davis",
+      "phone": null,
+      "role": "admin",
+      "timezone": "America/Los_Angeles",
+      "onboarding_completed": true,
+      "is_active": true,
+      "last_login": "2024-09-13T08:45:00Z",
+      "password_hash": null,
+      "created_at": "2024-03-10T00:00:00Z",
+      "updated_at": "2024-09-13T08:45:00Z"
+    }
+  ],
+  "accounts": [],
+  "sessions": []
+}

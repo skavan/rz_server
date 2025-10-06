@@ -1,0 +1,99 @@
+{
+	"customers": [
+		{
+			"id": 1,
+			"first_name": "Suresh",
+			"last_name": "Kavan",
+			"company_name": null,
+			"slug": "skavan",
+			"email": "suresh.kavan@gmail.com",
+			"phone": "917 365 4705",
+			"subscription_status": "active",
+			"subscription_plan": "annual",
+			"max_homes": 5,
+			"billing_address": {
+				"city": "New York",
+				"line1": "123 Main Street",
+				"line2": "Apt 4B",
+				"state": "NY",
+				"country": "US",
+				"postal_code": "10001"
+			},
+			"stripe_customer_id": "cus_test_suresh_kavan_001",
+			"stripe_data": {
+				"customer": {
+					"id": "cus_test_suresh_kavan_001",
+					"email": "suresh.kavan@gmail.com",
+					"balance": 0,
+					"created": 1640995200,
+					"currency": "usd"
+				},
+				"subscription": {
+					"id": "sub_test_suresh_001",
+					"status": "active",
+					"current_period_end": 1672531200,
+					"current_period_start": 1640995200
+				}
+			},
+			"timezone": "America/New_York",
+			"avatar_url": null,
+			"onboarding_completed": true,
+			"trial_ends_at": null,
+			"subscription_starts_at": "2022-01-01T00:00:00+00:00",
+			"last_payment_date": "2024-01-01T00:00:00+00:00",
+			"payment_failed_count": 0,
+			"support_priority": "high",
+			"settings": {
+				"features": {
+					"beta_features": true,
+					"advanced_analytics": true
+				},
+				"preferences": {
+					"theme": "light",
+					"language": "en"
+				},
+				"notifications": {
+					"sms": false,
+					"push": true,
+					"email": true
+				}
+			},
+			"communication_preferences": {
+				"frequency": "weekly",
+				"product_updates": true,
+				"security_alerts": true,
+				"marketing_emails": true,
+				"billing_notifications": true
+			},
+			"created_at": "2022-01-01T00:00:00+00:00",
+			"updated_at": "2024-09-12T10:00:00+00:00"
+		},
+		{
+			"id": 2,
+			"first_name": "John",
+			"last_name": "Doe",
+			"company_name": null,
+			"slug": "JohnD",
+			"email": "john.doe@kavan.us",
+			"phone": "555 555 5555",
+			"subscription_status": "active",
+			"subscription_plan": "annual",
+			"max_homes": 1,
+			"billing_address": null,
+			"stripe_customer_id": null,
+			"stripe_data": null,
+			"timezone": "UTC",
+			"avatar_url": null,
+			"onboarding_completed": false,
+			"trial_ends_at": null,
+			"subscription_starts_at": null,
+			"last_payment_date": null,
+			"payment_failed_count": 0,
+			"support_priority": "standard",
+			"settings": null,
+			"communication_preferences": null,
+			"created_at": "2023-01-01T00:00:00+00:00",
+			"updated_at": "2024-09-12T10:00:00+00:00"
+		}
+	]
+}

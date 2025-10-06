@@ -1,0 +1,68 @@
+{
+	"homes": [
+		{
+			"id": 1,
+			"customer_id": 1,
+			"name": "126 Cat Rock",
+			"slug": "primary-residence",
+			"address": null,
+			"property_type": "single-family",
+			"bedrooms": 7,
+			"bathrooms": 6.5,
+			"square_footage": 4500,
+			"description": null,
+			"notes": null,
+			"is_active": true,
+			"created_at": "2025-09-08T18:02:06.129582+00:00",
+			"updated_at": "2025-09-08T18:02:06.129582+00:00"
+		},
+		{
+			"id": 2,
+			"customer_id": 1,
+			"name": "Vacation Home",
+			"slug": "vacation-home",
+			"address": null,
+			"property_type": "vacation-rental",
+			"bedrooms": 7,
+			"bathrooms": 6.5,
+			"square_footage": 3800,
+			"description": null,
+			"notes": null,
+			"is_active": true,
+			"created_at": "2025-09-08T18:02:06.227811+00:00",
+			"updated_at": "2025-09-08T18:02:06.227811+00:00"
+		},
+		{
+			"id": 3,
+			"customer_id": 2,
+			"name": "Main House",
+			"slug": "main-house",
+			"address": null,
+			"property_type": "single-family",
+			"bedrooms": 5,
+			"bathrooms": 4.5,
+			"square_footage": 2800,
+			"description": null,
+			"notes": null,
+			"is_active": true,
+			"created_at": "2025-09-08T18:02:06.322846+00:00",
+			"updated_at": "2025-09-08T18:02:06.322846+00:00"
+		},
+		{
+			"id": 4,
+			"customer_id": 2,
+			"name": "Guest House",
+			"slug": "guest-house",
+			"address": null,
+			"property_type": "guest-house",
+			"bedrooms": 5,
+			"bathrooms": 4.5,
+			"square_footage": 2200,
+			"description": null,
+			"notes": null,
+			"is_active": true,
+			"created_at": "2025-09-08T18:02:06.417475+00:00",
+			"updated_at": "2025-09-08T18:02:06.417475+00:00"
+		}
+	]
+}
