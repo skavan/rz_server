@@ -167,15 +167,15 @@ function generateRoomStructure(customerSlug: string): any[] {
   
   const rooms = [
     // Master Suite
-    { name: 'Master Bedroom', slug: 'master-bedroom', locationType: 'bedroom', parentSlug: null },
-    { name: 'Master Bathroom', slug: 'master-bathroom', locationType: 'bathroom', parentSlug: 'master-bedroom' },
+    { name: 'Master Bedroom', slug: 'master-bedroom', locationType: 'Bedroom', parentSlug: null },
+    { name: 'Master Bathroom', slug: 'master-bathroom', locationType: 'Bathroom', parentSlug: 'master-bedroom' },
   ];
   
   // Guest bedrooms with ensuites (2-5)
   for (let i = 2; i <= (isCustomer2 ? 5 : 5); i++) {
     rooms.push(
-      { name: `Bedroom ${i}`, slug: `bedroom-${i}`, locationType: 'bedroom', parentSlug: null },
-      { name: `Bathroom ${i}`, slug: `bathroom-${i}`, locationType: 'bathroom', parentSlug: `bedroom-${i}` }
+      { name: `Bedroom ${i}`, slug: `bedroom-${i}`, locationType: 'Bedroom', parentSlug: null },
+      { name: `Bathroom ${i}`, slug: `bathroom-${i}`, locationType: 'Bathroom', parentSlug: `bedroom-${i}` }
     );
   }
   
@@ -183,7 +183,7 @@ function generateRoomStructure(customerSlug: string): any[] {
   if (!isCustomer2) {
     for (let i = 6; i <= maxBedroom; i++) {
       rooms.push(
-        { name: `Bedroom ${i}`, slug: `bedroom-${i}`, locationType: 'bedroom', parentSlug: null }
+        { name: `Bedroom ${i}`, slug: `bedroom-${i}`, locationType: 'Bedroom', parentSlug: null }
       );
     }
   }

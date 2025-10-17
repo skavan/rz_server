@@ -1,10 +1,13 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations } from "./schema";
+import { locations, inventoryItems, products, skus } from "./schema";
 import { cadenceConfigSchema } from "./types/json-fields.js";
 
-// Base Zod validation schema derived from Drizzle table definition
+// Base Zod validation schemas derived from Drizzle table definitions
 export const locationValidationSchema = createValidationSchema(locations);
+export const inventoryItemValidationSchema = createValidationSchema(inventoryItems);
+export const productValidationSchema = createValidationSchema(products);
+export const skuValidationSchema = createValidationSchema(skus);
 
 // Common Field Validators - reusable across forms
 

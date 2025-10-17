@@ -31,7 +31,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "dotenv": "^17.2.2",

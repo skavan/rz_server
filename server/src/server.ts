@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 // Import routes
 import authRoutes from './routes/auth.js';
 import productsRoutes from './routes/products.js';
+import inventoryItemsRoutes from './routes/inventory-items.js';
 import locationsRoutes from './routes/locations.js';
 import tableRoutes from './routes/table.js';
 import drizzleTableRoutes from './routes/drizzle-table.js';
@@ -58,6 +59,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productsRoutes);
+app.use('/api/inventory-items', inventoryItemsRoutes);
 app.use('/api/locations', locationsRoutes);
 app.use('/api/table', drizzleTableRoutes);     // New Drizzle-shaped endpoints
 app.use('/api/table-raw', tableRawRoutes);     // Raw SQL endpoints (no field transformation)
@@ -74,13 +76,19 @@ app.get('/', (req, res) => {
       'GET /health',
       'GET /',
       'POST /api/auth/login',
-  'POST /api/auth/refresh',
+      'POST /api/auth/refresh',
       'POST /api/auth/register',
       'GET /api/products',
       'GET /api/products/:id',
       'POST /api/products',
       'PUT /api/products/:id',
       'DELETE /api/products/:id',
+      'GET /api/inventory-items',
+      'GET /api/inventory-items/:id',
+      'POST /api/inventory-items',
+      'PUT /api/inventory-items/:id',
+      'DELETE /api/inventory-items/:id',
+      'PATCH /api/inventory-items/:id/adjust-quantity',
       'GET /api/table/categories',
       'GET /api/table/locations',
       'GET /api/table/inventory_items',
