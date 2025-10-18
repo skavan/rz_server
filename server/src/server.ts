@@ -10,6 +10,11 @@ import authRoutes from './routes/auth.js';
 import productsRoutes from './routes/products.js';
 import inventoryItemsRoutes from './routes/inventory-items.js';
 import locationsRoutes from './routes/locations.js';
+import categoriesRoutes from './routes/categories.js';
+import brandsRoutes from './routes/brands.js';
+import vendorsRoutes from './routes/vendors.js';
+import homesRoutes from './routes/homes.js';
+import tagsRoutes from './routes/tags.js';
 import tableRoutes from './routes/table.js';
 import drizzleTableRoutes from './routes/drizzle-table.js';
 import tableRawRoutes from './routes/table-raw.js';
@@ -61,6 +66,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/inventory-items', inventoryItemsRoutes);
 app.use('/api/locations', locationsRoutes);
+app.use('/api/categories', categoriesRoutes);
+app.use('/api/brands', brandsRoutes);
+app.use('/api/vendors', vendorsRoutes);
+app.use('/api/homes', homesRoutes);
+app.use('/api/tags', tagsRoutes);
 app.use('/api/table', drizzleTableRoutes);     // New Drizzle-shaped endpoints
 app.use('/api/table-raw', tableRawRoutes);     // Raw SQL endpoints (no field transformation)
 app.use('/api/dbTable', tableRoutes);          // Raw SQL endpoints

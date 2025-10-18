@@ -20,6 +20,11 @@ PowerShell:
 cd .\drizzle\shared
 npm run build
 ```
+Head over to client and force a pnmp install
+```
+cd g:\Documents\Code 2025\repos\declarative-client
+pnpm install --force
+```
 
 ### Generate SQL/migrations from Drizzle
 

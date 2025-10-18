@@ -387,20 +387,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     const scope = await getRequestScope(req as any);
     const deletedProducts = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb, client) => {
-      // Guard 1: block if product has components (is a kit parent)
-      try {
-        const pcRows = productComponents
-          ? await scopedDb.select({ id: (productComponents as any).id }).from(productComponents).where(eq((productComponents as any).parentProductId, parseInt(id))).limit(1)
-          : (await client.query('SELECT id FROM product_components WHERE parent_product_id = $1 LIMIT 1', [parseInt(id)])).rows;
-        if (pcRows && pcRows.length > 0) {
-          throw Object.assign(new Error('Cannot delete product with components'), { status: 400, code: 'HAS_COMPONENTS' });
-        }
-      } catch (e) {
-        // If the above threw intentionally, rethrow; otherwise continue
-        if ((e as any)?.code === 'HAS_COMPONENTS') throw e;
-      }
-
-      // Guard 2: block if product is used as a component in other kits
+      // Note: product_components has CASCADE DELETE in schema, so they'll be auto-deleted
+      
+      // Guard 1: block if product is used as a component in other kits
       try {
         const usedRows = productComponents
           ? await scopedDb.select({ id: (productComponents as any).id }).from(productComponents).where(eq((productComponents as any).componentProductId, parseInt(id))).limit(1)
@@ -412,7 +401,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         if ((e as any)?.code === 'USED_IN_KITS') throw e;
       }
 
-      // Guard 3: block if product has inventory items
+      // Guard 2: block if product has inventory items
       try {
         const invRows = await client.query('SELECT id FROM inventory_items WHERE product_id = $1 LIMIT 1', [parseInt(id)]);
         if (invRows?.rows?.length > 0) {
@@ -422,7 +411,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         if ((e as any)?.code === 'HAS_INVENTORY') throw e;
       }
 
-      // Proceed with delete
+      // Proceed with delete (cascade will handle product_components cleanup)
       return scopedDb
         .delete(products)
         .where(eq(products.id, parseInt(id)))
@@ -443,7 +432,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
   } catch (error: any) {
     console.error('Product DELETE error:', error);
-    if (error?.code === 'HAS_COMPONENTS' || error?.code === 'USED_IN_KITS' || error?.code === 'HAS_INVENTORY') {
+    if (error?.code === 'USED_IN_KITS' || error?.code === 'HAS_INVENTORY') {
       return res.status(error.status || 400).json({ error: error.message, code: error.code });
     }
     res.status(500).json({ error: 'Internal server error' });
