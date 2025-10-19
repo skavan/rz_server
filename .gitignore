@@ -41,6 +41,7 @@ desktop.ini
 # Drizzle
 drizzle/shared/dist/
 drizzle/shared/drizzle/
+drizzle/shared/zod-examples/
 
 # Temporary files
 tmp/

@@ -7,7 +7,8 @@
 - **`drizzle/shared/QUICK_START.md`** - Most common commands and tasks
 
 ### 🔄 Schema & Validation
-- **`drizzle/shared/SYNC_WORKFLOW.md`** - ⭐ **START HERE** for schema changes
+- **`drizzle/shared/DISTRIBUTION_GUIDE.md`** - ⭐ **START HERE** for distributing to server & declarative-client
+- **`drizzle/shared/SYNC_WORKFLOW.md`** - Server-only sync process
 - **`drizzle/shared/README.md`** - Schema naming and validation reference
 - **`drizzle/shared/ARCHITECTURE.md`** - System design and patterns
 
@@ -23,7 +24,26 @@
 
 ## Essential Workflows
 
-### 1. Schema Change (Most Common)
+### 1. Schema Change + Distribute to Client (Most Common)
+```powershell
+# Edit: drizzle/shared/src/schema.ts
+
+# Build shared package
+cd drizzle/shared
+npm run build
+
+# Update server database
+cd ../../server
+npx drizzle-kit generate
+npm run migrate
+
+# Update declarative-client
+cd g:\Documents\Code 2025\repos\declarative-client
+pnpm install --force
+```
+**Full details:** `drizzle/shared/DISTRIBUTION_GUIDE.md`
+
+### 2. Schema Change (Server Only)
 ```powershell
 # Edit: drizzle/shared/src/schema.ts
 cd drizzle/shared
@@ -31,12 +51,10 @@ npm run build
 cd ../../server
 npx drizzle-kit generate
 npm run migrate
-cd ../client
-npm install
 ```
 **Full details:** `drizzle/shared/SYNC_WORKFLOW.md`
 
-### 2. Fresh Database Setup
+### 3. Fresh Database Setup
 ```powershell
 cd server
 tsx scripts/drizzle/drizzle-rebuild.ts
@@ -45,7 +63,7 @@ tsx scripts/db/fix-all-sequences.ts
 tsx scripts/rls/apply-rls-v2.ts
 ```
 
-### 3. Fix Authentication
+### 4. Fix Authentication
 ```powershell
 cd server
 tsx scripts/auth/set-dev-password.ts <email> <password>

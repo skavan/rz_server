@@ -33,6 +33,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "prepare": "npm run build",
+    "update": "tsx scripts/update-drizzle-shared.ts",
+    "generate-examples": "tsx scripts/generate-zod-examples.ts",
     "rebuild-schemas": "tsx scripts/rebuild-schemas.ts",
     "sync-schemas": "tsx scripts/sync-to-client.ts",
     "check-defaults": "tsx scripts/check-defaults.ts"

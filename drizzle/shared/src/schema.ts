@@ -308,7 +308,7 @@ export const skus = pgTable('skus', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
   productId: integer('product_id').references(() => products.id, { onDelete: 'cascade' }),
-  skuCode: varchar('sku_code', { length: 100 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   brandId: integer('brand_id').references(() => brands.id),
   vendorId: integer('vendor_id').references(() => vendors.id),
@@ -327,7 +327,7 @@ export const skus = pgTable('skus', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
-  uniqueSkuCode: unique('skus_customer_sku_code_unique').on(table.customerId, table.skuCode),
+  uniqueSlug: unique('skus_customer_slug_unique').on(table.customerId, table.slug),
   customerIdx: index('idx_skus_customer').on(table.customerId),
   productIdx: index('idx_skus_product').on(table.productId),
   brandIdx: index('idx_skus_brand').on(table.brandId),

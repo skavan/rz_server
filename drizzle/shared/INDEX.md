@@ -9,16 +9,24 @@
 
 ## Core Documentation (Read in Order)
 
-### 1️⃣ **SYNC_WORKFLOW.md** ⭐ MOST IMPORTANT
-**Step-by-step guide:** How to sync schema changes between server and client
+### 1️⃣ **DISTRIBUTION_GUIDE.md** ⭐ MOST IMPORTANT
+**Complete distribution guide:** How to manage and distribute drizzle-shared to server AND declarative-client
+
+**Use this when:**
+- Syncing changes to declarative-client
+- Client says "module not found"
+- Need complete end-to-end workflow
+- Understanding package linking
+
+### 2️⃣ **SYNC_WORKFLOW.md**
+**Step-by-step guide:** How to sync schema changes (server focus)
 
 **Use this when:**
 - Adding/modifying database fields
 - Creating new tables
 - Updating Zod schemas
-- Client says "module not found"
 
-### 2️⃣ **AVAILABLE_SCRIPTS.md**
+### 3️⃣ **AVAILABLE_SCRIPTS.md**
 **Complete command reference:** All scripts and what they do
 
 **Use this when:**
@@ -27,7 +35,7 @@
 - Apply RLS policies
 - Test validation schemas
 
-### 3️⃣ **ARCHITECTURE.md**
+### 4️⃣ **ARCHITECTURE.md**
 **System design:** How everything fits together
 
 **Use this when:**
@@ -36,7 +44,7 @@
 - Adding new features
 - Troubleshooting weird issues
 
-### 4️⃣ **README.md**
+### 5️⃣ **README.md**
 **Package overview:** Quick reference for schema naming and defaults
 
 ---
@@ -46,12 +54,13 @@
 | File | Pages | Purpose | When to Read |
 |------|-------|---------|--------------|
 | **QUICK_START.md** | 1 | Cheat sheet | Every day |
-| **SYNC_WORKFLOW.md** | 3 | Sync process | After schema changes |
+| **DISTRIBUTION_GUIDE.md** | 5 | Full distribution to server & client | After schema changes |
+| **SYNC_WORKFLOW.md** | 3 | Server sync process | Server-only changes |
 | **AVAILABLE_SCRIPTS.md** | 3 | Command reference | When you need a script |
 | **ARCHITECTURE.md** | 4 | System design | Learning/troubleshooting |
 | **README.md** | 2 | Quick reference | Schema info lookup |
 
-**Total:** ~13 pages (vs 26+ before!)
+**Total:** ~18 pages (focused and actionable!)
 
 ---
 
@@ -59,7 +68,10 @@
 
 ### I need to...
 
-**...sync a schema change**
+**...sync to declarative-client**
+→ `DISTRIBUTION_GUIDE.md` ⭐
+
+**...sync schema change (server only)**
 → `SYNC_WORKFLOW.md`
 
 **...rebuild the database**

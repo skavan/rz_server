@@ -2,7 +2,26 @@
 
 ## 📋 Most Common Tasks
 
-### Schema Change → Full Sync
+### Schema Change → Full Sync (Server + Client)
+```powershell
+# 1. Edit schema
+# Edit drizzle/shared/src/schema.ts in your editor
+
+# 2. Build shared package
+cd drizzle/shared
+npm run build
+
+# 3. Update server
+cd ../../server
+npx drizzle-kit generate
+npm run migrate
+
+# 4. Update declarative-client
+cd g:\Documents\Code 2025\repos\declarative-client
+pnpm install --force
+```
+
+### Schema Change → Server Only
 ```powershell
 # 1. Edit schema
 # Edit drizzle/shared/src/schema.ts in your editor
@@ -13,8 +32,6 @@ npm run build
 cd ../../server
 npx drizzle-kit generate
 npm run migrate
-cd ../client
-npm install
 ```
 
 ### Fresh Database Rebuild

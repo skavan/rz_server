@@ -381,7 +381,7 @@ const sampleSkusData = [
   // TVs
   {
     productSlug: '55-smart-tv',
-    skuCode: 'SAM-55-Q70C',
+    slug: 'SAM-55-Q70C',
     name: 'Samsung 55" Q70C QLED TV',
     brandSlug: 'samsung',
     vendorSlug: 'best-buy',
@@ -390,7 +390,7 @@ const sampleSkusData = [
   },
   {
     productSlug: '75-smart-tv',
-    skuCode: 'SAM-75-Q70C',
+    slug: 'SAM-75-Q70C',
     name: 'Samsung 75" Q70C QLED TV',
     brandSlug: 'samsung',
     vendorSlug: 'best-buy',
@@ -401,7 +401,7 @@ const sampleSkusData = [
   // Sound System Kit
   {
     productSlug: 'sound-system',
-    skuCode: 'SONY-HT-A7000',
+    slug: 'SONY-HT-A7000',
     name: 'Sony HT-A7000 Sound System Kit',
     brandSlug: 'samsung', // Using Samsung as placeholder
     vendorSlug: 'best-buy',
@@ -412,7 +412,7 @@ const sampleSkusData = [
   // Appliances
   {
     productSlug: 'coffee-maker',
-    skuCode: 'KEURIG-K-CLASSIC',
+    slug: 'KEURIG-K-CLASSIC',
     name: 'Keurig K-Classic Coffee Maker',
     brandSlug: 'samsung',
     vendorSlug: 'amazon',
@@ -421,7 +421,7 @@ const sampleSkusData = [
   },
   {
     productSlug: 'blender',
-    skuCode: 'VITA-5200',
+    slug: 'VITA-5200',
     name: 'Vitamix 5200 Blender',
     brandSlug: 'samsung',
     vendorSlug: 'amazon',
@@ -430,7 +430,7 @@ const sampleSkusData = [
   },
   {
     productSlug: '12000-btu-ac',
-    skuCode: 'FRIG-12K-AC',
+    slug: 'FRIG-12K-AC',
     name: 'Frigidaire 12,000 BTU Window AC',
     brandSlug: 'samsung',
     vendorSlug: 'best-buy',
@@ -439,7 +439,7 @@ const sampleSkusData = [
   },
   {
     productSlug: '24000-btu-ac',
-    skuCode: 'FRIG-24K-AC',
+    slug: 'FRIG-24K-AC',
     name: 'Frigidaire 24,000 BTU Window AC',
     brandSlug: 'samsung',
     vendorSlug: 'best-buy',
@@ -450,7 +450,7 @@ const sampleSkusData = [
   // King Linen Set Kit
   {
     productSlug: 'king-linen-set',
-    skuCode: 'PB-KING-SET-WHT',
+    slug: 'PB-KING-SET-WHT',
     name: 'Pottery Barn King Linen Set - White',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -461,7 +461,7 @@ const sampleSkusData = [
   // Queen Linen Set Kit
   {
     productSlug: 'queen-linen-set',
-    skuCode: 'PB-QUEEN-SET-WHT',
+    slug: 'PB-QUEEN-SET-WHT',
     name: 'Pottery Barn Queen Linen Set - White',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -472,7 +472,7 @@ const sampleSkusData = [
   // Bath Towel Set Kit
   {
     productSlug: 'bath-towel-set',
-    skuCode: 'PB-TOWEL-SET-WHT',
+    slug: 'PB-TOWEL-SET-WHT',
     name: 'Pottery Barn Bath Towel Set - White',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -483,7 +483,7 @@ const sampleSkusData = [
   // Individual Linen Components
   {
     productSlug: 'king-flat-sheet',
-    skuCode: 'PB-KING-FLAT-WHT',
+    slug: 'PB-KING-FLAT-WHT',
     name: 'Pottery Barn King Flat Sheet - White',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -492,7 +492,7 @@ const sampleSkusData = [
   },
   {
     productSlug: 'king-fitted-sheet',
-    skuCode: 'PB-KING-FITTED-WHT',
+    slug: 'PB-KING-FITTED-WHT',
     name: 'Pottery Barn King Fitted Sheet - White',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -501,7 +501,7 @@ const sampleSkusData = [
   },
   {
     productSlug: 'king-pillowcase',
-    skuCode: 'PB-KING-PILLOW-WHT',
+    slug: 'PB-KING-PILLOW-WHT',
     name: 'Pottery Barn King Pillowcase - White',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -510,7 +510,7 @@ const sampleSkusData = [
   },
   {
     productSlug: 'bath-towel',
-    skuCode: 'PB-BATH-TOWEL-WHT',
+    slug: 'PB-BATH-TOWEL-WHT',
     name: 'Pottery Barn Bath Towel - White',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -519,7 +519,7 @@ const sampleSkusData = [
   },
   {
     productSlug: 'hand-towel',
-    skuCode: 'PB-HAND-TOWEL-WHT',
+    slug: 'PB-HAND-TOWEL-WHT',
     name: 'Pottery Barn Hand Towel - White',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -528,7 +528,7 @@ const sampleSkusData = [
   },
   {
     productSlug: 'washcloth',
-    skuCode: 'PB-WASHCLOTH-WHT',
+    slug: 'PB-WASHCLOTH-WHT',
     name: 'Pottery Barn Washcloth - White',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -539,7 +539,7 @@ const sampleSkusData = [
   // Lighting
   {
     productSlug: 'bedside-lamp',
-    skuCode: 'IKEA-LAMPAN-WHT',
+    slug: 'IKEA-LAMPAN-WHT',
     name: 'IKEA Lampan Table Lamp - White',
     brandSlug: 'ikea',
     vendorSlug: 'ikea-vendor',
@@ -548,7 +548,7 @@ const sampleSkusData = [
   },
   {
     productSlug: 'ceiling-fan',
-    skuCode: 'HUNTER-PROS-52',
+    slug: 'HUNTER-PROS-52',
     name: 'Hunter Pro Series 52" Ceiling Fan',
     brandSlug: 'samsung',
     vendorSlug: 'amazon',
@@ -559,7 +559,7 @@ const sampleSkusData = [
   // Dinnerware Kit
   {
     productSlug: 'dinner-plate-set',
-    skuCode: 'PB-DINNER-SET-8',
+    slug: 'PB-DINNER-SET-8',
     name: 'Pottery Barn Dinner Plate Set - Service for 8',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -570,7 +570,7 @@ const sampleSkusData = [
   // Individual Dinnerware Components
   {
     productSlug: 'dinner-plate',
-    skuCode: 'PB-DINNER-PLATE',
+    slug: 'PB-DINNER-PLATE',
     name: 'Pottery Barn Dinner Plate',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -579,7 +579,7 @@ const sampleSkusData = [
   },
   {
     productSlug: 'salad-plate',
-    skuCode: 'PB-SALAD-PLATE',
+    slug: 'PB-SALAD-PLATE',
     name: 'Pottery Barn Salad Plate',
     brandSlug: 'pottery-barn',
     vendorSlug: 'pottery-barn-vendor',
@@ -592,64 +592,64 @@ const sampleSkusData = [
 const kitComponents = [
   // King Linen Set components
   {
-    kitSkuCode: 'PB-KING-SET-WHT',
-    componentSkuCode: 'PB-KING-FLAT-WHT',
+    kitslug: 'PB-KING-SET-WHT',
+    componentslug: 'PB-KING-FLAT-WHT',
     quantity: 1
   },
   {
-    kitSkuCode: 'PB-KING-SET-WHT',
-    componentSkuCode: 'PB-KING-FITTED-WHT',
+    kitslug: 'PB-KING-SET-WHT',
+    componentslug: 'PB-KING-FITTED-WHT',
     quantity: 1
   },
   {
-    kitSkuCode: 'PB-KING-SET-WHT',
-    componentSkuCode: 'PB-KING-PILLOW-WHT',
+    kitslug: 'PB-KING-SET-WHT',
+    componentslug: 'PB-KING-PILLOW-WHT',
     quantity: 2
   },
   
   // Queen Linen Set components (using king components as placeholders)
   {
-    kitSkuCode: 'PB-QUEEN-SET-WHT',
-    componentSkuCode: 'PB-KING-FLAT-WHT', // Would be queen in real data
+    kitslug: 'PB-QUEEN-SET-WHT',
+    componentslug: 'PB-KING-FLAT-WHT', // Would be queen in real data
     quantity: 1
   },
   {
-    kitSkuCode: 'PB-QUEEN-SET-WHT',
-    componentSkuCode: 'PB-KING-FITTED-WHT', // Would be queen in real data
+    kitslug: 'PB-QUEEN-SET-WHT',
+    componentslug: 'PB-KING-FITTED-WHT', // Would be queen in real data
     quantity: 1
   },
   {
-    kitSkuCode: 'PB-QUEEN-SET-WHT',
-    componentSkuCode: 'PB-KING-PILLOW-WHT', // Would be queen in real data
+    kitslug: 'PB-QUEEN-SET-WHT',
+    componentslug: 'PB-KING-PILLOW-WHT', // Would be queen in real data
     quantity: 2
   },
   
   // Bath Towel Set components
   {
-    kitSkuCode: 'PB-TOWEL-SET-WHT',
-    componentSkuCode: 'PB-BATH-TOWEL-WHT',
+    kitslug: 'PB-TOWEL-SET-WHT',
+    componentslug: 'PB-BATH-TOWEL-WHT',
     quantity: 4
   },
   {
-    kitSkuCode: 'PB-TOWEL-SET-WHT',
-    componentSkuCode: 'PB-HAND-TOWEL-WHT',
+    kitslug: 'PB-TOWEL-SET-WHT',
+    componentslug: 'PB-HAND-TOWEL-WHT',
     quantity: 4
   },
   {
-    kitSkuCode: 'PB-TOWEL-SET-WHT',
-    componentSkuCode: 'PB-WASHCLOTH-WHT',
+    kitslug: 'PB-TOWEL-SET-WHT',
+    componentslug: 'PB-WASHCLOTH-WHT',
     quantity: 8
   },
   
   // Dinner Plate Set components
   {
-    kitSkuCode: 'PB-DINNER-SET-8',
-    componentSkuCode: 'PB-DINNER-PLATE',
+    kitslug: 'PB-DINNER-SET-8',
+    componentslug: 'PB-DINNER-PLATE',
     quantity: 8
   },
   {
-    kitSkuCode: 'PB-DINNER-SET-8',
-    componentSkuCode: 'PB-SALAD-PLATE',
+    kitslug: 'PB-DINNER-SET-8',
+    componentslug: 'PB-SALAD-PLATE',
     quantity: 8
   }
 ];
@@ -1133,7 +1133,7 @@ async function seedSkus(products: any[], brandMap: Map<string, any>, vendorMap: 
           .values({
             customerId: product.customerId,
             productId: product.id,
-            skuCode: skuData.skuCode,
+            slug: skuData.skuCode,
             name: skuData.name,
             brandId: brand.id,
             vendorId: vendor.id,
