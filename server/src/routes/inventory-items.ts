@@ -7,6 +7,7 @@ import { inventoryItems, eq, ilike, or, asc, desc, and, ne, sql, gte, lte, lt } 
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
+import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 
 const router = Router();
 
@@ -145,13 +146,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
  * POST /api/inventory-items
  * Create new inventory item (requires auth)
  */
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), async (req, res) => {
   try {
     const {
       skuId,
       productId,
       locationId,
       homeId,
+      customerId,
       quantity,
       serialNumber,
       assetTag,
@@ -174,16 +176,14 @@ router.post('/', authenticateToken, async (req, res) => {
     if (!skuId) {
       return res.status(400).json({ error: 'SKU ID is required' });
     }
-    if (!homeId) {
-      return res.status(400).json({ error: 'Home ID is required' });
-    }
 
-    const scope = await getRequestScope(req as any);
+    // homeId and customerId are now guaranteed by middleware
+    const scope = getScopeFromRequest(req as any);
     const newItems = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .insert(inventoryItems)
         .values({
-          customerId: scope.customerId || 0,
+          customerId,
           homeId: parseInt(homeId),
           skuId: parseInt(skuId),
           productId: parseInt(productId),

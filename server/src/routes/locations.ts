@@ -7,6 +7,7 @@ import { locations, eq, asc, desc, and, ilike, sql } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
+import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 
 const router = Router();
 
@@ -60,14 +61,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 // POST /api/locations
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('locations'), async (req, res) => {
   try {
   const { homeId, name, parentId, locationType, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
-    if (!homeId) return res.status(400).json({ error: 'homeId is required' });
     if (!name) return res.status(400).json({ error: 'name is required' });
     const slug = slugify(name);
 
-    const scope = await getRequestScope(req as any);
+    // homeId is now guaranteed by middleware
+    const scope = getScopeFromRequest(req as any);
     const createdRows = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .insert(locations)

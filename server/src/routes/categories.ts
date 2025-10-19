@@ -3,6 +3,7 @@ import { db, withTenantScope } from '../db/index.js';
 import { categories, eq, and, like, isNull, desc, or, ilike } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
+import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 
 const router = Router();
 
@@ -108,9 +109,9 @@ function generateSlug(text: string): string {
  * POST /api/categories
  * Create new category (requires auth)
  */
-router.post('/', async (req, res) => {
+router.post('/', autoInjectMiddleware('categories'), async (req, res) => {
   try {
-    let { name, slug, description, parentId, isActive } = req.body || {};
+    let { name, slug, description, parentId, isActive, customerId } = req.body || {};
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
@@ -121,12 +122,13 @@ router.post('/', async (req, res) => {
       slug = generateSlug(name);
     }
 
-    const scope = await getRequestScope(req as any);
+    // customerId is now guaranteed by middleware
+    const scope = getScopeFromRequest(req as any);
     const newCategories = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .insert(categories)
         .values({
-          customerId: scope.customerId,
+          customerId,
           name,
           slug,
           description: description || null,

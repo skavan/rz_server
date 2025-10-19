@@ -50,66 +50,90 @@ import { cadenceConfigSchema } from "./types/json-fields.js";
  */
 
 /**
- * Location validation schema - 18 fields including locationType, currentStatus, customFields
- * Use for: Location forms, location filtering, location creation
+ * Locations validation schema - matches table name 'locations'
+ * Pre-configured with sensible defaults: isActive=true
  */
-export const locationValidationSchema = createValidationSchema(locations);
+export const locationsValidationSchema = createValidationSchema(locations).extend({
+  isActive: z.boolean().default(true),
+});
 
 /**
- * Inventory Item validation schema - 26 fields including skuId, productId, quantity, condition
- * Use for: Inventory forms, stock management, item tracking
- * Required fields: customerId, homeId, skuId, productId
+ * Inventory Items validation schema - matches table name 'inventory_items'
+ * Defaults: isActive=true, hasMediaAssets=false, isKitComponent=false, quantity=1, 
+ *           status='unassigned', condition='good', currency='USD'
  */
-export const inventoryItemValidationSchema = createValidationSchema(inventoryItems);
+export const inventoryItemsValidationSchema = createValidationSchema(inventoryItems).extend({
+  isActive: z.boolean().default(true),
+  hasMediaAssets: z.boolean().default(false),
+  isKitComponent: z.boolean().default(false),
+  quantity: z.number().default(1),
+  status: z.enum(['unassigned', 'assigned', 'in_use', 'in_storage', 'needs_repair', 'retired']).default('unassigned'),
+  condition: z.enum(['new', 'excellent', 'good', 'fair', 'poor', 'broken']).default('good'),
+  currency: z.string().default('USD'),
+});
 
 /**
- * Product validation schema - 14 fields including name, categoryId, checkCadence
- * Use for: Product forms, product creation, product management
- * Required field: name
+ * Products validation schema - matches table name 'products'
+ * Defaults: isVisible=true, isActive=true, hasMediaAssets=false, kind='simple'
  */
-export const productValidationSchema = createValidationSchema(products);
+export const productsValidationSchema = createValidationSchema(products).extend({
+  isVisible: z.boolean().default(true),
+  isActive: z.boolean().default(true),
+  hasMediaAssets: z.boolean().default(false),
+  kind: z.enum(['simple', 'bom']).default('simple'),
+});
 
 /**
- * SKU validation schema - 21 fields including productId, name, barcode, unitCost
- * Use for: SKU forms, variant management, pricing
- * Required fields: productId, name
+ * SKUs validation schema - matches table name 'skus'
+ * Defaults: hasMediaAssets=false, kind='simple', status='active'
  */
-export const skuValidationSchema = createValidationSchema(skus);
+export const skusValidationSchema = createValidationSchema(skus).extend({
+  hasMediaAssets: z.boolean().default(false),
+  kind: z.enum(['simple', 'bom']).default('simple'),
+  status: z.enum(['active', 'discontinued', 'unknown']).default('active'),
+});
 
 /**
- * Categories validation schema - 9 fields including name, slug, parentId for hierarchy
- * Use for: Category forms, category tree management
- * Required fields: name, slug
+ * Categories validation schema - matches table name 'categories'
+ * Defaults: isActive=true
  */
-export const categoriesValidationSchema = createValidationSchema(categories);
+export const categoriesValidationSchema = createValidationSchema(categories).extend({
+  isActive: z.boolean().default(true),
+});
 
 /**
- * Brands validation schema - 7 fields including name, slug, websiteUrl
- * Use for: Brand forms, brand management
- * Required fields: name, slug
+ * Brands validation schema - matches table name 'brands'
+ * Defaults: isActive=true
  */
-export const brandsValidationSchema = createValidationSchema(brands);
+export const brandsValidationSchema = createValidationSchema(brands).extend({
+  isActive: z.boolean().default(true),
+});
 
 /**
- * Vendors validation schema - 8 fields including name, slug, paymentTerms
- * Use for: Vendor forms, vendor management
- * Required fields: name, slug
+ * Vendors validation schema - matches table name 'vendors'
+ * Defaults: isActive=true
  */
-export const vendorsValidationSchema = createValidationSchema(vendors);
+export const vendorsValidationSchema = createValidationSchema(vendors).extend({
+  isActive: z.boolean().default(true),
+});
 
 /**
- * Homes validation schema - 15 fields including name, address, propertyType, bedrooms, bathrooms
- * Use for: Home forms, property management
- * Required fields: name, slug
+ * Homes validation schema - matches table name 'homes'
+ * Defaults: isActive=true
  */
-export const homesValidationSchema = createValidationSchema(homes);
+export const homesValidationSchema = createValidationSchema(homes).extend({
+  isActive: z.boolean().default(true),
+});
 
 /**
- * Tags validation schema - 12 fields including name, tagType, tagScope, color, isSystem, locked
- * Use for: Tag forms, tag management
- * Required fields: name, slug
+ * Tags validation schema - matches table name 'tags'
+ * Defaults: isActive=true, isSystem=false, locked=false
  */
-export const tagsValidationSchema = createValidationSchema(tags);
+export const tagsValidationSchema = createValidationSchema(tags).extend({
+  isActive: z.boolean().default(true),
+  isSystem: z.boolean().default(false),
+  locked: z.boolean().default(false),
+});
 
 // Common Field Validators - reusable across forms
 

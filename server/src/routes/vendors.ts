@@ -3,6 +3,7 @@ import { db, withTenantScope } from '../db/index.js';
 import { vendors, eq, and, ilike } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
+import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 
 const router = Router();
 
@@ -95,9 +96,9 @@ function generateSlug(text: string): string {
  * POST /api/vendors
  * Create new vendor (requires auth)
  */
-router.post('/', async (req, res) => {
+router.post('/', autoInjectMiddleware('vendors'), async (req, res) => {
   try {
-    let { name, slug, websiteUrl, paymentTerms, isActive } = req.body || {};
+    let { name, slug, websiteUrl, paymentTerms, isActive, customerId } = req.body || {};
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
@@ -108,12 +109,13 @@ router.post('/', async (req, res) => {
       slug = generateSlug(name);
     }
 
-    const scope = await getRequestScope(req as any);
+    // customerId is now guaranteed by middleware
+    const scope = getScopeFromRequest(req as any);
     const newVendors = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .insert(vendors)
         .values({
-          customerId: scope.customerId,
+          customerId,
           name,
           slug,
           websiteUrl: websiteUrl || null,

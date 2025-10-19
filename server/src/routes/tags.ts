@@ -3,6 +3,7 @@ import { db, withTenantScope } from '../db/index.js';
 import { tags, eq, and, ilike } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
+import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 
 const router = Router();
 
@@ -110,11 +111,11 @@ function generateSlug(text: string): string {
  * POST /api/tags
  * Create new tag (requires auth)
  */
-router.post('/', async (req, res) => {
+router.post('/', autoInjectMiddleware('tags'), async (req, res) => {
   try {
     let { 
       name, slug, description, color, tagType, tagScope, 
-      isSystem, locked, isActive 
+      isSystem, locked, isActive, customerId 
     } = req.body || {};
 
     if (!name) {
@@ -126,12 +127,13 @@ router.post('/', async (req, res) => {
       slug = generateSlug(name);
     }
 
-    const scope = await getRequestScope(req as any);
+    // customerId is now guaranteed by middleware
+    const scope = getScopeFromRequest(req as any);
     const newTags = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .insert(tags)
         .values({
-          customerId: scope.customerId,
+          customerId,
           name,
           slug,
           description: description || null,

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-10-18T21:56:13.774Z",
+  "database": "rental_inventory_v2",
+  "tables": {
+    "products": 27,
+    "skus": 29
+  },
+  "files": {
+    "products": "G:\\Documents\\Code 2025\\repos\\rz_server\\server\\scripts\\backups\\products_backup_2025-10-18T21-56-13-759Z.json",
+    "skus": "G:\\Documents\\Code 2025\\repos\\rz_server\\server\\scripts\\backups\\skus_backup_2025-10-18T21-56-13-759Z.json"
+  }
+}

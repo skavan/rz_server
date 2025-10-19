@@ -9,7 +9,7 @@ import {
   cadenceJsonFieldValidator, 
   tagIdsValidator, 
   parentIdValidator,
-  locationValidationSchema 
+  locationsValidationSchema 
 } from './zod.js';
 
 // Simulate form data as it comes from a web form
@@ -55,7 +55,7 @@ console.log('  Output:', cleaningCadence, '\n');
 // Test complete validation schema (like UnifiedLocationsForm uses)
 console.log('🔄 Complete form validation (like UnifiedLocationsForm):');
 const { z } = await import('zod');
-const formSchema = locationValidationSchema.extend({
+const formSchema = locationsValidationSchema.extend({
   locationType: z.string().min(1, "Required"),
   parentId: parentIdValidator,
   lastChecked: dateFieldValidator,

@@ -221,21 +221,21 @@ const sampleProductsData = [
     name: '55" Smart TV',
     slug: '55-smart-tv',
     categorySlug: 'tvs',
-    isKit: false,
+    kind: 'simple',
     notes: 'Main living room television'
   },
   {
     name: '75" Smart TV',
     slug: '75-smart-tv',
     categorySlug: 'tvs',
-    isKit: false,
+    kind: 'simple',
     notes: 'Master bedroom television'
   },
   {
     name: 'Sound System',
     slug: 'sound-system',
     categorySlug: 'electronics',
-    isKit: true,
+    kind: 'bom',
     notes: 'Complete home theater audio system'
   },
   
@@ -244,28 +244,28 @@ const sampleProductsData = [
     name: 'Coffee Maker',
     slug: 'coffee-maker',
     categorySlug: 'small-kitchen-appliances',
-    isKit: false,
+    kind: 'simple',
     notes: 'Morning coffee essentials'
   },
   {
     name: 'Blender',
     slug: 'blender',
     categorySlug: 'small-kitchen-appliances',
-    isKit: false,
+    kind: 'simple',
     notes: 'High-performance blender'
   },
   {
     name: '12000 BTU AC Unit',
     slug: '12000-btu-ac',
     categorySlug: 'ac-units',
-    isKit: false,
+    kind: 'simple',
     notes: 'Bedroom air conditioning'
   },
   {
     name: '24000 BTU AC Unit',
     slug: '24000-btu-ac',
     categorySlug: 'ac-units',
-    isKit: false,
+    kind: 'simple',
     notes: 'Living room air conditioning'
   },
   
@@ -274,21 +274,21 @@ const sampleProductsData = [
     name: 'King Linen Set',
     slug: 'king-linen-set',
     categorySlug: 'bedding',
-    isKit: true,
+    kind: 'bom',
     notes: 'Complete bedding set for master bedroom'
   },
   {
     name: 'Queen Linen Set',
     slug: 'queen-linen-set',
     categorySlug: 'bedding',
-    isKit: true,
+    kind: 'bom',
     notes: 'Complete bedding set for guest bedrooms'
   },
   {
     name: 'Bath Towel Set',
     slug: 'bath-towel-set',
     categorySlug: 'bath',
-    isKit: true,
+    kind: 'bom',
     notes: 'Complete bathroom towel set'
   },
   
@@ -297,42 +297,42 @@ const sampleProductsData = [
     name: 'King Flat Sheet',
     slug: 'king-flat-sheet',
     categorySlug: 'bedding',
-    isKit: false,
+    kind: 'simple',
     notes: 'Individual king flat sheet'
   },
   {
     name: 'King Fitted Sheet',
     slug: 'king-fitted-sheet',
     categorySlug: 'bedding',
-    isKit: false,
+    kind: 'simple',
     notes: 'Individual king fitted sheet'
   },
   {
     name: 'King Pillowcase',
     slug: 'king-pillowcase',
     categorySlug: 'bedding',
-    isKit: false,
+    kind: 'simple',
     notes: 'Individual king pillowcase'
   },
   {
     name: 'Bath Towel',
     slug: 'bath-towel',
     categorySlug: 'bath',
-    isKit: false,
+    kind: 'simple',
     notes: 'Individual bath towel'
   },
   {
     name: 'Hand Towel',
     slug: 'hand-towel',
     categorySlug: 'bath',
-    isKit: false,
+    kind: 'simple',
     notes: 'Individual hand towel'
   },
   {
     name: 'Washcloth',
     slug: 'washcloth',
     categorySlug: 'bath',
-    isKit: false,
+    kind: 'simple',
     notes: 'Individual washcloth'
   },
   
@@ -341,14 +341,14 @@ const sampleProductsData = [
     name: 'Bedside Lamp',
     slug: 'bedside-lamp',
     categorySlug: 'lighting',
-    isKit: false,
+    kind: 'simple',
     notes: 'Reading lamp for bedrooms'
   },
   {
     name: 'Ceiling Fan',
     slug: 'ceiling-fan',
     categorySlug: 'fans',
-    isKit: false,
+    kind: 'simple',
     notes: 'Bedroom ceiling fan'
   },
   
@@ -357,21 +357,21 @@ const sampleProductsData = [
     name: 'Dinner Plate Set',
     slug: 'dinner-plate-set',
     categorySlug: 'dining',
-    isKit: true,
+    kind: 'bom',
     notes: 'Complete dinner service for 8'
   },
   {
     name: 'Dinner Plate',
     slug: 'dinner-plate',
     categorySlug: 'dining',
-    isKit: false,
+    kind: 'simple',
     notes: 'Individual dinner plate'
   },
   {
     name: 'Salad Plate',
     slug: 'salad-plate',
     categorySlug: 'dining',
-    isKit: false,
+    kind: 'simple',
     notes: 'Individual salad plate'
   }
 ];
@@ -1081,7 +1081,7 @@ async function seedProducts(homes: any[], categoryMap: Map<string, any>) {
           name: productData.name,
           slug: productData.slug,
           categoryId: category.id,
-          isKit: productData.isKit,
+          kind: productData.kind,
           notes: productData.notes
         })
         .returning();
@@ -1199,8 +1199,8 @@ async function seedInventoryItems(products: any[], skus: any[], locationMap: Map
       
       // For kits, create fewer inventory items but mark them as kits
       // For simple items, create multiple items in different locations
-      const isKit = sku.kind === 'kit';
-      const inventoryCount = isKit ? 1 : Math.min(3, homeLocations.length);
+      const isBom = sku.kind === 'bom';
+      const inventoryCount = isBom ? 1 : Math.min(3, homeLocations.length);
       
       for (let i = 0; i < inventoryCount; i++) {
         const location = homeLocations[i % homeLocations.length];
@@ -1208,7 +1208,7 @@ async function seedInventoryItems(products: any[], skus: any[], locationMap: Map
         const status = i === 0 ? 'in_use' : 'in_storage';
         const condition = i === 0 ? 'excellent' : (i === 1 ? 'good' : 'fair');
         
-        log(`  ✅ Creating inventory item: ${sku.name} in ${location.name} ${isKit ? '(KIT)' : ''}`, colors.green);
+        log(`  ✅ Creating inventory item: ${sku.name} in ${location.name} ${isBom ? '(BOM)' : ''}`, colors.green);
         
     const [inventoryItem] = await db.insert(schema.inventoryItems)
           .values({
@@ -1219,11 +1219,11 @@ async function seedInventoryItems(products: any[], skus: any[], locationMap: Map
             locationId: location.id,
             status: status,
             condition: condition,
-            quantity: isKit ? 1 : 1,
+            quantity: isBom ? 1 : 1,
       purchasePrice: sku.price,
       currency: 'USD',
             assetTag: `${sku.skuCode}-${String(i + 1).padStart(3, '0')}`,
-            notes: `${sku.name} located in ${location.name}${isKit ? ' - Complete kit with all components' : ''}`
+            notes: `${sku.name} located in ${location.name}${isBom ? ' - Complete BOM with all components' : ''}`
           })
           .returning();
           

@@ -9,6 +9,7 @@ import { products, eq, ilike, or, asc, desc, and, ne, sql } from '@postgress/sha
 import { productComponents } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
+import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 
 const router = Router();
@@ -176,21 +177,19 @@ router.get('/:id', optionalAuth, async (req, res) => {
  * POST /api/products
  * Create new product (requires auth)
  */
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('products'), async (req, res) => {
   try {
-  const { name, homeId, categoryId, notes, isVisible, isActive, isKit, tags, checkCadence } = req.body || {};
+  const { name, homeId, categoryId, notes, isVisible, isActive, kind, tags, checkCadence } = req.body || {};
 
     if (!name) {
       return res.status(400).json({ error: 'Product name is required' });
     }
-    if (!homeId) {
-      return res.status(400).json({ error: 'Home ID is required' });
-    }
 
-    const scope = await getRequestScope(req as any);
+    // homeId is now guaranteed to be in req.body (auto-injected by middleware)
+    const scope = getScopeFromRequest(req as any);
   const newProducts = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       // Generate unique slug from name
-      const slug = await generateUniqueSlug(scopedDb, name, parseInt(homeId));
+      const slug = await generateUniqueSlug(scopedDb, name, homeId);
       return scopedDb
         .insert(products)
         .values({
@@ -201,8 +200,7 @@ router.post('/', authenticateToken, async (req, res) => {
       notes: notes || null,
       isVisible: isVisible !== undefined ? !!isVisible : true,
       isActive: isActive !== undefined ? !!isActive : true,
-      // Optional fields if present in schema
-      ...(isKit !== undefined ? { isKit: !!isKit } : {}),
+      ...(kind !== undefined ? { kind } : {}),
       ...(checkCadence !== undefined ? { checkCadence: checkCadence || null } : {}),
       ...(Array.isArray(tags) ? { tags } : {}),
         })
@@ -229,13 +227,13 @@ router.post('/', authenticateToken, async (req, res) => {
  * Create a product and its components in a single transaction
  * Body: { product: { name, homeId, categoryId?, notes?, isComposite? }, components?: [{ componentProductId, quantity, isRequired?, sortOrder? }] }
  */
-router.post('/composite', authenticateToken, async (req, res) => {
+router.post('/composite', authenticateToken, autoInjectMiddleware('products'), async (req, res) => {
   try {
-    const { product: productInput, components = [] } = req.body || {};
+    const { product: productInput, components = [], homeId } = req.body || {};
     if (!productInput?.name) return res.status(400).json({ error: 'Product name is required' });
-    if (!productInput?.homeId) return res.status(400).json({ error: 'Home ID is required' });
 
-    const scope = await getRequestScope(req as any);
+    // homeId is now guaranteed to be injected by middleware at req.body.homeId
+    const scope = getScopeFromRequest(req as any);
     const created = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb, client) => {
       // Create product first
       const slug = generateSlug(productInput.name);
@@ -244,15 +242,15 @@ router.post('/composite', authenticateToken, async (req, res) => {
         .values({
           name: productInput.name,
           slug,
-          homeId: parseInt(productInput.homeId),
+          homeId: parseInt(homeId), // Use homeId from req.body (injected by middleware)
           categoryId: productInput.categoryId ? parseInt(productInput.categoryId) : null,
           notes: productInput.notes || null,
           isVisible: productInput.isVisible !== undefined ? !!productInput.isVisible : true,
           isActive: productInput.isActive !== undefined ? !!productInput.isActive : true,
           // Optional fields if present in schema
-          ...(productInput.isKit !== undefined
-            ? { isKit: !!productInput.isKit }
-            : { isKit: Array.isArray(components) && components.length > 0 ? true : undefined } as any),
+          ...(productInput.kind !== undefined
+            ? { kind: productInput.kind }
+            : { kind: Array.isArray(components) && components.length > 0 ? 'bom' : 'simple' } as any),
           ...(productInput.checkCadence !== undefined ? { checkCadence: productInput.checkCadence || null } : {}),
           ...(Array.isArray(productInput.tags) ? { tags: productInput.tags } : {}),
         })
@@ -307,7 +305,7 @@ router.post('/composite', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-  const { name, categoryId, notes, isVisible, isActive, isKit, tags, checkCadence } = req.body || {};
+  const { name, categoryId, notes, isVisible, isActive, kind, tags, checkCadence } = req.body || {};
 
     const updateData: any = {
       updatedAt: new Date()
@@ -325,8 +323,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (isActive !== undefined) {
       updateData.isActive = isActive;
     }
-    if (isKit !== undefined) {
-      (updateData as any).isKit = !!isKit;
+    if (kind !== undefined) {
+      (updateData as any).kind = kind;
     }
     if (tags !== undefined) {
       (updateData as any).tags = Array.isArray(tags) ? tags : null;
@@ -481,8 +479,8 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
         if (productInput.isActive !== undefined) {
           updateData.isActive = !!productInput.isActive;
         }
-        if (productInput.isKit !== undefined) {
-          (updateData as any).isKit = !!productInput.isKit;
+        if (productInput.kind !== undefined) {
+          (updateData as any).kind = productInput.kind;
         }
         if (productInput.tags !== undefined) {
           (updateData as any).tags = Array.isArray(productInput.tags) ? productInput.tags : null;

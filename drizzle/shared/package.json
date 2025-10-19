@@ -32,7 +32,10 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "rebuild-schemas": "tsx scripts/rebuild-schemas.ts",
+    "sync-schemas": "tsx scripts/sync-to-client.ts",
+    "check-defaults": "tsx scripts/check-defaults.ts"
   },
   "dependencies": {
     "dotenv": "^17.2.2",
