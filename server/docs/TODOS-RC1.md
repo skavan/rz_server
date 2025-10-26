@@ -1,6 +1,40 @@
-# Server TODOs
+# Server TODOs - RC1
 
 This doc tracks deferred server-side tasks and DB hardening work.
+
+## 🏷️ Tag System Implementation (IN PROGRESS)
+
+### Schema Changes
+- [ ] Add `categoryId` column to tags table (nullable FK to categories)
+- [ ] Empty `tagType` enum values (keep field as placeholder)
+- [ ] Generate and apply Drizzle migration
+
+### Data Migration
+- [ ] Clear existing tag arrays from all tables:
+  - [ ] products.tags = NULL
+  - [ ] skus.tags = NULL  
+  - [ ] locations.tags = NULL
+  - [ ] inventory_items.tags = NULL
+  - [ ] media_assets.tags = NULL
+- [ ] Create seed data script with system tags
+- [ ] Seed universal tags (luxury, premium, basic, commercial-grade)
+- [ ] Seed category-specific SKU tags (per category in categories table)
+- [ ] Seed inventory workflow tags (needs-inspection, spare, etc.)
+- [ ] Seed location space tags (bedroom, bathroom, high-humidity, etc.)
+
+### API & Validation  
+- [ ] Create tags routes (CRUD operations)
+- [ ] Add tag filtering by scope + categoryId
+- [ ] Add validation preventing scope violations
+- [ ] Update Zod validation schemas for tags
+- [ ] Build and test shared package
+
+### Documentation
+- [x] Create tag-strategy-RC1.md document
+- [x] Update README-RC1.md with tag strategy link
+- [ ] Update operational-playbook-RC1.md with tag seeding instructions
+
+---
 
 ## Data Integrity & Constraints
 

@@ -114,16 +114,43 @@ Server will start on `http://localhost:5000`
 - `POST /api/auth/register` - User registration
 - `POST /api/auth/refresh` - Refresh JWT token
 
+### Resource Endpoints
+**Products**:
+- `GET /api/products` - List products with filtering
+- `GET /api/products/:id` - Get single product
+- `POST /api/products` - Create product
+- `POST /api/products/composite` - Create product with components (BOM)
+- `PUT /api/products/:id` - Update product
+- `PUT /api/products/:id/composite` - Update product and replace components
+- `DELETE /api/products/:id` - Delete product (guards against usage)
+
+**SKUs**:
+- `GET /api/skus` - List SKUs with filtering
+- `GET /api/skus/:id` - Get single SKU
+- `POST /api/skus` - Create SKU
+- `POST /api/skus/composite` - Create SKU with components (BOM)
+- `PUT /api/skus/:id` - Update SKU
+- `PUT /api/skus/:id/composite` - Update SKU and replace components
+- `DELETE /api/skus/:id` - Delete SKU (guards against usage)
+
+**Other Resources**:
+- Inventory Items, Locations, Categories, Brands, Vendors, Homes, Tags
+- All follow standard CRUD patterns
+
+### Component (BOM) Support
+Products and SKUs support Bill of Materials relationships:
+- **`/composite` endpoints**: Create/update items with their component relationships
+- **Delete guards**: Prevent deletion if item is used as a component elsewhere
+- **Cascade deletes**: When parent deleted, component relationships auto-removed
+- See `server/docs/components-api.md` for full documentation
+
 ### Dynamic Table Endpoints
-All tables are automatically exposed via:
-- `GET /api/table/:tableName` - List records with filtering/pagination
-- `GET /api/table/:tableName/:id` - Get single record
-- `POST /api/table/:tableName` - Create record
-- `PUT /api/table/:tableName/:id` - Update record
-- `DELETE /api/table/:tableName/:id` - Delete record
+Generic table access for all tables:
+- `GET /api/table/:tableName` - List records (camelCase response)
+- `GET /api/table-raw/:tableName` - List records (snake_case response)
 
 ### Real-time Events
-- `GET /api/events/stream` - Server-Sent Events stream for real-time updates
+- `GET /api/events` - Server-Sent Events stream for real-time updates
 
 ## Database Schema
 
@@ -137,8 +164,11 @@ All tables are automatically exposed via:
 - `brands` - Product brands
 - `vendors` - Product vendors
 - `products` - Product definitions
-- `skus` - Stock keeping units
+- `product_components` - Bill of Materials for products
+- `skus` - Stock keeping units (customer-scoped catalog items)
+- `sku_components` - Bill of Materials for SKUs
 - `inventory_items` - Individual inventory items
+- `tags` - Tagging system for products/items
 
 See `drizzle/shared/src/schema.ts` for complete schema.
 

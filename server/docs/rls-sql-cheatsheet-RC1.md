@@ -9,7 +9,7 @@ Windows PowerShell-friendly commands and SQL to set up, verify, and troubleshoot
 $env:DATABASE_URL = "postgresql://USER:PASSWORD@HOST:5432/DBNAME"
 
 # Apply the script (safe to re-run)
-psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f "g:\Documents\Code 2025\repos\rz_postgress\server_v2\scripts\rls\sample-rls-policies.sql"
+psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f "g:\Documents\Code 2025\repos\rz_postgress\server\scripts\rls\sample-rls-policies.sql"
 ```
 
 ## Verify RLS is enabled and policies exist

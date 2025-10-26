@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 // Import routes
 import authRoutes from './routes/auth.js';
 import productsRoutes from './routes/products.js';
+import skusRoutes from './routes/skus.js';
 import inventoryItemsRoutes from './routes/inventory-items.js';
 import locationsRoutes from './routes/locations.js';
 import categoriesRoutes from './routes/categories.js';
@@ -15,6 +16,7 @@ import brandsRoutes from './routes/brands.js';
 import vendorsRoutes from './routes/vendors.js';
 import homesRoutes from './routes/homes.js';
 import tagsRoutes from './routes/tags.js';
+import reservationsRoutes from './routes/reservations.js';
 import tableRoutes from './routes/table.js';
 import drizzleTableRoutes from './routes/drizzle-table.js';
 import tableRawRoutes from './routes/table-raw.js';
@@ -64,6 +66,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productsRoutes);
+app.use('/api/skus', skusRoutes);
 app.use('/api/inventory-items', inventoryItemsRoutes);
 app.use('/api/locations', locationsRoutes);
 app.use('/api/categories', categoriesRoutes);
@@ -71,6 +74,7 @@ app.use('/api/brands', brandsRoutes);
 app.use('/api/vendors', vendorsRoutes);
 app.use('/api/homes', homesRoutes);
 app.use('/api/tags', tagsRoutes);
+app.use('/api/reservations', reservationsRoutes);
 app.use('/api/table', drizzleTableRoutes);     // New Drizzle-shaped endpoints
 app.use('/api/table-raw', tableRawRoutes);     // Raw SQL endpoints (no field transformation)
 app.use('/api/dbTable', tableRoutes);          // Raw SQL endpoints
@@ -91,20 +95,37 @@ app.get('/', (req, res) => {
       'GET /api/products',
       'GET /api/products/:id',
       'POST /api/products',
+      'POST /api/products/composite',
       'PUT /api/products/:id',
+      'PUT /api/products/:id/composite',
       'DELETE /api/products/:id',
+      'GET /api/skus',
+      'GET /api/skus/:id',
+      'POST /api/skus',
+      'POST /api/skus/composite',
+      'PUT /api/skus/:id',
+      'PUT /api/skus/:id/composite',
+      'DELETE /api/skus/:id',
       'GET /api/inventory-items',
       'GET /api/inventory-items/:id',
       'POST /api/inventory-items',
       'PUT /api/inventory-items/:id',
       'DELETE /api/inventory-items/:id',
       'PATCH /api/inventory-items/:id/adjust-quantity',
-      'GET /api/table/categories',
-      'GET /api/table/locations',
-      'GET /api/table/inventory_items',
+      'GET /api/categories',
+      'GET /api/brands',
+      'GET /api/vendors',
+      'GET /api/locations',
+      'GET /api/homes',
+      'GET /api/tags',
+      'GET /api/reservations',
+      'GET /api/reservations/:id',
+      'GET /api/reservations/property/:propertyId',
+      'GET /api/reservations/status/:status',
       'GET /api/table/*',
-      'GET /api/dbTable',
-      'GET /api/dbTable/:tableName'
+      'GET /api/table-raw/*',
+      'GET /api/dbTable/:tableName',
+      'GET /api/events (SSE)'
     ]
   });
 });

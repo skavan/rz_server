@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, inventoryItems, products, skus, categories, brands, vendors, homes, tags } from "./schema.js";
+import { locations, inventoryItems, products, skus, categories, brands, vendors, homes, tags, productComponents, skuComponents, reservations } from "./schema.js";
 import { cadenceConfigSchema } from "./types/json-fields.js";
 
 /**
@@ -128,11 +128,46 @@ export const homesValidationSchema = createValidationSchema(homes).extend({
 /**
  * Tags validation schema - matches table name 'tags'
  * Defaults: isActive=true, isSystem=false, locked=false
+ * categoryId is nullable - null means tag applies to all categories within scope
+ * tagScope determines which tables can use this tag
  */
 export const tagsValidationSchema = createValidationSchema(tags).extend({
   isActive: z.boolean().default(true),
   isSystem: z.boolean().default(false),
   locked: z.boolean().default(false),
+});
+
+/**
+ * Product Components validation schema (Bill of Materials)
+ * Defines which products are components of other products
+ * Defaults: quantity=1, isRequired=true, sortOrder=0
+ */
+export const productComponentsValidationSchema = createValidationSchema(productComponents).extend({
+  quantity: z.number().int().positive().default(1),
+  isRequired: z.boolean().default(true),
+  sortOrder: z.number().int().default(0),
+});
+
+/**
+ * SKU Components validation schema (Bill of Materials)
+ * Defines which SKUs are components of other SKUs
+ * Defaults: quantity=1, isRequired=true, sortOrder=0
+ */
+export const skuComponentsValidationSchema = createValidationSchema(skuComponents).extend({
+  quantity: z.number().int().positive().default(1),
+  isRequired: z.boolean().default(true),
+  sortOrder: z.number().int().default(0),
+});
+
+/**
+ * Reservations validation schema - matches table name 'reservations'
+ * Property booking/reservation data from external booking systems
+ * Defaults: isActive=true, ownerBook=0, currency='USD'
+ */
+export const reservationsValidationSchema = createValidationSchema(reservations).extend({
+  isActive: z.boolean().default(true),
+  ownerBook: z.number().int().default(0),
+  currency: z.string().default('USD'),
 });
 
 // Common Field Validators - reusable across forms

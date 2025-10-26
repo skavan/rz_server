@@ -33,6 +33,14 @@ router.post('/', authenticateToken, autoInjectMiddleware('tableName'), async (re
   - `POST /api/products/composite` - BOM product with components
 - **Pattern**: `autoInjectMiddleware('products')`
 
+### ✅ SKUs (`server/src/routes/skus.ts`)
+- **Requires**: `customerId`
+- **Updated Endpoints**:
+  - `POST /api/skus` - Single SKU creation
+  - `POST /api/skus/composite` - BOM SKU with components
+- **Pattern**: Automatic via `getRequestScope()` (SKUs are customer-scoped catalog items)
+- **Note**: SKUs don't have `homeId` - they're shared across all homes within a customer
+
 ### ✅ Categories (`server/src/routes/categories.ts`)
 - **Requires**: `customerId`
 - **Updated Endpoints**:

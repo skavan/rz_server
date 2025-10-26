@@ -103,7 +103,7 @@ function generateSlug(text: string): string {
  */
 router.post('/', autoInjectMiddleware('brands'), async (req, res) => {
   try {
-    let { name, slug, websiteUrl, isActive, customerId } = req.body || {};
+    let { name, slug, websiteUrl, categoryIds, isActive, customerId } = req.body || {};
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
@@ -124,6 +124,7 @@ router.post('/', autoInjectMiddleware('brands'), async (req, res) => {
           name,
           slug,
           websiteUrl: websiteUrl || null,
+          categoryIds: categoryIds || null,
           isActive: isActive !== undefined ? !!isActive : true
         })
         .returning();
@@ -150,7 +151,7 @@ router.post('/', autoInjectMiddleware('brands'), async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, slug, websiteUrl, isActive } = req.body || {};
+    const { name, slug, websiteUrl, categoryIds, isActive } = req.body || {};
 
     const scope = await getRequestScope(req as any);
     const updatedBrands = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
@@ -159,6 +160,7 @@ router.put('/:id', async (req, res) => {
       if (name !== undefined) updates.name = name;
       if (slug !== undefined) updates.slug = slug;
       if (websiteUrl !== undefined) updates.websiteUrl = websiteUrl;
+      if (categoryIds !== undefined) updates.categoryIds = categoryIds;
       if (isActive !== undefined) updates.isActive = isActive;
 
       return scopedDb

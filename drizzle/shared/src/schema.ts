@@ -217,6 +217,10 @@ export const brands = pgTable('brands', {
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull(),
   websiteUrl: varchar('website_url', { length: 500 }),
+  
+  // Brand category associations - null means serves all categories
+  categoryIds: integer('category_ids').array(),
+  
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
@@ -249,7 +253,7 @@ export const vendors = pgTable('vendors', {
 // TAGS TABLE
 // ============================================
 // Tag enums for classification and scoping
-export const tagTypeEnum = pgEnum('tag_type', ['category', 'status', 'feature', 'material', 'project']);
+export const tagTypeEnum = pgEnum('tag_type', ['placeholder']); // Reserved for future use
 export const tagScopeEnum = pgEnum('tag_scope', ['product', 'sku', 'inventory_item', 'location', 'home', 'all']);
 
 export const tags = pgTable('tags', {
@@ -259,8 +263,16 @@ export const tags = pgTable('tags', {
   slug: varchar('slug', { length: 255 }).notNull(),
   description: text('description'),
   color: varchar('color', { length: 7 }), // Hex color code
-  tagType: tagTypeEnum('tag_type'),
+  
+  // Category association - null means applies to all categories within scope
+  categoryId: integer('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  
+  // Tag scope - which table(s) can use this tag
   tagScope: tagScopeEnum('tag_scope'),
+  
+  // Reserved for future use
+  tagType: tagTypeEnum('tag_type'),
+  
   isSystem: boolean('is_system').default(false),
   locked: boolean('locked').default(false),
   isActive: boolean('is_active').default(true),
@@ -269,6 +281,8 @@ export const tags = pgTable('tags', {
 }, (table) => ({
   uniqueSlug: unique('tags_customer_slug_unique').on(table.customerId, table.slug),
   customerIdx: index('idx_tags_customer').on(table.customerId),
+  categoryIdx: index('idx_tags_category').on(table.categoryId),
+  scopeIdx: index('idx_tags_scope').on(table.tagScope),
   activeIdx: index('idx_tags_active').on(table.isActive),
 }));
 
@@ -570,6 +584,9 @@ export type NewSkuComponent = typeof skuComponents.$inferInsert;
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type NewMediaAsset = typeof mediaAssets.$inferInsert;
 
+export type Reservation = typeof reservations.$inferSelect;
+export type NewReservation = typeof reservations.$inferInsert;
+
 // API-friendly types (camelCase) - for client consumption
 export type CustomerAPI = {
   id: number;
@@ -634,5 +651,99 @@ export type InventoryItemAPI = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+// ============================================
+// RESERVATIONS TABLE (Property Bookings)
+// ============================================
+export const reservations = pgTable('reservations', {
+  id: serial('id').primaryKey(),
+  
+  // Tenant fields (following multi-tenant pattern)
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }).notNull(),
+  
+  // External booking system ID
+  bookingId: integer('booking_id').notNull().unique(),
+  
+  // Guest information
+  firstName: varchar('first_name', { length: 255 }),
+  lastName: varchar('last_name', { length: 255 }),
+  fullName: varchar('full_name', { length: 255 }),
+  email: varchar('email', { length: 500 }),
+  birthday: varchar('birthday', { length: 20 }), // Format: "0000-00-00" or actual date
+  birthplace: varchar('birthplace', { length: 255 }),
+  phone1: varchar('phone1', { length: 50 }),
+  phone2: varchar('phone2', { length: 50 }),
+  country: varchar('country', { length: 10 }),
+  phoneCountryCode: varchar('phone_country_code', { length: 10 }),
+  address: text('address'),
+  city: varchar('city', { length: 255 }),
+  state: varchar('state', { length: 255 }),
+  postcode: varchar('postcode', { length: 50 }),
+  fiscalCode: varchar('fiscal_code', { length: 100 }),
+  other: text('other'),
+  
+  // Booking status and notes
+  status: varchar('status', { length: 50 }).notNull(), // reserved, confirmed, cancelled, etc.
+  agreeTermNote: text('agree_term_note'),
+  managerNote: text('manager_note'),
+  
+  // Property and booking references
+  propertyName: varchar('property_name', { length: 255 }),
+  propertyId: integer('property_id'),
+  ownerBook: integer('owner_book').default(0),
+  leadsourceId: integer('leadsource_id'),
+  brandId: integer('brand_id'),
+  
+  // Financial details
+  totalRent: decimal('total_rent', { precision: 10, scale: 2 }),
+  taxTotal: decimal('tax_total', { precision: 10, scale: 2 }),
+  serviceTotal: decimal('service_total', { precision: 10, scale: 2 }),
+  discountTotal: decimal('discount_total', { precision: 10, scale: 2 }),
+  grandTotal: decimal('grand_total', { precision: 10, scale: 2 }),
+  damageDeposit: decimal('damage_deposit', { precision: 10, scale: 2 }),
+  channelFee: decimal('channel_fee', { precision: 10, scale: 2 }),
+  currency: varchar('currency', { length: 10 }).default('USD'),
+  
+  // Stay details
+  checkin: timestamp('checkin', { withTimezone: true }),
+  checkout: timestamp('checkout', { withTimezone: true }),
+  qtyOfNights: integer('qty_of_nights'),
+  minNightlyPrice: decimal('min_nightly_price', { precision: 10, scale: 2 }),
+  maxNightlyPrice: decimal('max_nightly_price', { precision: 10, scale: 2 }),
+  nightlyPriceDetail: jsonb('nightly_price_detail'), // JSON object with date: price
+  
+  // Guest count and stay requirements
+  numberOfAdults: integer('number_of_adults'),
+  numberOfChildren: integer('number_of_children'),
+  minimumStay: integer('minimum_stay'),
+  maximumStay: integer('maximum_stay'),
+  
+  // Additional booking data (arrays from JSON)
+  discount: jsonb('discount'), // Array of discount objects
+  dynamicOptions: jsonb('dynamic_options'), // Array of dynamic option objects
+  tax: jsonb('tax'), // Array of tax objects
+  service: jsonb('service'), // Array of service objects
+  
+  // Timestamps
+  createdDate: timestamp('created_date', { withTimezone: true }),
+  updatedDate: timestamp('updated_date', { withTimezone: true }),
+  cancellationDate: timestamp('cancellation_date', { withTimezone: true }),
+  
+  // System fields
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerIdx: index('idx_reservations_customer').on(table.customerId),
+  homeIdx: index('idx_reservations_home').on(table.homeId),
+  bookingIdIdx: index('idx_reservations_booking_id').on(table.bookingId),
+  propertyIdx: index('idx_reservations_property').on(table.propertyId),
+  statusIdx: index('idx_reservations_status').on(table.status),
+  checkinIdx: index('idx_reservations_checkin').on(table.checkin),
+  checkoutIdx: index('idx_reservations_checkout').on(table.checkout),
+  emailIdx: index('idx_reservations_email').on(table.email),
+  activeIdx: index('idx_reservations_active').on(table.isActive),
+}));
 
 // ... Add more API types as needed

@@ -35,6 +35,7 @@ const schemas = [
   { name: 'vendorsValidationSchema', table: 'vendors' },
   { name: 'homesValidationSchema', table: 'homes' },
   { name: 'tagsValidationSchema', table: 'tags' },
+  { name: 'reservationsValidationSchema', table: 'reservations' },
 ];
 
 console.log('🔍 Introspecting Zod schemas...\n');
