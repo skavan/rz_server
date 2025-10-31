@@ -4,6 +4,7 @@ import { brands, eq, and, ilike, or } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
 import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
 const router = Router();
 
@@ -85,19 +86,6 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * Generate slug from name
- */
-function generateSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-/**
  * POST /api/brands
  * Create new brand (requires auth)
  */
@@ -105,13 +93,18 @@ router.post('/', autoInjectMiddleware('brands'), async (req, res) => {
   try {
     let { name, slug, websiteUrl, categoryIds, isActive, customerId } = req.body || {};
 
-    if (!name) {
+    if (!name || !String(name).trim()) {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    // Auto-generate slug if not provided
-    if (!slug) {
-      slug = generateSlug(name);
+    let slugValue: string;
+    try {
+      slugValue = resolveSlug(slug, name);
+    } catch (err) {
+      if (err instanceof SlugValidationError) {
+        return res.status(err.status).json({ error: err.message });
+      }
+      throw err;
     }
 
     // customerId is now guaranteed by middleware
@@ -122,7 +115,7 @@ router.post('/', autoInjectMiddleware('brands'), async (req, res) => {
         .values({
           customerId,
           name,
-          slug,
+          slug: slugValue,
           websiteUrl: websiteUrl || null,
           categoryIds: categoryIds || null,
           isActive: isActive !== undefined ? !!isActive : true
@@ -153,12 +146,31 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const { name, slug, websiteUrl, categoryIds, isActive } = req.body || {};
 
+    if (name !== undefined && !String(name).trim()) {
+      return res.status(400).json({ error: 'Name cannot be empty' });
+    }
+
+    let normalizedSlug: string | undefined;
+    if (slug !== undefined) {
+      if (!String(slug).trim()) {
+        return res.status(400).json({ error: 'Slug cannot be empty' });
+      }
+      try {
+        normalizedSlug = resolveSlug(slug, typeof name === 'string' && name.trim() ? name : undefined);
+      } catch (err) {
+        if (err instanceof SlugValidationError) {
+          return res.status(err.status).json({ error: err.message });
+        }
+        throw err;
+      }
+    }
+
     const scope = await getRequestScope(req as any);
     const updatedBrands = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       const updates: any = { updatedAt: new Date() };
 
       if (name !== undefined) updates.name = name;
-      if (slug !== undefined) updates.slug = slug;
+      if (normalizedSlug !== undefined) updates.slug = normalizedSlug;
       if (websiteUrl !== undefined) updates.websiteUrl = websiteUrl;
       if (categoryIds !== undefined) updates.categoryIds = categoryIds;
       if (isActive !== undefined) updates.isActive = isActive;

@@ -2,6 +2,7 @@
 export * from './schema.js';
 export * from './zod.js';
 export * from './types/index.js';
+export * from './utils/slug.js';
 
 // Re-export commonly used Drizzle operators for convenience
 export { eq, ne, gt, gte, lt, lte, isNull, isNotNull, inArray, notInArray, exists, notExists, between, notBetween, like, ilike, not, and, or, sql } from 'drizzle-orm';

@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { db, withTenantScope } from '../db/index.js';
+import { withTenantScope } from '../db/index.js';
 import { tags, eq, and, ilike } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
 import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
 const router = Router();
 
@@ -95,37 +96,28 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * Generate slug from name
- */
-function generateSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-/**
  * POST /api/tags
  * Create new tag (requires auth)
  */
 router.post('/', autoInjectMiddleware('tags'), async (req, res) => {
   try {
-    let { 
+    const { 
       name, slug, description, color, tagType, tagScope, 
-      isSystem, locked, isActive, customerId 
+      categoryId, isSystem, locked, isActive, customerId 
     } = req.body || {};
+
+    const normalizedCategoryId = categoryId === undefined || categoryId === null || categoryId === ''
+      ? null
+      : Number(categoryId);
+    const categoryIdValue = typeof normalizedCategoryId === 'number' && Number.isFinite(normalizedCategoryId)
+      ? normalizedCategoryId
+      : null;
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    // Auto-generate slug if not provided
-    if (!slug) {
-      slug = generateSlug(name);
-    }
+    const normalizedSlug = resolveSlug(slug, name);
 
     // customerId is now guaranteed by middleware
     const scope = getScopeFromRequest(req as any);
@@ -135,11 +127,12 @@ router.post('/', autoInjectMiddleware('tags'), async (req, res) => {
         .values({
           customerId,
           name,
-          slug,
+          slug: normalizedSlug,
           description: description || null,
           color: color || null,
           tagType: tagType || null,
           tagScope: tagScope || null,
+          categoryId: categoryIdValue,
           isSystem: isSystem !== undefined ? !!isSystem : false,
           locked: locked !== undefined ? !!locked : false,
           isActive: isActive !== undefined ? !!isActive : true
@@ -156,6 +149,9 @@ router.post('/', autoInjectMiddleware('tags'), async (req, res) => {
     
     res.status(201).json({ data: created });
   } catch (error) {
+    if (error instanceof SlugValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
     console.error('Tag POST error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -170,9 +166,13 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { 
-      name, slug, description, color, tagType, tagScope, 
+      name, slug, description, color, tagType, tagScope, categoryId,
       locked, isActive 
     } = req.body || {};
+
+    const normalizedCategoryId = categoryId === undefined || categoryId === null || categoryId === ''
+      ? undefined
+      : Number(categoryId);
 
     const scope = await getRequestScope(req as any);
     const updatedTags = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
@@ -190,11 +190,20 @@ router.put('/:id', async (req, res) => {
       const updates: any = { updatedAt: new Date() };
 
       if (name !== undefined) updates.name = name;
-      if (slug !== undefined) updates.slug = slug;
+      if (slug !== undefined) {
+        updates.slug = resolveSlug(slug, typeof name === 'string' ? name : existing[0]?.name);
+      } else if (name !== undefined) {
+        updates.slug = resolveSlug(name, name);
+      }
       if (description !== undefined) updates.description = description;
       if (color !== undefined) updates.color = color;
       if (tagType !== undefined) updates.tagType = tagType;
       if (tagScope !== undefined) updates.tagScope = tagScope;
+      if (categoryId !== undefined) {
+        updates.categoryId = typeof normalizedCategoryId === 'number' && Number.isFinite(normalizedCategoryId)
+          ? normalizedCategoryId
+          : null;
+      }
       if (locked !== undefined) updates.locked = locked;
       if (isActive !== undefined) updates.isActive = isActive;
 
@@ -218,6 +227,9 @@ router.put('/:id', async (req, res) => {
 
     res.json({ data: updated });
   } catch (error) {
+    if (error instanceof SlugValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
     console.error('Tag PUT error:', error);
     if (error instanceof Error && error.message === 'Cannot modify locked tag') {
       return res.status(403).json({ error: error.message });

@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, inventoryItems, products, skus, categories, brands, vendors, homes, tags, productComponents, skuComponents, reservations } from "./schema.js";
+import { locations, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations } from "./schema.js";
 import { cadenceConfigSchema } from "./types/json-fields.js";
+import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
 /**
  * ==============================================================================
@@ -50,10 +51,158 @@ import { cadenceConfigSchema } from "./types/json-fields.js";
  */
 
 /**
+ * Shared helpers for coercing date-like fields.
+ * Ensures form inputs can send strings/numbers while downstream code receives Date/null.
+ */
+const coerceDateInput = (value: unknown) => {
+  if (value === undefined) return undefined;
+  if (value === "" || value === null) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return null;
+    const isoDateMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoDateMatch) {
+      const [, year, month, day] = isoDateMatch;
+      return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    }
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+  if (typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+  return undefined;
+};
+
+const withDatePreprocess = <TSchema extends z.ZodTypeAny>(schema: TSchema) =>
+  z.preprocess(coerceDateInput, schema);
+
+const refineDateFields = <T extends string>(...fields: T[]) =>
+  fields.reduce<Record<T, (schemaMap: Record<string, z.ZodTypeAny>) => z.ZodTypeAny>>(
+    (acc, field) => {
+      acc[field] = (schemaMap) => withDatePreprocess(schemaMap[field]);
+      return acc;
+    },
+    {} as Record<T, (schemaMap: Record<string, z.ZodTypeAny>) => z.ZodTypeAny>
+  );
+
+const isBlankValue = (value: unknown): boolean => {
+  if (value == null) return true;
+  if (typeof value === "string") return value.trim() === "";
+  if (Array.isArray(value)) return value.every(isBlankValue);
+  if (typeof value === "object") {
+    return Object.values(value).every(isBlankValue);
+  }
+  return false;
+};
+
+const toRequiredInt = (value: unknown) => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return value;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return value;
+};
+
+const toOptionalInt = (value: unknown) => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return undefined;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return value;
+};
+
+const toNullableString = (value: unknown) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
+  }
+  return String(value);
+};
+
+const parseJsonMaybe = (value: string) => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
+const toOptionalBoolean = (value: unknown) => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (value === 1) return true;
+    if (value === 0) return false;
+    return value;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed === "") return undefined;
+    if (["true", "1", "yes", "on"].includes(trimmed)) return true;
+    if (["false", "0", "no", "off"].includes(trimmed)) return false;
+  }
+  return value;
+};
+
+/**
+ * Normalizes relation arrays from form submissions or JSON payloads.
+ * - Accepts strings (JSON), arrays, or undefined
+ * - Filters out blank rows (all fields empty)
+ * - Defaults to [] when no data provided
+ */
+export const relationArrayField = <T extends z.ZodTypeAny>(itemSchema: T) =>
+  z.preprocess((value) => {
+    if (value == null || value === "") return [];
+
+    const normalizeItem = (item: unknown) => {
+      if (typeof item === "string") {
+        const trimmed = item.trim();
+        if (!trimmed) return undefined;
+        return parseJsonMaybe(trimmed);
+      }
+      if (typeof item === "object" && item !== null) {
+        return item;
+      }
+      return item;
+    };
+
+    const toArray = () => {
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string") {
+        const parsed = parseJsonMaybe(value.trim());
+        return Array.isArray(parsed) ? parsed : [parsed];
+      }
+      return [value];
+    };
+
+    const cleaned = toArray()
+      .map(normalizeItem)
+      .filter((item) => !(item === undefined || isBlankValue(item)));
+
+    return cleaned;
+  }, z.array(itemSchema).optional().default([]));
+
+/**
  * Locations validation schema - matches table name 'locations'
  * Pre-configured with sensible defaults: isActive=true
  */
-export const locationsValidationSchema = createValidationSchema(locations).extend({
+export const locationsValidationSchema = createValidationSchema(
+  locations,
+  refineDateFields('lastCleaned', 'lastChecked', 'createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
   isActive: z.boolean().default(true),
 });
 
@@ -62,7 +211,18 @@ export const locationsValidationSchema = createValidationSchema(locations).exten
  * Defaults: isActive=true, hasMediaAssets=false, isKitComponent=false, quantity=1, 
  *           status='unassigned', condition='good', currency='USD'
  */
-export const inventoryItemsValidationSchema = createValidationSchema(inventoryItems).extend({
+export const inventoryItemsValidationSchema = createValidationSchema(
+  inventoryItems,
+  refineDateFields(
+    'lastChecked',
+    'lastMaintained',
+    'purchaseDate',
+    'warrantyExpires',
+    'expectedReplacement',
+    'createdAt',
+    'updatedAt'
+  )
+).extend({
   isActive: z.boolean().default(true),
   hasMediaAssets: z.boolean().default(false),
   isKitComponent: z.boolean().default(false),
@@ -76,7 +236,11 @@ export const inventoryItemsValidationSchema = createValidationSchema(inventoryIt
  * Products validation schema - matches table name 'products'
  * Defaults: isVisible=true, isActive=true, hasMediaAssets=false, kind='simple'
  */
-export const productsValidationSchema = createValidationSchema(products).extend({
+export const productsValidationSchema = createValidationSchema(
+  products,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
   isVisible: z.boolean().default(true),
   isActive: z.boolean().default(true),
   hasMediaAssets: z.boolean().default(false),
@@ -87,7 +251,11 @@ export const productsValidationSchema = createValidationSchema(products).extend(
  * SKUs validation schema - matches table name 'skus'
  * Defaults: hasMediaAssets=false, kind='simple', status='active'
  */
-export const skusValidationSchema = createValidationSchema(skus).extend({
+export const skusValidationSchema = createValidationSchema(
+  skus,
+  refineDateFields('priceUpdated', 'createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
   hasMediaAssets: z.boolean().default(false),
   kind: z.enum(['simple', 'bom']).default('simple'),
   status: z.enum(['active', 'discontinued', 'unknown']).default('active'),
@@ -97,15 +265,37 @@ export const skusValidationSchema = createValidationSchema(skus).extend({
  * Categories validation schema - matches table name 'categories'
  * Defaults: isActive=true
  */
-export const categoriesValidationSchema = createValidationSchema(categories).extend({
+export const categoriesValidationSchema = createValidationSchema(
+  categories,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
   isActive: z.boolean().default(true),
+});
+
+/**
+ * Customers validation schema - matches table name 'customers'
+ * Defaults: subscriptionStatus='active', maxHomes=5, onboardingCompleted=false
+ */
+export const customersValidationSchema = createValidationSchema(
+  customers,
+  refineDateFields('trialEndsAt', 'subscriptionStartsAt', 'lastPaymentDate', 'createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
+  subscriptionStatus: z.enum(['active', 'pending', 'cancelled', 'suspended']).default('active'),
+  maxHomes: z.number().int().default(5),
+  onboardingCompleted: z.boolean().default(false),
 });
 
 /**
  * Brands validation schema - matches table name 'brands'
  * Defaults: isActive=true
  */
-export const brandsValidationSchema = createValidationSchema(brands).extend({
+export const brandsValidationSchema = createValidationSchema(
+  brands,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
   isActive: z.boolean().default(true),
 });
 
@@ -113,7 +303,11 @@ export const brandsValidationSchema = createValidationSchema(brands).extend({
  * Vendors validation schema - matches table name 'vendors'
  * Defaults: isActive=true
  */
-export const vendorsValidationSchema = createValidationSchema(vendors).extend({
+export const vendorsValidationSchema = createValidationSchema(
+  vendors,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
   isActive: z.boolean().default(true),
 });
 
@@ -121,7 +315,11 @@ export const vendorsValidationSchema = createValidationSchema(vendors).extend({
  * Homes validation schema - matches table name 'homes'
  * Defaults: isActive=true
  */
-export const homesValidationSchema = createValidationSchema(homes).extend({
+export const homesValidationSchema = createValidationSchema(
+  homes,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
   isActive: z.boolean().default(true),
 });
 
@@ -131,7 +329,11 @@ export const homesValidationSchema = createValidationSchema(homes).extend({
  * categoryId is nullable - null means tag applies to all categories within scope
  * tagScope determines which tables can use this tag
  */
-export const tagsValidationSchema = createValidationSchema(tags).extend({
+export const tagsValidationSchema = createValidationSchema(
+  tags,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
   isActive: z.boolean().default(true),
   isSystem: z.boolean().default(false),
   locked: z.boolean().default(false),
@@ -142,10 +344,16 @@ export const tagsValidationSchema = createValidationSchema(tags).extend({
  * Defines which products are components of other products
  * Defaults: quantity=1, isRequired=true, sortOrder=0
  */
-export const productComponentsValidationSchema = createValidationSchema(productComponents).extend({
-  quantity: z.number().int().positive().default(1),
-  isRequired: z.boolean().default(true),
-  sortOrder: z.number().int().default(0),
+export const productComponentsValidationSchema = createValidationSchema(
+  productComponents,
+  refineDateFields('createdAt')
+).extend({
+  parentProductId: z.preprocess(toRequiredInt, z.number().int().positive()),
+  componentProductId: z.preprocess(toRequiredInt, z.number().int().positive()),
+  notes: z.preprocess(toNullableString, z.string().nullable().optional()),
+  quantity: z.preprocess(toOptionalInt, z.number().int().positive().default(1)),
+  isRequired: z.preprocess(toOptionalBoolean, z.boolean().optional().default(true)),
+  sortOrder: z.preprocess(toOptionalInt, z.number().int().optional().default(0)),
 });
 
 /**
@@ -153,10 +361,16 @@ export const productComponentsValidationSchema = createValidationSchema(productC
  * Defines which SKUs are components of other SKUs
  * Defaults: quantity=1, isRequired=true, sortOrder=0
  */
-export const skuComponentsValidationSchema = createValidationSchema(skuComponents).extend({
-  quantity: z.number().int().positive().default(1),
-  isRequired: z.boolean().default(true),
-  sortOrder: z.number().int().default(0),
+export const skuComponentsValidationSchema = createValidationSchema(
+  skuComponents,
+  refineDateFields('createdAt')
+).extend({
+  parentSkuId: z.preprocess(toRequiredInt, z.number().int().positive()),
+  componentSkuId: z.preprocess(toRequiredInt, z.number().int().positive()),
+  notes: z.preprocess(toNullableString, z.string().nullable().optional()),
+  quantity: z.preprocess(toOptionalInt, z.number().int().positive().default(1)),
+  isRequired: z.preprocess(toOptionalBoolean, z.boolean().optional().default(true)),
+  sortOrder: z.preprocess(toOptionalInt, z.number().int().optional().default(0)),
 });
 
 /**
@@ -164,7 +378,18 @@ export const skuComponentsValidationSchema = createValidationSchema(skuComponent
  * Property booking/reservation data from external booking systems
  * Defaults: isActive=true, ownerBook=0, currency='USD'
  */
-export const reservationsValidationSchema = createValidationSchema(reservations).extend({
+export const reservationsValidationSchema = createValidationSchema(
+  reservations,
+  refineDateFields(
+    'checkin',
+    'checkout',
+    'createdDate',
+    'updatedDate',
+    'cancellationDate',
+    'createdAt',
+    'updatedAt'
+  )
+).extend({
   isActive: z.boolean().default(true),
   ownerBook: z.number().int().default(0),
   currency: z.string().default('USD'),
@@ -176,18 +401,11 @@ export const reservationsValidationSchema = createValidationSchema(reservations)
  * Date field validator - handles date inputs from forms
  * Converts empty strings/null to null, parses various date formats
  */
-export const dateFieldValidator = z.preprocess((v) => {
-  if (v === "" || v == null) return null;
-  if (v instanceof Date) return v;
-  if (typeof v === "string") {
-    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (m) {
-      const [, yy, mm, dd] = m;
-      return new Date(Date.UTC(Number(yy), Number(mm) - 1, Number(dd)));
-    }
-    return new Date(v);
+export const dateFieldValidator = z.preprocess((value) => {
+  if (value === undefined) {
+    return null;
   }
-  return undefined;
+  return coerceDateInput(value);
 }, z.date().nullable().optional());
 
 /**
@@ -227,46 +445,16 @@ export const parentIdValidator = z.preprocess(
 );
 
 /**
- * Slug generator function - creates URL-friendly slugs from text
- * Standard format: lowercase, spaces/special chars become dashes, no double dashes
- */
-export function generateSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special chars except spaces and dashes
-    .replace(/\s+/g, '-')     // Replace spaces with dashes
-    .replace(/-+/g, '-')      // Replace multiple dashes with single dash
-    .replace(/^-|-$/g, '');   // Remove leading/trailing dashes
-}
-
-/**
- * Auto-slug validator - generates slug from name field
- * Use this in forms where slug should be auto-generated from name
- */
-export const autoSlugValidator = z.string().transform((name, ctx) => {
-  if (!name?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Name is required to generate slug",
-    });
-    return z.NEVER;
-  }
-  return generateSlug(name);
-});
-
-/**
  * Timestamp validator - handles createdAt/updatedAt from database
  * Converts string timestamps to Date objects, leaves Date objects as-is
  */
-export const timestampValidator = z.preprocess((v) => {
-  if (v == null) return null;
-  if (v instanceof Date) return v;
-  if (typeof v === 'string') {
-    const date = new Date(v);
-    return isNaN(date.getTime()) ? null : date;
-  }
-  return null;
+export const timestampValidator = z.preprocess((value) => {
+  if (value === "" || value == null) return null;
+  if (value instanceof Date) return value;
+  const coerced = coerceDateInput(value);
+  return coerced ?? null;
 }, z.date().nullable().optional());
 
 // UI forms should apply any page-specific rules locally via .extend()
+
+export { autoSlugValidator, generateSlug, normalizeSlug, slugSchema } from "./utils/slug.js";

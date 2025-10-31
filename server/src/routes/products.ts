@@ -11,24 +11,14 @@ import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
+import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
 const router = Router();
 
 /**
- * Generate slug from name
- */
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-/**
  * Generate unique slug for a home, avoiding conflicts with existing products
  */
-async function generateUniqueSlug(scopedDb: any, name: string, homeId: number, excludeProductId?: number): Promise<string> {
-  const baseSlug = generateSlug(name);
+async function generateUniqueSlug(scopedDb: any, baseSlug: string, homeId: number, excludeProductId?: number): Promise<string> {
   
   // Check if base slug is available
   const existing = await scopedDb
@@ -179,36 +169,48 @@ router.get('/:id', optionalAuth, async (req, res) => {
  */
 router.post('/', authenticateToken, autoInjectMiddleware('products'), async (req, res) => {
   try {
-  const { name, homeId, categoryId, notes, isVisible, isActive, kind, tags, checkCadence } = req.body || {};
+    const { name, homeId, slug, categoryId, notes, isVisible, isActive, kind, tags, checkCadence } = req.body || {};
 
-    if (!name) {
+    if (!name || !String(name).trim()) {
       return res.status(400).json({ error: 'Product name is required' });
     }
 
-    // homeId is now guaranteed to be in req.body (auto-injected by middleware)
+    const homeIdNumber = Number(homeId);
+    if (!Number.isFinite(homeIdNumber)) {
+      return res.status(400).json({ error: 'Invalid or missing homeId' });
+    }
+
+    let slugBase: string;
+    try {
+      slugBase = resolveSlug(slug, name);
+    } catch (err) {
+      if (err instanceof SlugValidationError) {
+        return res.status(err.status).json({ error: err.message });
+      }
+      throw err;
+    }
+
     const scope = getScopeFromRequest(req as any);
-  const newProducts = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
-      // Generate unique slug from name
-      const slug = await generateUniqueSlug(scopedDb, name, homeId);
+    const newProducts = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
+      const uniqueSlug = await generateUniqueSlug(scopedDb, slugBase, homeIdNumber);
       return scopedDb
         .insert(products)
         .values({
           name,
-          slug,
-          homeId: parseInt(homeId),
+          slug: uniqueSlug,
+          homeId: homeIdNumber,
           categoryId: categoryId ? parseInt(categoryId) : null,
-      notes: notes || null,
-      isVisible: isVisible !== undefined ? !!isVisible : true,
-      isActive: isActive !== undefined ? !!isActive : true,
-      ...(kind !== undefined ? { kind } : {}),
-      ...(checkCadence !== undefined ? { checkCadence: checkCadence || null } : {}),
-      ...(Array.isArray(tags) ? { tags } : {}),
+          notes: notes || null,
+          isVisible: isVisible !== undefined ? !!isVisible : true,
+          isActive: isActive !== undefined ? !!isActive : true,
+          ...(kind !== undefined ? { kind } : {}),
+          ...(checkCadence !== undefined ? { checkCadence: checkCadence || null } : {}),
+          ...(Array.isArray(tags) ? { tags } : {}),
         })
         .returning();
     });
 
     const created = newProducts[0];
-    // Broadcast realtime event
     eventBus.broadcast({
       event: 'data_change:products',
       data: { type: 'create', resource: 'products', resourceId: created.id, data: created },
@@ -230,19 +232,36 @@ router.post('/', authenticateToken, autoInjectMiddleware('products'), async (req
 router.post('/composite', authenticateToken, autoInjectMiddleware('products'), async (req, res) => {
   try {
     const { product: productInput, components = [], homeId } = req.body || {};
-    if (!productInput?.name) return res.status(400).json({ error: 'Product name is required' });
+    if (!productInput?.name || !String(productInput.name).trim()) {
+      return res.status(400).json({ error: 'Product name is required' });
+    }
+
+    const homeIdNumber = Number(homeId);
+    if (!Number.isFinite(homeIdNumber)) {
+      return res.status(400).json({ error: 'Invalid or missing homeId' });
+    }
+
+    let slugBase: string;
+    try {
+      slugBase = resolveSlug(productInput.slug, productInput.name);
+    } catch (err) {
+      if (err instanceof SlugValidationError) {
+        return res.status(err.status).json({ error: err.message });
+      }
+      throw err;
+    }
 
     // homeId is now guaranteed to be injected by middleware at req.body.homeId
     const scope = getScopeFromRequest(req as any);
     const created = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb, client) => {
       // Create product first
-      const slug = generateSlug(productInput.name);
+      const slug = await generateUniqueSlug(scopedDb, slugBase, homeIdNumber);
       const newProducts = await scopedDb
         .insert(products)
         .values({
           name: productInput.name,
           slug,
-          homeId: parseInt(homeId), // Use homeId from req.body (injected by middleware)
+          homeId: homeIdNumber,
           categoryId: productInput.categoryId ? parseInt(productInput.categoryId) : null,
           notes: productInput.notes || null,
           isVisible: productInput.isVisible !== undefined ? !!productInput.isVisible : true,
@@ -305,11 +324,35 @@ router.post('/composite', authenticateToken, autoInjectMiddleware('products'), a
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-  const { name, categoryId, notes, isVisible, isActive, kind, tags, checkCadence } = req.body || {};
+    const { name, slug, categoryId, notes, isVisible, isActive, kind, tags, checkCadence } = req.body || {};
 
-    const updateData: any = {
-      updatedAt: new Date()
-    };
+    const productId = Number(id);
+    if (!Number.isFinite(productId)) {
+      return res.status(400).json({ error: 'Invalid product id' });
+    }
+
+    if (name !== undefined && !String(name).trim()) {
+      return res.status(400).json({ error: 'Product name cannot be empty' });
+    }
+
+    let slugBase: string | null = null;
+    try {
+      if (slug !== undefined) {
+        if (!String(slug).trim()) {
+          return res.status(400).json({ error: 'Slug cannot be empty' });
+        }
+        slugBase = resolveSlug(slug, typeof name === 'string' && name.trim() ? name : undefined);
+      } else if (name !== undefined) {
+        slugBase = resolveSlug(undefined, name);
+      }
+    } catch (err) {
+      if (err instanceof SlugValidationError) {
+        return res.status(err.status).json({ error: err.message });
+      }
+      throw err;
+    }
+
+    const updateData: any = { updatedAt: new Date() };
 
     if (categoryId !== undefined) {
       updateData.categoryId = categoryId ? parseInt(categoryId) : null;
@@ -318,42 +361,45 @@ router.put('/:id', authenticateToken, async (req, res) => {
       updateData.notes = notes;
     }
     if (isVisible !== undefined) {
-      updateData.isVisible = isVisible;
+      updateData.isVisible = !!isVisible;
     }
     if (isActive !== undefined) {
-      updateData.isActive = isActive;
+      updateData.isActive = !!isActive;
     }
     if (kind !== undefined) {
-      (updateData as any).kind = kind;
+      updateData.kind = kind;
     }
     if (tags !== undefined) {
-      (updateData as any).tags = Array.isArray(tags) ? tags : null;
+      updateData.tags = Array.isArray(tags) ? tags : null;
     }
     if (checkCadence !== undefined) {
-      (updateData as any).checkCadence = checkCadence || null;
+      updateData.checkCadence = checkCadence || null;
+    }
+    if (name !== undefined) {
+      updateData.name = name;
     }
 
     const scope = await getRequestScope(req as any);
     const updatedProducts = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
-      if (name !== undefined) {
-        // Get the current product's home_id for unique slug generation
+      if (slugBase !== null) {
         const currentProduct = await scopedDb
           .select({ homeId: products.homeId })
           .from(products)
-          .where(eq(products.id, parseInt(id)))
+          .where(eq(products.id, productId))
           .limit(1);
-        
+
         if (currentProduct.length === 0) {
           throw new Error('Product not found');
         }
-        
-        updateData.name = name;
-        updateData.slug = await generateUniqueSlug(scopedDb, name, currentProduct[0].homeId, parseInt(id));
+
+    const baseSlug = slugBase;
+    updateData.slug = await generateUniqueSlug(scopedDb, baseSlug, currentProduct[0].homeId, productId);
       }
+
       return scopedDb
         .update(products)
         .set(updateData)
-        .where(eq(products.id, parseInt(id)))
+        .where(eq(products.id, productId))
         .returning();
     });
 
@@ -371,6 +417,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Product PUT error:', error);
+    if (error instanceof SlugValidationError || (error as any)?.status) {
+      const status = (error as any)?.status ?? (error instanceof SlugValidationError ? error.status : 400);
+      return res.status(status).json({ error: (error as Error).message });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -451,21 +501,30 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
     const updated = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb, client) => {
       // Update product if fields provided
       if (productInput && Object.keys(productInput).length > 0) {
+        if (productInput.name !== undefined && !String(productInput.name).trim()) {
+          throw Object.assign(new Error('Product name cannot be empty'), { status: 400 });
+        }
+
+        let slugBase: string | null = null;
+        try {
+          if (productInput.slug !== undefined) {
+            if (!String(productInput.slug).trim()) {
+              throw new SlugValidationError('Slug cannot be empty');
+            }
+            slugBase = resolveSlug(productInput.slug, typeof productInput.name === 'string' && productInput.name.trim() ? productInput.name : undefined);
+          } else if (productInput.name !== undefined) {
+            slugBase = resolveSlug(undefined, productInput.name);
+          }
+        } catch (err) {
+          if (err instanceof SlugValidationError) {
+            throw err;
+          }
+          throw Object.assign(new Error('Invalid slug format'), { status: 400 });
+        }
+
         const updateData: any = { updatedAt: new Date() };
         if (productInput.name !== undefined) {
-          // Get the current product's home_id for unique slug generation
-          const currentProduct = await scopedDb
-            .select({ homeId: products.homeId })
-            .from(products)
-            .where(eq(products.id, parseInt(id)))
-            .limit(1);
-          
-          if (currentProduct.length === 0) {
-            throw new Error('Product not found');
-          }
-          
           updateData.name = productInput.name;
-          updateData.slug = await generateUniqueSlug(scopedDb, productInput.name, currentProduct[0].homeId, parseInt(id));
         }
         if (productInput.categoryId !== undefined) {
           updateData.categoryId = productInput.categoryId ? parseInt(productInput.categoryId) : null;
@@ -484,6 +543,20 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
         }
         if (productInput.tags !== undefined) {
           (updateData as any).tags = Array.isArray(productInput.tags) ? productInput.tags : null;
+        }
+
+        if (slugBase !== null) {
+          const currentProduct = await scopedDb
+            .select({ homeId: products.homeId })
+            .from(products)
+            .where(eq(products.id, parseInt(id)))
+            .limit(1);
+
+          if (currentProduct.length === 0) {
+            throw new Error('Product not found');
+          }
+
+          updateData.slug = await generateUniqueSlug(scopedDb, slugBase, currentProduct[0].homeId, parseInt(id));
         }
 
         await scopedDb.update(products).set(updateData).where(eq(products.id, parseInt(id))).returning();
@@ -533,6 +606,9 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
     res.json({ data: updated });
   } catch (error: any) {
     console.error('Product composite PUT error:', error);
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });

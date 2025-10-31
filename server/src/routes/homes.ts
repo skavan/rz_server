@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { db, withTenantScope } from '../db/index.js';
+import { withTenantScope } from '../db/index.js';
 import { homes, eq, and, ilike } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
+import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
 const router = Router();
 
@@ -84,25 +85,12 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * Generate slug from name
- */
-function generateSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-/**
  * POST /api/homes
  * Create new home (requires auth)
  */
 router.post('/', async (req, res) => {
   try {
-    let { 
+    const { 
       name, slug, address, propertyType, bedrooms, bathrooms, 
       squareFootage, description, notes, isActive 
     } = req.body || {};
@@ -111,10 +99,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    // Auto-generate slug if not provided
-    if (!slug) {
-      slug = generateSlug(name);
-    }
+    const normalizedSlug = resolveSlug(slug, name);
 
     const scope = await getRequestScope(req as any);
     const newHomes = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
@@ -123,7 +108,7 @@ router.post('/', async (req, res) => {
         .values({
           customerId: scope.customerId,
           name,
-          slug,
+          slug: normalizedSlug,
           address: address || null,
           propertyType: propertyType || null,
           bedrooms: bedrooms || null,
@@ -145,6 +130,9 @@ router.post('/', async (req, res) => {
     
     res.status(201).json({ data: created });
   } catch (error) {
+    if (error instanceof SlugValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
     console.error('Home POST error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -167,7 +155,9 @@ router.put('/:id', async (req, res) => {
       const updates: any = { updatedAt: new Date() };
 
       if (name !== undefined) updates.name = name;
-      if (slug !== undefined) updates.slug = slug;
+      if (slug !== undefined || name !== undefined) {
+        updates.slug = resolveSlug(slug, typeof name === 'string' ? name : undefined);
+      }
       if (address !== undefined) updates.address = address;
       if (propertyType !== undefined) updates.propertyType = propertyType;
       if (bedrooms !== undefined) updates.bedrooms = bedrooms;
@@ -197,6 +187,9 @@ router.put('/:id', async (req, res) => {
 
     res.json({ data: updated });
   } catch (error) {
+    if (error instanceof SlugValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
     console.error('Home PUT error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }

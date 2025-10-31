@@ -2,19 +2,15 @@
  * Locations API - CRUD endpoints using Drizzle schema
  */
 import { Router } from 'express';
-import { db, withTenantScope } from '../db/index.js';
-import { locations, eq, asc, desc, and, ilike, sql } from '@postgress/shared';
+import { withTenantScope } from '../db/index.js';
+import { locations, eq, asc, desc, and, ilike } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
 import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
 const router = Router();
-
-// Helper: slugify
-function slugify(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
 
 // GET /api/locations
 router.get('/', optionalAuth, async (req, res) => {
@@ -63,9 +59,9 @@ router.get('/:id', optionalAuth, async (req, res) => {
 // POST /api/locations
 router.post('/', authenticateToken, autoInjectMiddleware('locations'), async (req, res) => {
   try {
-  const { homeId, name, parentId, locationType, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
+  const { homeId, name, slug, parentId, locationType, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
     if (!name) return res.status(400).json({ error: 'name is required' });
-    const slug = slugify(name);
+    const normalizedSlug = resolveSlug(slug, name);
 
     // homeId is now guaranteed by middleware
     const scope = getScopeFromRequest(req as any);
@@ -75,7 +71,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('locations'), async (re
         .values({
           homeId: parseInt(homeId),
           name,
-          slug,
+          slug: normalizedSlug,
           parentId: parentId ? parseInt(parentId) : null,
           locationType: locationType || null,
           squareFootage: squareFootage ? parseInt(squareFootage) : null,
@@ -97,6 +93,9 @@ router.post('/', authenticateToken, autoInjectMiddleware('locations'), async (re
     });
     res.status(201).json({ data: created });
   } catch (e) {
+    if (e instanceof SlugValidationError) {
+      return res.status(e.status).json({ error: e.message });
+    }
     console.error('Location POST error:', e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -106,9 +105,14 @@ router.post('/', authenticateToken, autoInjectMiddleware('locations'), async (re
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-  const { name, parentId, locationType, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
+  const { name, slug, parentId, locationType, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
     const updateData: any = { updatedAt: new Date() };
-    if (name !== undefined) { updateData.name = name; updateData.slug = slugify(name); }
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+    if (slug !== undefined || name !== undefined) {
+      updateData.slug = resolveSlug(slug, typeof name === 'string' ? name : undefined);
+    }
     if (parentId !== undefined) updateData.parentId = parentId ? parseInt(parentId) : null;
     if (locationType !== undefined) updateData.locationType = locationType || null;
     if (squareFootage !== undefined) updateData.squareFootage = squareFootage ? parseInt(squareFootage) : null;
@@ -133,6 +137,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
     });
     res.json({ data: updated });
   } catch (e) {
+    if (e instanceof SlugValidationError) {
+      return res.status(e.status).json({ error: e.message });
+    }
     console.error('Location PUT error:', e);
     res.status(500).json({ error: 'Internal server error' });
   }
