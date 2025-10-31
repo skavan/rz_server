@@ -1,0 +1,7 @@
+{
+  "name": "rz_server-root",
+  "private": true,
+  "scripts": {
+    "seed:365": "npm run seed:365 --prefix server"
+  }
+}

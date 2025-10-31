@@ -22,6 +22,7 @@
     "seed:numeric": "tsx scripts/drizzle/preset-manager.ts run-numeric rebuild",
     "seed:table": "tsx scripts/drizzle/preset-manager.ts seed-table",
     "seed:preset": "tsx scripts/drizzle/preset-manager.ts run",
+    "seed:365": "tsx scripts/seed-365.ts",
     "realtime:setup": "tsx scripts/realtime/setup-realtime.ts",
     "realtime:setup:tables": "tsx scripts/realtime/setup-realtime.ts products,inventory_items,locations,homes,product_components,vendors,brands,skus,sku_components",
     "rls:check": "tsx scripts/rls/check-rls.ts",

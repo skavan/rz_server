@@ -523,6 +523,235 @@ export const mediaAssets = pgTable('media_assets', {
 }));
 
 // ============================================
+// CRM CONTACTS TABLE
+// ============================================
+export const crmContacts = pgTable('crm_contacts', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  externalId: varchar('external_id', { length: 255 }),
+  firstName: varchar('first_name', { length: 255 }),
+  lastName: varchar('last_name', { length: 255 }),
+  email: varchar('email', { length: 255 }),
+  phone: varchar('phone', { length: 50 }),
+  secondaryPhone: varchar('secondary_phone', { length: 50 }),
+  secondaryEmail: varchar('secondary_email', { length: 255 }),
+  address: jsonb('address'),
+  dateOfBirth: varchar('date_of_birth', { length: 20 }),
+  placeOfBirth: varchar('place_of_birth', { length: 255 }),
+  fiscalCode: varchar('fiscal_code', { length: 100 }),
+  phoneCountryCode: varchar('phone_country_code', { length: 10 }),
+  occupation: varchar('occupation', { length: 255 }),
+  jobTitle: varchar('job_title', { length: 255 }),
+  companyName: varchar('company_name', { length: 255 }),
+  websiteUrl: varchar('website_url', { length: 255 }),
+  guestPartyId: integer('guest_party_id'),
+  guestPartyRole: varchar('guest_party_role', { length: 100 }),
+  ageAtBooking: integer('age_at_booking'),
+  preferences: jsonb('preferences'),
+  emergencyContacts: jsonb('emergency_contacts'),
+  relationships: jsonb('relationships'),
+  communicationPreferences: jsonb('communication_preferences'),
+  status: varchar('status', { length: 50 }),
+  tags: text('tags').array(),
+  isPrimary: boolean('is_primary'),
+  isMultipleTransactions: boolean('is_multiple_transactions'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+}, (table) => ({
+  tenantIdx: index('idx_crm_contacts_tenant').on(table.tenantId),
+}));
+
+// ============================================
+// CRM LEAD SOURCES TABLE
+// ============================================
+export const crmLeadSources = pgTable('crm_lead_sources', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  sourceType: varchar('source_type', { length: 50 }),
+  defaultCommissionRate: decimal('default_commission_rate', { precision: 7, scale: 4 }),
+  defaultCommissionType: varchar('default_commission_type', { length: 50 }),
+  defaultCommissionAmount: decimal('default_commission_amount', { precision: 10, scale: 2 }),
+  isActive: boolean('is_active'),
+  sortOrder: integer('sort_order'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+}, (table) => ({
+  tenantIdx: index('idx_crm_lead_sources_tenant').on(table.tenantId),
+}));
+
+// ============================================
+// BOOKING RESERVATIONS TABLE
+// ============================================
+export const bookingReservations = pgTable('booking_reservations', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }).notNull(),
+  primaryGuestId: integer('primary_guest_id').references(() => crmContacts.id, { onDelete: 'set null' }),
+  guestPartyId: integer('guest_party_id'),
+  externalId: varchar('external_id', { length: 255 }),
+  confirmationCode: varchar('confirmation_code', { length: 100 }),
+  status: varchar('status', { length: 50 }).notNull(),
+  bookingType: varchar('booking_type', { length: 50 }),
+  checkIn: timestamp('check_in', { withTimezone: true }).notNull(),
+  checkOut: timestamp('check_out', { withTimezone: true }).notNull(),
+  nights: integer('nights').notNull(),
+  adults: integer('adults').notNull(),
+  children: integer('children').notNull(),
+  pets: integer('pets').default(0),
+  rent: decimal('rent', { precision: 10, scale: 2 }),
+  taxes: decimal('taxes', { precision: 10, scale: 2 }),
+  services: decimal('services', { precision: 10, scale: 2 }),
+  discounts: decimal('discounts', { precision: 10, scale: 2 }),
+  commissions: decimal('commissions', { precision: 10, scale: 2 }),
+  expenses: decimal('expenses', { precision: 10, scale: 2 }),
+  guestTotal: decimal('guest_total', { precision: 10, scale: 2 }),
+  ownerTotal: decimal('owner_total', { precision: 10, scale: 2 }),
+  currency: varchar('currency', { length: 10 }),
+  damageDeposit: decimal('damage_deposit', { precision: 10, scale: 2 }),
+  fundsReceived: decimal('funds_received', { precision: 10, scale: 2 }),
+  amountOutstanding: decimal('amount_outstanding', { precision: 10, scale: 2 }).notNull(),
+  nextPaymentDueDate: timestamp('next_payment_due_date', { withTimezone: true }),
+  leadSourceId: integer('lead_source_id').references(() => crmLeadSources.id, { onDelete: 'set null' }),
+  bookingChannelId: integer('booking_channel_id'),
+  isOwnerBooking: boolean('is_owner_booking'),
+  isPriceOverridden: boolean('is_price_overridden'),
+  overrideReason: text('override_reason'),
+  housekeeperId: integer('housekeeper_id'),
+  checkInManagerId: integer('check_in_manager_id'),
+  conciergeId: integer('concierge_id'),
+  language: varchar('language', { length: 20 }),
+  specialRequests: text('special_requests'),
+  lockboxCode: varchar('lockbox_code', { length: 100 }),
+  wifiPassword: varchar('wifi_password', { length: 100 }),
+  createdBy: integer('created_by').notNull(),
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+  cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  cancellationReason: text('cancellation_reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  firstName: varchar('first_name', { length: 255 }),
+  lastName: varchar('last_name', { length: 255 }),
+  bedrooms: integer('bedrooms'),
+  notes: text('notes'),
+  tags: text('tags').array(),
+}, (table) => ({
+  tenantIdx: index('idx_booking_reservations_tenant').on(table.tenantId),
+  homeIdx: index('idx_booking_reservations_home').on(table.homeId),
+  primaryGuestIdx: index('idx_booking_reservations_primary_guest').on(table.primaryGuestId),
+  leadSourceIdx: index('idx_booking_reservations_lead_source').on(table.leadSourceId),
+  externalIdUnique: unique('booking_reservations_external_id_unique').on(table.externalId),
+  confirmationCodeUnique: unique('booking_reservations_confirmation_code_unique').on(table.confirmationCode),
+}));
+
+// ============================================
+// BOOKING FINANCIALS TABLE
+// ============================================
+export const bookingFinancials = pgTable('booking_financials', {
+  id: serial('id').primaryKey(),
+  reservationId: integer('reservation_id').references(() => bookingReservations.id, { onDelete: 'cascade' }).notNull(),
+  rent: decimal('rent', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 10 }).notNull(),
+  taxes: jsonb('taxes'),
+  services: jsonb('services'),
+  discounts: jsonb('discounts'),
+  taxTotal: decimal('tax_total', { precision: 10, scale: 2 }),
+  serviceTotal: decimal('service_total', { precision: 10, scale: 2 }),
+  discountTotal: decimal('discount_total', { precision: 10, scale: 2 }),
+  grandTotal: decimal('grand_total', { precision: 10, scale: 2 }).notNull(),
+  damageDeposit: decimal('damage_deposit', { precision: 10, scale: 2 }),
+  channelFee: decimal('channel_fee', { precision: 10, scale: 2 }),
+  minNightlyPrice: decimal('min_nightly_price', { precision: 10, scale: 2 }),
+  maxNightlyPrice: decimal('max_nightly_price', { precision: 10, scale: 2 }),
+  isPaid: boolean('is_paid'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  externalId: varchar('external_id', { length: 255 }),
+}, (table) => ({
+  reservationUnique: unique('booking_financials_reservation_id_unique').on(table.reservationId),
+}));
+
+// ============================================
+// BOOKING NOTES TABLE
+// ============================================
+export const bookingNotes = pgTable('booking_notes', {
+  id: serial('id').primaryKey(),
+  reservationId: integer('reservation_id').references(() => bookingReservations.id, { onDelete: 'cascade' }).notNull(),
+  externalId: varchar('external_id', { length: 255 }),
+  noteType: varchar('note_type', { length: 50 }).notNull(),
+  note: text('note').notNull(),
+  guestName: varchar('guest_name', { length: 255 }),
+  guestEmail: varchar('guest_email', { length: 255 }),
+  createdBy: integer('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+// ============================================
+// FINANCE COMMISSIONS TABLE
+// ============================================
+export const financeCommissions = pgTable('finance_commissions', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  reservationId: integer('reservation_id').references(() => bookingReservations.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  leadSourceId: integer('lead_source_id').references(() => crmLeadSources.id, { onDelete: 'set null' }),
+  agentId: integer('agent_id').references(() => crmContacts.id, { onDelete: 'set null' }),
+  agentName: varchar('agent_name', { length: 255 }),
+  channelName: varchar('channel_name', { length: 255 }),
+  isRateOverridden: boolean('is_rate_overridden'),
+  originalRate: decimal('original_rate', { precision: 7, scale: 4 }),
+  calculationType: varchar('calculation_type', { length: 50 }).notNull(),
+  percentage: decimal('percentage', { precision: 7, scale: 4 }),
+  fixedAmount: decimal('fixed_amount', { precision: 10, scale: 2 }),
+  calculatedAmount: decimal('calculated_amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 10 }),
+  calculationBase: varchar('calculation_base', { length: 50 }),
+  paymentStatus: varchar('payment_status', { length: 50 }),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
+  paymentMethod: varchar('payment_method', { length: 50 }),
+  dueDate: timestamp('due_date', { withTimezone: true }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  externalId: varchar('external_id', { length: 255 }),
+}, (table) => ({
+  tenantIdx: index('idx_finance_commissions_tenant').on(table.tenantId),
+  reservationIdx: index('idx_finance_commissions_reservation').on(table.reservationId),
+  leadSourceIdx: index('idx_finance_commissions_lead_source').on(table.leadSourceId),
+  agentIdx: index('idx_finance_commissions_agent').on(table.agentId),
+}));
+
+// ============================================
+// PRICING RATES TABLE
+// ============================================
+export const pricingRates = pgTable('pricing_rates', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }).notNull(),
+  baseYear: integer('base_year').notNull(),
+  channel: varchar('channel', { length: 100 }).notNull(),
+  limitOccupant: integer('limit_occupant').notNull(),
+  extraOccupantFee: jsonb('extra_occupant_fee'),
+  firstNightSurcharge: decimal('first_night_surcharge', { precision: 10, scale: 2 }).notNull(),
+  oneNightStaySurcharge: decimal('one_night_stay_surcharge', { precision: 10, scale: 2 }).notNull(),
+  seasons: jsonb('seasons').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+}, (table) => ({
+  tenantIdx: index('idx_pricing_rates_tenant').on(table.tenantId),
+  homeIdx: index('idx_pricing_rates_home').on(table.homeId),
+  channelIdx: index('idx_pricing_rates_channel').on(table.channel),
+}));
+
+// ============================================
 // INFERRED TYPES
 // ============================================
 
@@ -583,6 +812,27 @@ export type NewSkuComponent = typeof skuComponents.$inferInsert;
 
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type NewMediaAsset = typeof mediaAssets.$inferInsert;
+
+export type CrmContact = typeof crmContacts.$inferSelect;
+export type NewCrmContact = typeof crmContacts.$inferInsert;
+
+export type CrmLeadSource = typeof crmLeadSources.$inferSelect;
+export type NewCrmLeadSource = typeof crmLeadSources.$inferInsert;
+
+export type BookingReservation = typeof bookingReservations.$inferSelect;
+export type NewBookingReservation = typeof bookingReservations.$inferInsert;
+
+export type BookingFinancial = typeof bookingFinancials.$inferSelect;
+export type NewBookingFinancial = typeof bookingFinancials.$inferInsert;
+
+export type BookingNote = typeof bookingNotes.$inferSelect;
+export type NewBookingNote = typeof bookingNotes.$inferInsert;
+
+export type FinanceCommission = typeof financeCommissions.$inferSelect;
+export type NewFinanceCommission = typeof financeCommissions.$inferInsert;
+
+export type PricingRate = typeof pricingRates.$inferSelect;
+export type NewPricingRate = typeof pricingRates.$inferInsert;
 
 export type Reservation = typeof reservations.$inferSelect;
 export type NewReservation = typeof reservations.$inferInsert;
