@@ -17,10 +17,20 @@ import vendorsRoutes from './routes/vendors.js';
 import homesRoutes from './routes/homes.js';
 import tagsRoutes from './routes/tags.js';
 import reservationsRoutes from './routes/reservations.js';
+import reservationsV1Routes from './routes/reservations-v1.js';
 import tableRoutes from './routes/table.js';
 import drizzleTableRoutes from './routes/drizzle-table.js';
 import tableRawRoutes from './routes/table-raw.js';
 import eventsRoutes from './routes/events.js';
+import crmRoutes from './routes/crm/index.js';
+import crmContactsRoutes from './routes/crm/contacts.js';
+import crmLeadSourcesRoutes from './routes/crm/lead-sources.js';
+import bookingRoutes from './routes/booking/index.js';
+import bookingReservationsRoutes from './routes/booking/reservations.js';
+import bookingFinancialsRoutes from './routes/booking/financials.js';
+import bookingNotesRoutes from './routes/booking/notes.js';
+import financeRoutes from './routes/finance/index.js';
+import financeCommissionsRoutes from './routes/finance/commissions.js';
 
 // Load environment variables
 dotenv.config();
@@ -75,6 +85,16 @@ app.use('/api/vendors', vendorsRoutes);
 app.use('/api/homes', homesRoutes);
 app.use('/api/tags', tagsRoutes);
 app.use('/api/reservations', reservationsRoutes);
+app.use('/api/reservations-v1', reservationsV1Routes);
+app.use('/api/crm', crmRoutes);
+app.use('/api/booking', bookingRoutes);
+app.use('/api/finance', financeRoutes);
+app.use('/api/crm-contacts', crmContactsRoutes);
+app.use('/api/crm-lead-sources', crmLeadSourcesRoutes);
+app.use('/api/booking-reservations', bookingReservationsRoutes);
+app.use('/api/booking-financials', bookingFinancialsRoutes);
+app.use('/api/booking-notes', bookingNotesRoutes);
+app.use('/api/finance-commissions', financeCommissionsRoutes);
 app.use('/api/table', drizzleTableRoutes);     // New Drizzle-shaped endpoints
 app.use('/api/table-raw', tableRawRoutes);     // Raw SQL endpoints (no field transformation)
 app.use('/api/dbTable', tableRoutes);          // Raw SQL endpoints
@@ -118,11 +138,67 @@ app.get('/', (req, res) => {
       'GET /api/locations',
       'GET /api/homes',
       'GET /api/tags',
-      'GET /api/reservations',
-      'GET /api/reservations/:id',
-      'GET /api/reservations/property/:propertyId',
-      'GET /api/reservations/status/:status',
-      'GET /api/table/*',
+  'GET /api/reservations',
+  'GET /api/reservations/:id',
+  'POST /api/reservations',
+  'PUT /api/reservations/:id',
+  'DELETE /api/reservations/:id',
+  'GET /api/reservations-v1',
+  'GET /api/reservations-v1/:id',
+  'GET /api/reservations-v1/property/:propertyId',
+  'GET /api/reservations-v1/status/:status',
+  'POST /api/reservations-v1',
+  'PUT /api/reservations-v1/:id',
+  'DELETE /api/reservations-v1/:id',
+  'GET /api/crm/contacts',
+  'POST /api/crm/contacts',
+  'PUT /api/crm/contacts/:id',
+  'DELETE /api/crm/contacts/:id',
+  'GET /api/crm-contacts',
+  'POST /api/crm-contacts',
+  'PUT /api/crm-contacts/:id',
+  'DELETE /api/crm-contacts/:id',
+  'GET /api/crm/lead-sources',
+  'POST /api/crm/lead-sources',
+  'PUT /api/crm/lead-sources/:id',
+  'DELETE /api/crm/lead-sources/:id',
+  'GET /api/crm-lead-sources',
+  'POST /api/crm-lead-sources',
+  'PUT /api/crm-lead-sources/:id',
+  'DELETE /api/crm-lead-sources/:id',
+  'GET /api/booking/reservations',
+  'GET /api/booking/financials',
+  'GET /api/booking/notes',
+  'POST /api/booking/reservations',
+  'POST /api/booking/financials',
+  'POST /api/booking/notes',
+  'PUT /api/booking/reservations/:id',
+  'PUT /api/booking/financials/:id',
+  'PUT /api/booking/notes/:id',
+  'DELETE /api/booking/reservations/:id',
+  'DELETE /api/booking/financials/:id',
+  'DELETE /api/booking/notes/:id',
+  'GET /api/booking-reservations',
+  'GET /api/booking-financials',
+  'GET /api/booking-notes',
+  'POST /api/booking-reservations',
+  'POST /api/booking-financials',
+  'POST /api/booking-notes',
+  'PUT /api/booking-reservations/:id',
+  'PUT /api/booking-financials/:id',
+  'PUT /api/booking-notes/:id',
+  'DELETE /api/booking-reservations/:id',
+  'DELETE /api/booking-financials/:id',
+  'DELETE /api/booking-notes/:id',
+  'GET /api/finance/commissions',
+  'POST /api/finance/commissions',
+  'PUT /api/finance/commissions/:id',
+  'DELETE /api/finance/commissions/:id',
+  'GET /api/finance-commissions',
+  'POST /api/finance-commissions',
+  'PUT /api/finance-commissions/:id',
+  'DELETE /api/finance-commissions/:id',
+  'GET /api/table/*',
       'GET /api/table-raw/*',
       'GET /api/dbTable/:tableName',
       'GET /api/events (SSE)'
