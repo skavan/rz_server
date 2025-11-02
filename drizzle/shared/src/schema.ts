@@ -250,6 +250,23 @@ export const vendors = pgTable('vendors', {
 }));
 
 // ============================================
+// LOCATION TYPES TABLE
+// ============================================
+export const locationTypes = pgTable('location_types', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull(),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueSlug: unique('location_types_customer_slug_unique').on(table.customerId, table.slug),
+  customerIdx: index('idx_location_types_customer').on(table.customerId),
+  activeIdx: index('idx_location_types_active').on(table.isActive),
+}));
+
+// ============================================
 // TAGS TABLE
 // ============================================
 // Tag enums for classification and scoping
@@ -361,7 +378,7 @@ export const locations = pgTable('locations', {
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull(),
   description: text('description'),
-  locationType: varchar('location_type', { length: 50 }),
+  locationTypeId: integer('location_type_id').references(() => locationTypes.id),
   // Parent-child relationship for rooms (e.g., Bathroom belongs to Bedroom)
   parentId: integer('parent_id'),
   squareFootage: integer('square_footage'),
@@ -378,7 +395,7 @@ export const locations = pgTable('locations', {
 }, (table) => ({
   uniqueSlug: unique('locations_home_slug_unique').on(table.homeId, table.slug),
   homeIdx: index('idx_locations_home').on(table.homeId),
-  typeIdx: index('idx_locations_type').on(table.locationType),
+  typeIdx: index('idx_locations_type').on(table.locationTypeId),
   parentIdx: index('idx_locations_parent').on(table.parentId),
   mediaIdx: index('idx_locations_has_media').on(table.hasMediaAssets),
   activeIdx: index('idx_locations_active').on(table.isActive),
@@ -859,7 +876,7 @@ export type LocationAPI = {
   name: string;
   slug: string;
   description?: string | null;
-  locationType?: string | null;
+  locationTypeId?: number | null;
   parentId?: number | null;
   squareFootage?: number | null;
   lastCleaned?: Date | null;

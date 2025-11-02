@@ -36,6 +36,14 @@ function log(message: string, color: string = colors.reset) {
   console.log(`${color}${message}${colors.reset}`);
 }
 
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 // ============================================
 // SEED DATA DEFINITIONS
 // ============================================
@@ -167,15 +175,15 @@ function generateRoomStructure(customerSlug: string): any[] {
   
   const rooms = [
     // Master Suite
-    { name: 'Master Bedroom', slug: 'master-bedroom', locationType: 'Bedroom', parentSlug: null },
-    { name: 'Master Bathroom', slug: 'master-bathroom', locationType: 'Bathroom', parentSlug: 'master-bedroom' },
+    { name: 'Master Bedroom', slug: 'master-bedroom', locationTypeName: 'Bedroom', parentSlug: null },
+    { name: 'Master Bathroom', slug: 'master-bathroom', locationTypeName: 'Bathroom', parentSlug: 'master-bedroom' },
   ];
   
   // Guest bedrooms with ensuites (2-5)
   for (let i = 2; i <= (isCustomer2 ? 5 : 5); i++) {
     rooms.push(
-      { name: `Bedroom ${i}`, slug: `bedroom-${i}`, locationType: 'Bedroom', parentSlug: null },
-      { name: `Bathroom ${i}`, slug: `bathroom-${i}`, locationType: 'Bathroom', parentSlug: `bedroom-${i}` }
+      { name: `Bedroom ${i}`, slug: `bedroom-${i}`, locationTypeName: 'Bedroom', parentSlug: null },
+      { name: `Bathroom ${i}`, slug: `bathroom-${i}`, locationTypeName: 'Bathroom', parentSlug: `bedroom-${i}` }
     );
   }
   
@@ -183,12 +191,25 @@ function generateRoomStructure(customerSlug: string): any[] {
   if (!isCustomer2) {
     for (let i = 6; i <= maxBedroom; i++) {
       rooms.push(
-        { name: `Bedroom ${i}`, slug: `bedroom-${i}`, locationType: 'Bedroom', parentSlug: null }
+        { name: `Bedroom ${i}`, slug: `bedroom-${i}`, locationTypeName: 'Bedroom', parentSlug: null }
       );
     }
   }
   
   return rooms;
+}
+
+function collectLocationTypeNames(homes: any[]): string[] {
+  const typeSet = new Set<string>();
+  for (const home of homes) {
+    const roomStructure = generateRoomStructure(home.customerSlug);
+    for (const room of roomStructure) {
+      if (room.locationTypeName) {
+        typeSet.add(room.locationTypeName);
+      }
+    }
+  }
+  return Array.from(typeSet).sort((a, b) => a.localeCompare(b));
 }
 
 // Sample brands and vendors
@@ -1009,7 +1030,48 @@ async function seedTags(customers: any[]) {
   return insertedTags;
 }
 
-async function seedLocations(homes: any[]) {
+async function seedLocationTypes(customers: any[], locationTypeNames: string[]) {
+  if (locationTypeNames.length === 0) {
+    log('\n🧭 SEEDING LOCATION TYPES... (none detected, skipping)', colors.blue + colors.bold);
+    return { locationTypes: [], locationTypeMap: new Map<number, Map<string, any>>() };
+  }
+
+  log('\n🧭 SEEDING LOCATION TYPES...', colors.blue + colors.bold);
+
+  const insertedLocationTypes: any[] = [];
+  const locationTypeMap = new Map<number, Map<string, any>>();
+
+  for (const customer of customers) {
+    const perCustomerMap = new Map<string, any>();
+    locationTypeMap.set(customer.id, perCustomerMap);
+
+    for (const typeName of locationTypeNames) {
+      const slug = slugify(typeName);
+      if (!slug) {
+        log(`  ⚠️  Skipping location type without slug: "${typeName}"`, colors.yellow);
+        continue;
+      }
+
+      log(`  ✅ Creating location type: ${typeName} for ${customer.name}`, colors.green);
+
+      const [locationType] = await db.insert(schema.locationTypes)
+        .values({
+          customerId: customer.id,
+          name: typeName,
+          slug
+        })
+        .returning();
+
+      insertedLocationTypes.push(locationType);
+      perCustomerMap.set(slug, locationType);
+    }
+  }
+
+  log(`✅ Created ${insertedLocationTypes.length} location types`, colors.green);
+  return { locationTypes: insertedLocationTypes, locationTypeMap };
+}
+
+async function seedLocations(homes: any[], locationTypeMap: Map<number, Map<string, any>>) {
   log('\n📍 SEEDING LOCATIONS (ROOMS)...', colors.blue + colors.bold);
   
   const insertedLocations: any[] = [];
@@ -1017,6 +1079,23 @@ async function seedLocations(homes: any[]) {
   
   for (const home of homes) {
     const roomStructure = generateRoomStructure(home.customerSlug);
+    const customerLocationTypes = locationTypeMap.get(home.customerId);
+
+    if (!customerLocationTypes) {
+      throw new Error(`No location types seeded for customer ${home.customerSlug || home.customerId}`);
+    }
+
+    const resolveLocationTypeId = (typeName?: string | null) => {
+      if (!typeName) return null;
+      const slug = slugify(typeName);
+      if (!slug) return null;
+      const record = customerLocationTypes.get(slug);
+      if (!record) {
+        log(`    ⚠️  Missing location type mapping for "${typeName}" (slug: ${slug})`, colors.yellow);
+        return null;
+      }
+      return record.id;
+    };
     
     log(`  🏠 Creating rooms for ${home.name}:`, colors.cyan);
     
@@ -1029,7 +1108,7 @@ async function seedLocations(homes: any[]) {
           homeId: home.id,
           name: roomData.name,
           slug: roomData.slug,
-          locationType: roomData.locationType
+          locationTypeId: resolveLocationTypeId(roomData.locationTypeName)
         })
         .returning();
         
@@ -1048,7 +1127,7 @@ async function seedLocations(homes: any[]) {
           homeId: home.id,
           name: roomData.name,
           slug: roomData.slug,
-          locationType: roomData.locationType,
+          locationTypeId: resolveLocationTypeId(roomData.locationTypeName),
       parentId: parentLocation.id,
           description: `Ensuite bathroom for ${parentLocation.name}`
         })
@@ -1095,21 +1174,23 @@ async function seedProducts(homes: any[], categoryMap: Map<string, any>) {
   return { products: insertedProducts, productMap };
 }
 
+const buildSkuKey = (customerId: number, slug: string) => `${customerId}-${slug}`;
+
 async function seedSkus(products: any[], brandMap: Map<string, any>, vendorMap: Map<string, any>) {
   log('\n🏷️  SEEDING SKUS...', colors.blue + colors.bold);
   
   const insertedSkus: any[] = [];
-  const skuMap = new Map();
-  const createdSkuCodes = new Set(); // Track created SKU codes per customer
+  const skuMap = new Map<string, any>();
+  const createdSkuKeys = new Set<string>(); // Track created SKU slugs per customer
   
   for (const product of products) {
     for (const skuData of sampleSkusData) {
       if (skuData.productSlug === product.slug) {
-        const skuKey = `${product.customerId}-${skuData.skuCode}`;
+        const skuKey = buildSkuKey(product.customerId, skuData.slug);
         
-        // Skip if this SKU code already exists for this customer
-        if (createdSkuCodes.has(skuKey)) {
-          log(`  ⚠️  Skipping duplicate SKU: ${skuData.skuCode} for customer ${product.customerId}`, colors.yellow);
+        // Skip if this SKU slug already exists for this customer
+        if (createdSkuKeys.has(skuKey)) {
+          log(`  ⚠️  Skipping duplicate SKU: ${skuData.slug} for customer ${product.customerId}`, colors.yellow);
           continue;
         }
         
@@ -1129,15 +1210,17 @@ async function seedSkus(products: any[], brandMap: Map<string, any>, vendorMap: 
         
         log(`  ✅ Creating SKU: ${skuData.name} for ${product.name}`, colors.green);
         
+        const kind = skuData.kind === 'kit' ? 'bom' : skuData.kind;
+
         const [sku] = await db.insert(schema.skus)
           .values({
             customerId: product.customerId,
             productId: product.id,
-            slug: skuData.skuCode,
+            slug: skuData.slug,
             name: skuData.name,
             brandId: brand.id,
             vendorId: vendor.id,
-            kind: skuData.kind,
+            kind,
             price: skuData.price,
             currency: 'USD',
             isPurchasable: true
@@ -1145,8 +1228,8 @@ async function seedSkus(products: any[], brandMap: Map<string, any>, vendorMap: 
           .returning();
           
         insertedSkus.push({ ...sku, productSlug: product.slug, homeSlug: product.homeSlug });
-        skuMap.set(`${product.id}-${skuData.skuCode}`, sku);
-        createdSkuCodes.add(skuKey); // Track this SKU code as created
+        skuMap.set(skuKey, sku);
+        createdSkuKeys.add(skuKey); // Track this SKU slug as created
       }
     }
   }
@@ -1159,25 +1242,27 @@ async function seedSkuComponents(skus: any[], skuMap: Map<string, any>) {
   log('\n🔗 SEEDING SKU COMPONENTS (KIT RELATIONSHIPS)...', colors.blue + colors.bold);
   
   const insertedComponents: any[] = [];
-  
-  for (const component of kitComponents) {
-    // Find the kit SKU and component SKU
-    const kitSku = Array.from(skuMap.values()).find(sku => sku.skuCode === component.kitSkuCode);
-    const componentSku = Array.from(skuMap.values()).find(sku => sku.skuCode === component.componentSkuCode);
-    
-    if (kitSku && componentSku) {
-      log(`  ✅ Adding component: ${componentSku.name} (${component.quantity}x) to kit ${kitSku.name}`, colors.green);
-      
-      const [skuComponent] = await db.insert(schema.skuComponents)
-        .values({
-          parentSkuId: kitSku.id,
-          componentSkuId: componentSku.id,
-          quantity: component.quantity,
-          isRequired: true
-        })
-        .returning();
-        
-      insertedComponents.push(skuComponent);
+  const customerIds = new Set(skus.map((sku) => sku.customerId));
+
+  for (const customerId of customerIds) {
+    for (const component of kitComponents) {
+      const kitSku = skuMap.get(buildSkuKey(customerId, component.kitslug));
+      const componentSku = skuMap.get(buildSkuKey(customerId, component.componentslug));
+
+      if (kitSku && componentSku) {
+        log(`  ✅ Adding component: ${componentSku.name} (${component.quantity}x) to kit ${kitSku.name}`, colors.green);
+
+        const [skuComponent] = await db.insert(schema.skuComponents)
+          .values({
+            parentSkuId: kitSku.id,
+            componentSkuId: componentSku.id,
+            quantity: component.quantity,
+            isRequired: true
+          })
+          .returning();
+
+        insertedComponents.push(skuComponent);
+      }
     }
   }
   
@@ -1222,7 +1307,7 @@ async function seedInventoryItems(products: any[], skus: any[], locationMap: Map
             quantity: isBom ? 1 : 1,
       purchasePrice: sku.price,
       currency: 'USD',
-            assetTag: `${sku.skuCode}-${String(i + 1).padStart(3, '0')}`,
+            assetTag: `${sku.slug}-${String(i + 1).padStart(3, '0')}`,
             notes: `${sku.name} located in ${location.name}${isBom ? ' - Complete BOM with all components' : ''}`
           })
           .returning();
@@ -1258,32 +1343,36 @@ async function main() {
     // Step 4: Seed brands and vendors
     const { brands, vendors, brandMap, vendorMap } = await seedBrandsAndVendors(customers);
     
-    // Step 5: Seed tags
-    const tags = await seedTags(customers);
+  // Step 5: Seed tags
+  const tags = await seedTags(customers);
     
-    // Step 6: Seed locations (rooms)
-    const { locations, locationMap } = await seedLocations(homes);
+  // Step 6: Seed location types
+  const locationTypeNames = collectLocationTypeNames(homes);
+  const { locationTypes, locationTypeMap } = await seedLocationTypes(customers, locationTypeNames);
     
-    // Step 7: Seed products
-    const { products, productMap } = await seedProducts(homes, categoryMap);
+  // Step 7: Seed locations (rooms)
+  const { locations, locationMap } = await seedLocations(homes, locationTypeMap);
     
-    // Step 8: Seed SKUs
-    const { skus, skuMap } = await seedSkus(products, brandMap, vendorMap);
+  // Step 8: Seed products
+  const { products, productMap } = await seedProducts(homes, categoryMap);
     
-    // Step 9: Seed SKU components (kit relationships)
-    const skuComponents = await seedSkuComponents(skus, skuMap);
+  // Step 9: Seed SKUs
+  const { skus, skuMap } = await seedSkus(products, brandMap, vendorMap);
     
-    // Step 10: Seed inventory items
-    const inventoryItems = await seedInventoryItems(products, skus, locationMap);
+  // Step 10: Seed SKU components (kit relationships)
+  const skuComponents = await seedSkuComponents(skus, skuMap);
     
-    // Step 11: Seed users
-    const users = await seedUsers(customers);
+  // Step 11: Seed inventory items
+  const inventoryItems = await seedInventoryItems(products, skus, locationMap);
     
-    // Step 12: Seed user home access
-    const userHomeAccess = await seedUserHomeAccess(users, homes);
+  // Step 12: Seed users
+  const users = await seedUsers(customers);
     
-    // Step 13: Seed product components (product-level kit relationships)
-    const productComponentsResult = await seedProductComponents(products, productMap);
+  // Step 13: Seed user home access
+  const userHomeAccess = await seedUserHomeAccess(users, homes);
+    
+  // Step 14: Seed product components (product-level kit relationships)
+  const productComponentsResult = await seedProductComponents(products, productMap);
     
     // Summary
     log(`\n${colors.green}${colors.bold}🎉 SEEDING COMPLETE!${colors.reset}\n`);
@@ -1294,7 +1383,8 @@ async function main() {
     log(`  🏢 Brands: ${brands.length}`);
     log(`  🛒 Vendors: ${vendors.length}`);
     log(`  🏷️  Tags: ${tags.length}`);
-    log(`  📍 Locations: ${locations.length}`);
+  log(`  🧭 Location Types: ${locationTypes.length}`);
+  log(`  📍 Locations: ${locations.length}`);
     log(`  📦 Products: ${products.length}`);
     log(`  🏷️  SKUs: ${skus.length}`);
     log(`  🔗 SKU Components: ${skuComponents.length}`);

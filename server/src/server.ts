@@ -31,6 +31,7 @@ import bookingFinancialsRoutes from './routes/booking/financials.js';
 import bookingNotesRoutes from './routes/booking/notes.js';
 import financeRoutes from './routes/finance/index.js';
 import financeCommissionsRoutes from './routes/finance/commissions.js';
+import mediaRoutes from './routes/media.js';
 
 // Load environment variables
 dotenv.config();
@@ -99,6 +100,7 @@ app.use('/api/table', drizzleTableRoutes);     // New Drizzle-shaped endpoints
 app.use('/api/table-raw', tableRawRoutes);     // Raw SQL endpoints (no field transformation)
 app.use('/api/dbTable', tableRoutes);          // Raw SQL endpoints
 app.use('/api/events', eventsRoutes);          // SSE events
+app.use('/api/media', mediaRoutes);            // Media upload/management
 
 // Root endpoint
 app.get('/', (req, res) => {

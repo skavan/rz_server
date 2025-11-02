@@ -15,7 +15,7 @@ import {
 // Simulate form data as it comes from a web form
 const rawFormData = {
   name: 'Kitchen Storage',
-  locationType: 'room', 
+  locationTypeId: '2',
   parentId: '5',           // String from form input
   tagIds: ['1', '3', '5'], // String array from multi-select
   isActive: true,
@@ -55,8 +55,12 @@ console.log('  Output:', cleaningCadence, '\n');
 // Test complete validation schema (like UnifiedLocationsForm uses)
 console.log('🔄 Complete form validation (like UnifiedLocationsForm):');
 const { z } = await import('zod');
+const locationTypeIdValidator = z.preprocess(
+  (value) => (value === '' || value == null ? null : Number(value)),
+  z.number().int().positive().nullable()
+);
 const formSchema = locationsValidationSchema.extend({
-  locationType: z.string().min(1, "Required"),
+  locationTypeId: locationTypeIdValidator,
   parentId: parentIdValidator,
   lastChecked: dateFieldValidator,
   lastCleaned: dateFieldValidator,
@@ -72,6 +76,7 @@ try {
   console.log('✅ Form validation PASSED');
   console.log('🎯 Processed data:', {
     parentId: validatedData.parentId,
+    locationTypeId: validatedData.locationTypeId,
     lastChecked: validatedData.lastChecked instanceof Date ? validatedData.lastChecked.toISOString().split('T')[0] : validatedData.lastChecked,
     tagIds: validatedData.tagIds,
     cleaningCadence: validatedData.cleaningCadence
