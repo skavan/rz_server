@@ -4,7 +4,7 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { users, userHomeAccess, eq, sql } from '@postgress/shared';
-import { generateToken, hashPassword, comparePassword, verifyTokenIgnoreExpiration } from '../auth/index.js';
+import { generateToken, getTokenExpiryMs, hashPassword, comparePassword, verifyTokenIgnoreExpiration } from '../auth/index.js';
 
 const router = Router();
 
@@ -79,8 +79,11 @@ router.post('/login', async (req, res) => {
       role: user.role || 'user'
     });
 
+    const tokenExpiresAtMs = getTokenExpiryMs(token);
     const responseData = {
       token,
+      tokenExpiresAtMs,
+      tokenTtlSeconds: tokenExpiresAtMs ? Math.max(0, Math.floor((tokenExpiresAtMs - Date.now()) / 1000)) : null,
       user: {
         id: user.id,
         email: user.email,
@@ -153,8 +156,11 @@ router.post('/register', async (req, res) => {
       role: ((newUser as any).role as string) || 'user'
     });
 
+    const tokenExpiresAtMs = getTokenExpiryMs(token);
     res.status(201).json({
       token,
+      tokenExpiresAtMs,
+      tokenTtlSeconds: tokenExpiresAtMs ? Math.max(0, Math.floor((tokenExpiresAtMs - Date.now()) / 1000)) : null,
       user: {
         id: newUser.id,
         email: (newUser as any).email,
@@ -200,7 +206,12 @@ router.post('/refresh', async (req, res) => {
     }
 
     const newToken = generateToken({ id: Number(decoded.id), email: String(decoded.email), role: decoded.role });
-    return res.json({ token: newToken });
+    const tokenExpiresAtMs = getTokenExpiryMs(newToken);
+    return res.json({
+      token: newToken,
+      tokenExpiresAtMs,
+      tokenTtlSeconds: tokenExpiresAtMs ? Math.max(0, Math.floor((tokenExpiresAtMs - Date.now()) / 1000)) : null,
+    });
   } catch (err) {
     console.error('[auth] refresh error', err);
     return res.status(500).json({ error: 'Internal server error' });

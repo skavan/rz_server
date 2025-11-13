@@ -4,6 +4,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -18,6 +19,7 @@ import homesRoutes from './routes/homes.js';
 import tagsRoutes from './routes/tags.js';
 import reservationsRoutes from './routes/reservations.js';
 import reservationsV1Routes from './routes/reservations-v1.js';
+import locationTypesRoutes from './routes/location-types.js';
 import tableRoutes from './routes/table.js';
 import drizzleTableRoutes from './routes/drizzle-table.js';
 import tableRawRoutes from './routes/table-raw.js';
@@ -58,6 +60,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Temporary public media access (bypasses auth)
+const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads');
+app.use('/public-media', express.static(uploadDir, { fallthrough: false }));
+
 // Request logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -85,6 +91,7 @@ app.use('/api/brands', brandsRoutes);
 app.use('/api/vendors', vendorsRoutes);
 app.use('/api/homes', homesRoutes);
 app.use('/api/tags', tagsRoutes);
+app.use('/api/location-types', locationTypesRoutes);
 app.use('/api/reservations', reservationsRoutes);
 app.use('/api/reservations-v1', reservationsV1Routes);
 app.use('/api/crm', crmRoutes);
@@ -138,6 +145,10 @@ app.get('/', (req, res) => {
       'GET /api/brands',
       'GET /api/vendors',
       'GET /api/locations',
+  'GET /api/location-types',
+  'POST /api/location-types',
+  'PUT /api/location-types/:id',
+  'DELETE /api/location-types/:id',
       'GET /api/homes',
       'GET /api/tags',
   'GET /api/reservations',

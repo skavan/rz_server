@@ -25,18 +25,19 @@ if (!existsSync(outputDir)) {
 }
 
 // Schema definitions to extract
-const schemas = [
-  { name: 'productsValidationSchema', table: 'products' },
-  { name: 'skusValidationSchema', table: 'skus' },
-  { name: 'inventoryItemsValidationSchema', table: 'inventory_items' },
-  { name: 'locationsValidationSchema', table: 'locations' },
-  { name: 'categoriesValidationSchema', table: 'categories' },
-  { name: 'brandsValidationSchema', table: 'brands' },
-  { name: 'vendorsValidationSchema', table: 'vendors' },
-  { name: 'homesValidationSchema', table: 'homes' },
-  { name: 'tagsValidationSchema', table: 'tags' },
-  { name: 'reservationsValidationSchema', table: 'reservations' },
-];
+const schemas = Object.entries(zodSchemas)
+  .filter(([, value]) => value instanceof z.ZodType)
+  .map(([name, value]) => ({ name, value }))
+  .filter(({ name }) => name.endsWith('ValidationSchema'))
+  .map(({ name }) => {
+    const base = name.replace(/ValidationSchema$/, '');
+    const table = base
+      .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
+      .toLowerCase();
+    return { name, table };
+  })
+  .sort((a, b) => a.table.localeCompare(b.table));
 
 console.log('🔍 Introspecting Zod schemas...\n');
 
@@ -215,6 +216,8 @@ export const ${name} = ${schemaCode};
 }
 
 // Create README
+const fileList = schemas.map(({ table }) => `- \`${table}.ts\``).join('\n');
+
 const readmeContent = `# Zod Schema Reference Files
 
 This directory contains the **actual runtime-introspected Zod schemas** showing exactly what clients import.
@@ -235,15 +238,7 @@ import { productsValidationSchema } from '@postgress/shared/zod';
 
 ## Files
 
-- \`products.ts\` - Products schema with defaults
-- \`skus.ts\` - SKUs schema with defaults
-- \`inventory_items.ts\` - Inventory items schema with defaults
-- \`locations.ts\` - Locations schema with defaults
-- \`categories.ts\` - Categories schema with defaults
-- \`brands.ts\` - Brands schema with defaults
-- \`vendors.ts\` - Vendors schema with defaults
-- \`homes.ts\` - Homes schema with defaults
-- \`tags.ts\` - Tags schema with defaults
+${fileList}
 
 ## What You'll See
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations } from "./schema.js";
+import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations } from "./schema.js";
 import { cadenceConfigSchema } from "./types/json-fields.js";
 import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
@@ -204,6 +204,33 @@ export const locationsValidationSchema = createValidationSchema(
 ).extend({
   slug: slugInputSchema,
   isActive: z.boolean().default(true),
+});
+
+/**
+ * Location Types validation schema - matches table name 'location_types'
+ * Defaults: isActive=true
+ */
+export const locationTypesValidationSchema = createValidationSchema(
+  locationTypes,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  slug: slugInputSchema,
+  isActive: z.boolean().default(true),
+});
+
+/**
+ * Media Assets validation schema - matches table name 'media_assets'
+ * Defaults mirror API expectations: isActive=true, isPrimary=false, sortOrder=0, assetType='image'
+ */
+export const mediaAssetsValidationSchema = createValidationSchema(
+  mediaAssets,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  assetType: z.enum(['image', 'document', 'video', 'link']).default('image'),
+  isPrimary: z.boolean().default(false),
+  sortOrder: z.number().int().default(0),
+  isActive: z.boolean().default(true),
+  tags: z.array(z.number().int()).nullable().optional(),
 });
 
 /**

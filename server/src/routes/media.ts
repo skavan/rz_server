@@ -24,6 +24,7 @@ import {
   parseOptionalString,
   parseOptionalInteger,
   parseOptionalBoolean,
+  parseOptionalJson,
 } from './shared/validation.js';
 
 const router = Router();
@@ -62,6 +63,71 @@ const ENTITY_TABLES = {
 };
 
 type EntityType = keyof typeof ENTITY_TABLES;
+
+const normalizeTagArray = (value: unknown): number[] | null | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const source = Array.isArray(value) ? value : [value];
+  const tags: number[] = [];
+
+  for (const item of source) {
+    if (item === null || item === undefined) continue;
+    if (typeof item === 'number' && Number.isFinite(item)) {
+      tags.push(item);
+      continue;
+    }
+    if (typeof item === 'string') {
+      const trimmed = item.trim();
+      if (!trimmed) continue;
+      const numeric = Number(trimmed);
+      if (Number.isFinite(numeric)) {
+        tags.push(numeric);
+        continue;
+      }
+    }
+    throw new ValidationError('tags must be an array of numeric IDs');
+  }
+
+  return tags;
+};
+
+router.get('/serve/:id', authenticateToken, async (req, res) => {
+  try {
+    const scope = await getRequestScope(req as any);
+    const mediaId = requireNumber(req.params.id, 'id');
+
+    const rows = await withTenantScope(
+      { customerId: scope.customerId, homeIds: scope.homeIds },
+      async (scopedDb) => {
+        return scopedDb
+          .select()
+          .from(mediaAssets)
+          .where(and(eq(mediaAssets.id, mediaId), eq(mediaAssets.isActive, true)))
+          .limit(1);
+      }
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Media not found' });
+    }
+
+    const media = rows[0];
+    const filePath = storage.getAbsolutePath(media.url);
+    const exists = await storage.exists(media.url);
+
+    if (!exists) {
+      return res.status(404).json({ error: 'File not found on disk' });
+    }
+
+    res.sendFile(filePath);
+  } catch (error: any) {
+    if (error instanceof ValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('Media serve error:', error);
+    res.status(500).json({ error: 'Failed to serve media' });
+  }
+});
 
 async function verifyEntityAccess(
   scope: RequestScope,
@@ -129,6 +195,13 @@ router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), 
     const description = parseOptionalString(req.body?.description);
     const isPrimary = parseOptionalBoolean(req.body?.isPrimary, 'isPrimary') || false;
     const sortOrder = parseOptionalInteger(req.body?.sortOrder, 'sortOrder') || 0;
+    const rawTags = parseOptionalJson(req.body?.tags, 'tags');
+    console.log('🪵 Media upload tags payload:', {
+      raw: req.body?.tags,
+      parsed: rawTags,
+      normalized: rawTags === undefined ? undefined : normalizeTagArray(rawTags),
+    });
+    const tags = normalizeTagArray(rawTags);
 
     const rows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
@@ -148,6 +221,7 @@ router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), 
             assetType,
             isPrimary,
             sortOrder,
+            tags: tags ?? null,
             isActive: true,
           })
           .returning();
@@ -216,44 +290,6 @@ router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/serve/:id', authenticateToken, async (req, res) => {
-  try {
-    const scope = await getRequestScope(req as any);
-    const mediaId = requireNumber(req.params.id, 'id');
-
-    const rows = await withTenantScope(
-      { customerId: scope.customerId, homeIds: scope.homeIds },
-      async (scopedDb) => {
-        return scopedDb
-          .select()
-          .from(mediaAssets)
-          .where(and(eq(mediaAssets.id, mediaId), eq(mediaAssets.isActive, true)))
-          .limit(1);
-      }
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Media not found' });
-    }
-
-    const media = rows[0];
-    const filePath = storage.getAbsolutePath(media.url);
-    const exists = await storage.exists(media.url);
-
-    if (!exists) {
-      return res.status(404).json({ error: 'File not found on disk' });
-    }
-
-    res.sendFile(filePath);
-  } catch (error: any) {
-    if (error instanceof ValidationError) {
-      return res.status(error.status).json({ error: error.message });
-    }
-    console.error('Media serve error:', error);
-    res.status(500).json({ error: 'Failed to serve media' });
-  }
-});
-
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
@@ -272,6 +308,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
     if (req.body?.isPrimary !== undefined) {
       updates.isPrimary = parseOptionalBoolean(req.body.isPrimary, 'isPrimary');
+    }
+    if (req.body?.tags !== undefined) {
+      const rawTags = parseOptionalJson(req.body.tags, 'tags');
+      console.log('🪵 Media update tags payload:', {
+        raw: req.body.tags,
+        parsed: rawTags,
+        normalized: normalizeTagArray(rawTags),
+      });
+      const tags = normalizeTagArray(rawTags);
+      updates.tags = tags ?? null;
     }
 
     if (Object.keys(updates).length === 0) {

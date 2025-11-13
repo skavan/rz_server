@@ -11,6 +11,22 @@ import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-
 
 const router = Router();
 
+const normalizeDecimalInput = (value: unknown): string | null => {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return null;
+    return value.toString();
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return null;
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) return numeric.toString();
+    return trimmed; // allow caller to handle non-numeric validation downstream
+  }
+  return null;
+};
+
 /**
  * GET /api/inventory-items
  * Get all inventory items with optional filtering
@@ -194,7 +210,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), asyn
           status: status as any || 'unassigned',
           condition: condition as any || 'good',
           purchaseDate: purchaseDate || null,
-          purchasePrice: purchasePrice !== undefined ? String(purchasePrice) : null,
+          purchasePrice: normalizeDecimalInput(purchasePrice),
           currency: currency || 'USD',
           warrantyExpires: warrantyExpires || null,
           expectedReplacement: expectedReplacement || null,
@@ -290,7 +306,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       updateData.purchaseDate = purchaseDate;
     }
     if (purchasePrice !== undefined) {
-      updateData.purchasePrice = purchasePrice !== null ? String(purchasePrice) : null;
+      updateData.purchasePrice = normalizeDecimalInput(purchasePrice);
     }
     if (currency !== undefined) {
       updateData.currency = currency;

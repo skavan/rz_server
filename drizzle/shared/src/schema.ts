@@ -536,7 +536,6 @@ export const mediaAssets = pgTable('media_assets', {
   activeIdx: index('idx_media_assets_active').on(table.isActive),
   tagsIdx: index('idx_media_assets_tags_gin').on(table.tags),
   sortIdx: index('idx_media_assets_sort').on(table.entityType, table.entityId, table.sortOrder),
-  primaryUnique: unique().on(table.entityType, table.entityId, table.isPrimary),
 }));
 
 // ============================================

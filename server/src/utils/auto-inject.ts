@@ -16,6 +16,7 @@ export const TABLE_SCOPE = {
   brands: { customerId: true, homeId: false },
   vendors: { customerId: true, homeId: false },
   tags: { customerId: true, homeId: false },
+  locationTypes: { customerId: true, homeId: false },
   skus: { customerId: true, homeId: false },
   reservations: { customerId: true, homeId: true },
   

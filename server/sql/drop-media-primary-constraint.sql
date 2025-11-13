@@ -1,0 +1,2 @@
+ALTER TABLE IF EXISTS media_assets
+DROP CONSTRAINT IF EXISTS media_assets_entity_type_entity_id_is_primary_unique;

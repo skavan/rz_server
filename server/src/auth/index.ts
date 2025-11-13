@@ -1,7 +1,7 @@
 /**
  * JWT Authentication Utilities
  */
-import jwt from 'jsonwebtoken';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 
@@ -17,11 +17,29 @@ interface AuthRequest extends Request {
 
 // JWT Secret from environment
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-me';
+const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60; // 24 hours default
+
+function resolveAccessTokenTtlSeconds(): number {
+  const raw = process.env.JWT_ACCESS_TOKEN_TTL_SECONDS;
+  if (!raw) return DEFAULT_ACCESS_TOKEN_TTL_SECONDS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn('[auth] JWT_ACCESS_TOKEN_TTL_SECONDS invalid, falling back to default');
+    return DEFAULT_ACCESS_TOKEN_TTL_SECONDS;
+  }
+  return parsed;
+}
+
+const ACCESS_TOKEN_TTL_SECONDS = resolveAccessTokenTtlSeconds();
 
 /**
  * Generate JWT token for user
  */
-export function generateToken(user: User): string {
+export function generateToken(
+  user: User,
+  options?: { expiresInSeconds?: number }
+): string {
+  const expiresInSeconds = options?.expiresInSeconds ?? ACCESS_TOKEN_TTL_SECONDS;
   return jwt.sign(
     { 
       id: user.id, 
@@ -29,8 +47,16 @@ export function generateToken(user: User): string {
       role: user.role 
     },
     JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: expiresInSeconds }
   );
+}
+
+export function getTokenExpiryMs(token: string): number | null {
+  const decoded = jwt.decode(token) as JwtPayload | null;
+  if (!decoded || typeof decoded.exp !== 'number') {
+    return null;
+  }
+  return decoded.exp * 1000;
 }
 
 /**
