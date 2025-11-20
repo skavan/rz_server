@@ -7,6 +7,7 @@ import {
   inventoryItems,
   locations,
   homes,
+  issues,
   eq,
   and,
   inArray,
@@ -60,6 +61,7 @@ const ENTITY_TABLES = {
   inventory_item: inventoryItems,
   location: locations,
   home: homes,
+  issue: issues,
 };
 
 type EntityType = keyof typeof ENTITY_TABLES;
@@ -221,6 +223,14 @@ async function resolveHomeIdForEntity(
       }
       case 'home':
         return entityId;
+      case 'issue': {
+        const rows = await scopedDb
+          .select({ homeId: issues.homeId })
+          .from(issues)
+          .where(eq(issues.id, entityId))
+          .limit(1);
+        return rows[0]?.homeId ?? null;
+      }
       default:
         return null;
     }

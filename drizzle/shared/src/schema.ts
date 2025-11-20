@@ -276,6 +276,11 @@ export const locationTypes = pgTable('location_types', {
 export const tagTypeEnum = pgEnum('tag_type', ['placeholder']); // Reserved for future use
 export const tagScopeEnum = pgEnum('tag_scope', ['product', 'sku', 'inventory_item', 'location', 'home', 'all']);
 
+export const issueStatusEnum = pgEnum('issue_status', ['open', 'in_progress', 'resolved', 'dismissed']);
+export const issueUrgencyEnum = pgEnum('issue_urgency', ['normal', 'high']);
+export const issueTypeEnum = pgEnum('issue_type', ['operational', 'cosmetic', 'safety', 'supplies']);
+export const issueActionEnum = pgEnum('issue_recommended_action', ['none', 'repair', 'replace', 'inspect']);
+
 export const tags = pgTable('tags', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
@@ -518,7 +523,7 @@ export const mediaAssets = pgTable('media_assets', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
   homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }),
-  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home'>(),
+  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue'>(),
   entityId: integer('entity_id').notNull(),
   url: text('url').notNull(),
   title: varchar('title', { length: 255 }),
@@ -541,6 +546,36 @@ export const mediaAssets = pgTable('media_assets', {
   activeIdx: index('idx_media_assets_active').on(table.isActive),
   tagsIdx: index('idx_media_assets_tags_gin').on(table.tags),
   sortIdx: index('idx_media_assets_sort').on(table.entityType, table.entityId, table.sortOrder),
+}));
+
+export const issues = pgTable('issues', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  homeId: integer('home_id').references(() => homes.id, { onDelete: 'set null' }),
+  entityType: varchar('entity_type', { length: 30 }).notNull().$type<'inventory_item' | 'location' | 'home' | 'product' | 'sku'>(),
+  entityId: integer('entity_id').notNull(),
+  status: issueStatusEnum('status').default('open').notNull(),
+  urgency: issueUrgencyEnum('urgency').default('normal').notNull(),
+  issueType: issueTypeEnum('issue_type').default('operational').notNull(),
+  description: text('description').notNull(),
+  recommendedAction: issueActionEnum('recommended_action').default('none').notNull(),
+  reportedByUserId: integer('reported_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
+  assignedToUserId: integer('assigned_to_user_id').references(() => users.id, { onDelete: 'set null' }),
+  dueAt: timestamp('due_at', { withTimezone: true }),
+  resolvedByUserId: integer('resolved_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  resolutionNote: text('resolution_note'),
+  tags: integer('tags').array(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerIdx: index('idx_issues_customer').on(table.customerId),
+  homeIdx: index('idx_issues_home').on(table.homeId),
+  entityIdx: index('idx_issues_entity').on(table.entityType, table.entityId),
+  statusIdx: index('idx_issues_status').on(table.status),
+  urgencyIdx: index('idx_issues_urgency').on(table.urgency),
+  assigneeIdx: index('idx_issues_assignee').on(table.assignedToUserId),
 }));
 
 // ============================================
@@ -857,6 +892,9 @@ export type NewPricingRate = typeof pricingRates.$inferInsert;
 
 export type Reservation = typeof reservations.$inferSelect;
 export type NewReservation = typeof reservations.$inferInsert;
+
+export type Issue = typeof issues.$inferSelect;
+export type NewIssue = typeof issues.$inferInsert;
 
 // API-friendly types (camelCase) - for client consumption
 export type CustomerAPI = {

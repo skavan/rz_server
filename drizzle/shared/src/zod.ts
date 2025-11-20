@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations } from "./schema.js";
+import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues } from "./schema.js";
 import { cadenceConfigSchema } from "./types/json-fields.js";
 import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
@@ -399,6 +399,25 @@ export const skuComponentsValidationSchema = createValidationSchema(
   quantity: z.preprocess(toOptionalInt, z.number().int().positive().default(1)),
   isRequired: z.preprocess(toOptionalBoolean, z.boolean().optional().default(true)),
   sortOrder: z.preprocess(toOptionalInt, z.number().int().optional().default(0)),
+});
+
+export const issuesValidationSchema = createValidationSchema(
+  issues,
+  refineDateFields('reportedAt', 'dueAt', 'resolvedAt', 'createdAt', 'updatedAt')
+).extend({
+  status: z.enum(['open', 'in_progress', 'resolved', 'dismissed']).default('open'),
+  urgency: z.enum(['normal', 'high']).default('normal'),
+  issueType: z.enum(['operational', 'cosmetic', 'safety', 'supplies']).default('operational'),
+  recommendedAction: z.enum(['none', 'repair', 'replace', 'inspect']).default('none'),
+  tags: z
+    .array(z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]))
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return value;
+      if (value === null) return null;
+      return value.map((item) => (typeof item === 'string' ? Number(item) : item));
+    }),
 });
 
 /**

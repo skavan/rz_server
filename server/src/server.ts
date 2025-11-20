@@ -34,6 +34,7 @@ import bookingNotesRoutes from './routes/booking/notes.js';
 import financeRoutes from './routes/finance/index.js';
 import financeCommissionsRoutes from './routes/finance/commissions.js';
 import mediaRoutes from './routes/media.js';
+import issuesRoutes from './routes/issues.js';
 
 // Load environment variables
 dotenv.config();
@@ -108,6 +109,7 @@ app.use('/api/table-raw', tableRawRoutes);     // Raw SQL endpoints (no field tr
 app.use('/api/dbTable', tableRoutes);          // Raw SQL endpoints
 app.use('/api/events', eventsRoutes);          // SSE events
 app.use('/api/media', mediaRoutes);            // Media upload/management
+app.use('/api/issues', issuesRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -141,6 +143,11 @@ app.get('/', (req, res) => {
       'PUT /api/inventory-items/:id',
       'DELETE /api/inventory-items/:id',
       'PATCH /api/inventory-items/:id/adjust-quantity',
+        'GET /api/issues',
+        'GET /api/issues/:id',
+        'POST /api/issues',
+        'PUT /api/issues/:id',
+        'DELETE /api/issues/:id',
       'GET /api/categories',
       'GET /api/brands',
       'GET /api/vendors',

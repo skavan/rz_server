@@ -15,6 +15,7 @@ export type DataSourceKey =
   | "vendors"
   | "customers"
   | "homes"
+  | "issues"
   | string; // extensible
 
 // Legacy aliases for compatibility
@@ -31,6 +32,7 @@ export type CoreTableData = {
   vendors?: any[];
   customers?: any[];
   homes?: any[];
+  issues?: any[];
   [key: string]: any[] | undefined;
 };
 
