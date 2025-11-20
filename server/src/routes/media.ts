@@ -173,6 +173,60 @@ function detectAssetType(mimeType: string): 'image' | 'document' | 'video' {
   return 'document';
 }
 
+async function resolveHomeIdForEntity(
+  scope: RequestScope,
+  entityType: string,
+  entityId: number
+): Promise<number | null> {
+  return withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
+    switch (entityType) {
+      case 'product': {
+        const rows = await scopedDb
+          .select({ homeId: products.homeId })
+          .from(products)
+          .where(eq(products.id, entityId))
+          .limit(1);
+        return rows[0]?.homeId ?? null;
+      }
+      case 'sku': {
+        const skuRows = await scopedDb
+          .select({ productId: skus.productId })
+          .from(skus)
+          .where(eq(skus.id, entityId))
+          .limit(1);
+        const productId = skuRows[0]?.productId;
+        if (!productId) return null;
+        const productRows = await scopedDb
+          .select({ homeId: products.homeId })
+          .from(products)
+          .where(eq(products.id, productId))
+          .limit(1);
+        return productRows[0]?.homeId ?? null;
+      }
+      case 'inventory_item': {
+        const rows = await scopedDb
+          .select({ homeId: inventoryItems.homeId })
+          .from(inventoryItems)
+          .where(eq(inventoryItems.id, entityId))
+          .limit(1);
+        return rows[0]?.homeId ?? null;
+      }
+      case 'location': {
+        const rows = await scopedDb
+          .select({ homeId: locations.homeId })
+          .from(locations)
+          .where(eq(locations.id, entityId))
+          .limit(1);
+        return rows[0]?.homeId ?? null;
+      }
+      case 'home':
+        return entityId;
+      default:
+        return null;
+    }
+  });
+}
+
 router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
@@ -203,6 +257,11 @@ router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), 
     });
     const tags = normalizeTagArray(rawTags);
 
+    const homeId = await resolveHomeIdForEntity(scope, entityType, entityId);
+    if (homeId === null) {
+      return res.status(400).json({ error: 'Unable to resolve home for this media asset' });
+    }
+
     const rows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
       async (scopedDb) => {
@@ -210,6 +269,7 @@ router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), 
           .insert(mediaAssets)
           .values({
             customerId: scope.customerId,
+            homeId,
             entityType: entityType as any,
             entityId,
             url: savedFile.relativePath,

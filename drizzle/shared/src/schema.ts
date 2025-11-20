@@ -257,12 +257,15 @@ export const locationTypes = pgTable('location_types', {
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull(),
+  sortOrder: integer('sort_order'),
+  isVisible: boolean('is_visible').default(true),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
   uniqueSlug: unique('location_types_customer_slug_unique').on(table.customerId, table.slug),
   customerIdx: index('idx_location_types_customer').on(table.customerId),
+  sortIdx: index('idx_location_types_sort').on(table.sortOrder),
   activeIdx: index('idx_location_types_active').on(table.isActive),
 }));
 
@@ -514,7 +517,8 @@ export const skuComponents = pgTable('sku_components', {
 export const mediaAssets = pgTable('media_assets', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
-  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'room' | 'home'>(),
+  homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }),
+  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home'>(),
   entityId: integer('entity_id').notNull(),
   url: text('url').notNull(),
   title: varchar('title', { length: 255 }),
@@ -532,6 +536,7 @@ export const mediaAssets = pgTable('media_assets', {
 }, (table) => ({
   customerIdx: index('idx_media_assets_customer').on(table.customerId),
   entityIdx: index('idx_media_assets_entity').on(table.entityType, table.entityId),
+  homeIdx: index('idx_media_assets_home').on(table.homeId),
   typeIdx: index('idx_media_assets_type').on(table.assetType),
   activeIdx: index('idx_media_assets_active').on(table.isActive),
   tagsIdx: index('idx_media_assets_tags_gin').on(table.tags),

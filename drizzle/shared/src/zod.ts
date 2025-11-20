@@ -226,6 +226,7 @@ export const mediaAssetsValidationSchema = createValidationSchema(
   mediaAssets,
   refineDateFields('createdAt', 'updatedAt')
 ).extend({
+  homeId: z.number().int().nullable().optional(),
   assetType: z.enum(['image', 'document', 'video', 'link']).default('image'),
   isPrimary: z.boolean().default(false),
   sortOrder: z.number().int().default(0),

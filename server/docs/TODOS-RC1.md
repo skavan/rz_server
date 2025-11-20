@@ -49,6 +49,7 @@ This doc tracks deferred server-side tasks and DB hardening work.
   - `quantity >= 1`
   - `is_required` default true
 - [ ] Enforce `products.slug` uniqueness per home (e.g., unique(home_id, slug))
+- [ ] Enforce `media_assets.home_id` NOT NULL via follow-up migration (backfill complete)
 
 ## Delete Rules (Server)
 
