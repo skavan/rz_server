@@ -22,6 +22,7 @@ import {
   parseOptionalInteger,
   parseOptionalString,
   parseOptionalDate,
+  parseOptionalBoolean,
   ensureHomeAccess,
   parsePagination,
   parseStringArray,
@@ -43,6 +44,10 @@ const ISSUE_TYPE_SET = new Set<IssueType>(ISSUE_TYPE_VALUES);
 const ISSUE_ACTION_VALUES = ['none', 'repair', 'replace', 'inspect'] as const;
 type IssueAction = (typeof ISSUE_ACTION_VALUES)[number];
 const ISSUE_ACTION_SET = new Set<IssueAction>(ISSUE_ACTION_VALUES);
+
+const ISSUE_DAMAGE_ASSESSMENT_VALUES = ['none', 'minor', 'major'] as const;
+type IssueDamageAssessment = (typeof ISSUE_DAMAGE_ASSESSMENT_VALUES)[number];
+const ISSUE_DAMAGE_ASSESSMENT_SET = new Set<IssueDamageAssessment>(ISSUE_DAMAGE_ASSESSMENT_VALUES);
 
 const ISSUE_ENTITY_TYPE_VALUES = ['inventory_item', 'location', 'home', 'product', 'sku'] as const;
 type IssueEntityType = (typeof ISSUE_ENTITY_TYPE_VALUES)[number];
@@ -90,6 +95,30 @@ const coerceEntityType = (value: unknown): IssueEntityType => {
     throw new ValidationError(`entityType must be one of ${ISSUE_ENTITY_TYPE_VALUES.join(', ')}`);
   }
   return entityType;
+};
+
+const coerceDamageAssessment = (
+  value: unknown,
+  field: string
+): IssueDamageAssessment | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const assessment = String(value) as IssueDamageAssessment;
+  if (!ISSUE_DAMAGE_ASSESSMENT_SET.has(assessment)) {
+    throw new ValidationError(`${field} must be one of ${ISSUE_DAMAGE_ASSESSMENT_VALUES.join(', ')}`);
+  }
+  return assessment;
+};
+
+const resolveBooleanOrDefault = (
+  value: boolean | null | undefined,
+  field: string,
+  defaultValue: boolean
+): boolean => {
+  if (value === undefined) return defaultValue;
+  if (value === null) {
+    throw new ValidationError(`${field} must be a boolean`);
+  }
+  return value;
 };
 
 const parseTagIds = (value: unknown): number[] | null | undefined => {
@@ -177,9 +206,13 @@ router.get('/', optionalAuth, async (req, res) => {
       status,
       urgency,
       issue_type,
+      damage_assessment,
+      damageAssessment: camelDamageAssessment,
       entity_type,
       entity_id,
       home_id,
+      has_visible_damage,
+      hasVisibleDamage: camelVisibleDamage,
       assigned_to_user_id,
       reported_by_user_id,
       search,
@@ -202,6 +235,14 @@ router.get('/', optionalAuth, async (req, res) => {
     const typeFilter = issue_type ? coerceIssueType(issue_type, 'issue_type') : undefined;
     if (typeFilter) filters.push(eq(issues.issueType, typeFilter));
 
+    const damageAssessmentFilter = coerceDamageAssessment(
+      damage_assessment ?? camelDamageAssessment,
+      'damageAssessment'
+    );
+    if (damageAssessmentFilter !== undefined) {
+      filters.push(eq(issues.damageAssessment, damageAssessmentFilter));
+    }
+
     if (entity_type) filters.push(eq(issues.entityType, coerceEntityType(entity_type)));
 
     const entityIdFilter = parseOptionalInteger(entity_id, 'entity_id');
@@ -209,6 +250,12 @@ router.get('/', optionalAuth, async (req, res) => {
 
     const homeFilter = parseOptionalInteger(home_id, 'home_id');
     if (homeFilter != null) filters.push(eq(issues.homeId, homeFilter));
+
+    const visibleDamageQuery = has_visible_damage ?? camelVisibleDamage;
+    const visibleDamageFilter = parseOptionalBoolean(visibleDamageQuery, 'hasVisibleDamage');
+    if (visibleDamageFilter !== undefined && visibleDamageFilter !== null) {
+      filters.push(eq(issues.hasVisibleDamage, visibleDamageFilter));
+    }
 
     const assignedFilter = parseOptionalInteger(assigned_to_user_id, 'assigned_to_user_id');
     if (assignedFilter != null) filters.push(eq(issues.assignedToUserId, assignedFilter));
@@ -327,6 +374,17 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
     const issueType = coerceIssueType(body.issueType, 'issueType') ?? 'operational';
     const recommendedAction = coerceRecommendedAction(body.recommendedAction, 'recommendedAction') ?? 'none';
 
+    const rawVisibleDamage =
+      body.hasVisibleDamage ??
+      body.visibleDamage ??
+      body.has_visible_damage ??
+      body.visible_damage;
+    const parsedVisibleDamage = parseOptionalBoolean(rawVisibleDamage, 'hasVisibleDamage');
+    const hasVisibleDamage = resolveBooleanOrDefault(parsedVisibleDamage, 'hasVisibleDamage', false);
+
+    const damageAssessment =
+      coerceDamageAssessment(body.damageAssessment ?? body.damage_assessment, 'damageAssessment') ?? 'none';
+
     const explicitHomeId = parseOptionalInteger(body.homeId, 'homeId');
     const tags = parseTagIds(body.tags);
 
@@ -360,6 +418,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
             issueType,
             description,
             recommendedAction,
+            hasVisibleDamage,
+            damageAssessment,
             assignedToUserId: assignedTo ?? null,
             reportedByUserId: reportedBy ?? null,
             dueAt: dueAt ?? null,
@@ -413,6 +473,24 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const resolvedAt = body.resolvedAt !== undefined ? parseOptionalDate(body.resolvedAt, 'resolvedAt') : undefined;
     const resolvedBy = body.resolvedByUserId !== undefined ? parseOptionalInteger(body.resolvedByUserId, 'resolvedByUserId') : undefined;
     const tags = body.tags !== undefined ? parseTagIds(body.tags) : undefined;
+    const rawVisibleDamageUpdate =
+      body.hasVisibleDamage ??
+      body.visibleDamage ??
+      body.has_visible_damage ??
+      body.visible_damage;
+    const hasVisibleDamageUpdate =
+      rawVisibleDamageUpdate !== undefined
+        ? parseOptionalBoolean(rawVisibleDamageUpdate, 'hasVisibleDamage')
+        : undefined;
+    if (hasVisibleDamageUpdate === null) {
+      throw new ValidationError('hasVisibleDamage must be a boolean');
+    }
+
+    const hasDamageAssessmentValue =
+      body.damageAssessment !== undefined || body.damage_assessment !== undefined;
+    const damageAssessmentUpdate = hasDamageAssessmentValue
+      ? coerceDamageAssessment(body.damageAssessment ?? body.damage_assessment, 'damageAssessment')
+      : undefined;
 
     const updatedRows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
@@ -454,6 +532,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
         if (resolvedAt !== undefined) updateData.resolvedAt = resolvedAt;
         if (resolvedBy !== undefined) updateData.resolvedByUserId = resolvedBy;
         if (tags !== undefined) updateData.tags = tags;
+        if (hasVisibleDamageUpdate !== undefined) updateData.hasVisibleDamage = hasVisibleDamageUpdate;
+        if (damageAssessmentUpdate !== undefined) {
+          updateData.damageAssessment = damageAssessmentUpdate;
+        }
 
         if (Object.keys(updateData).length === 1) {
           return existingRows; // Nothing to update beyond updatedAt fallback

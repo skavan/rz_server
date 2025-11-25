@@ -7,6 +7,13 @@ import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-
 import { eventBus } from '../utils/event-bus.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
+const normalizeIcon = (value: unknown) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const str = String(value).trim();
+  return str === '' ? null : str;
+};
+
 const router = Router();
 
 // GET /api/location-types
@@ -71,7 +78,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 // POST /api/location-types
 router.post('/', authenticateToken, autoInjectMiddleware('locationTypes'), async (req, res) => {
   try {
-    const { name, slug, isActive, customerId } = req.body || {};
+    const { name, slug, isActive, customerId, icon } = req.body || {};
     if (!name || !String(name).trim()) {
       return res.status(400).json({ error: 'Name is required' });
     }
@@ -95,6 +102,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('locationTypes'), async
           name: String(name).trim(),
           slug: slugValue,
           isActive: isActive !== undefined ? !!isActive : true,
+          icon: normalizeIcon(icon),
         })
         .returning();
     });
@@ -117,7 +125,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('locationTypes'), async
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, slug, isActive } = req.body || {};
+    const { name, slug, isActive, icon } = req.body || {};
 
     if (name !== undefined && !String(name).trim()) {
       return res.status(400).json({ error: 'Name cannot be empty' });
@@ -139,6 +147,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (name !== undefined) updates.name = String(name).trim();
     if (normalizedSlug !== undefined) updates.slug = normalizedSlug;
     if (isActive !== undefined) updates.isActive = !!isActive;
+    if (icon !== undefined) updates.icon = normalizeIcon(icon);
 
     const scope = await getRequestScope(req as any);
     const updated = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {

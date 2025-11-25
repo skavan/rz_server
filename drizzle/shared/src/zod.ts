@@ -216,6 +216,8 @@ export const locationTypesValidationSchema = createValidationSchema(
 ).extend({
   slug: slugInputSchema,
   isActive: z.boolean().default(true),
+  hasMediaAssets: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+  icon: z.preprocess(toNullableString, z.string().max(255).nullable().optional()),
 });
 
 /**
@@ -409,6 +411,8 @@ export const issuesValidationSchema = createValidationSchema(
   urgency: z.enum(['normal', 'high']).default('normal'),
   issueType: z.enum(['operational', 'cosmetic', 'safety', 'supplies']).default('operational'),
   recommendedAction: z.enum(['none', 'repair', 'replace', 'inspect']).default('none'),
+  hasVisibleDamage: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+  damageAssessment: z.enum(['none', 'minor', 'major']).default('none'),
   tags: z
     .array(z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]))
     .nullable()

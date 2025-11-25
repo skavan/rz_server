@@ -257,6 +257,8 @@ export const locationTypes = pgTable('location_types', {
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull(),
+  hasMediaAssets: boolean('has_media_assets').default(false),
+  icon: varchar('icon', { length: 255 }),
   sortOrder: integer('sort_order'),
   isVisible: boolean('is_visible').default(true),
   isActive: boolean('is_active').default(true),
@@ -280,6 +282,7 @@ export const issueStatusEnum = pgEnum('issue_status', ['open', 'in_progress', 'r
 export const issueUrgencyEnum = pgEnum('issue_urgency', ['normal', 'high']);
 export const issueTypeEnum = pgEnum('issue_type', ['operational', 'cosmetic', 'safety', 'supplies']);
 export const issueActionEnum = pgEnum('issue_recommended_action', ['none', 'repair', 'replace', 'inspect']);
+export const issueDamageAssessmentEnum = pgEnum('issue_damage_assessment', ['none', 'minor', 'major']);
 
 export const tags = pgTable('tags', {
   id: serial('id').primaryKey(),
@@ -523,7 +526,7 @@ export const mediaAssets = pgTable('media_assets', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
   homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }),
-  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue'>(),
+  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'location_type'>(),
   entityId: integer('entity_id').notNull(),
   url: text('url').notNull(),
   title: varchar('title', { length: 255 }),
@@ -559,6 +562,8 @@ export const issues = pgTable('issues', {
   issueType: issueTypeEnum('issue_type').default('operational').notNull(),
   description: text('description').notNull(),
   recommendedAction: issueActionEnum('recommended_action').default('none').notNull(),
+  hasVisibleDamage: boolean('has_visible_damage').default(false).notNull(),
+  damageAssessment: issueDamageAssessmentEnum('damage_assessment').default('none').notNull(),
   reportedByUserId: integer('reported_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
   assignedToUserId: integer('assigned_to_user_id').references(() => users.id, { onDelete: 'set null' }),

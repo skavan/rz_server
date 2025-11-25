@@ -6,6 +6,7 @@ import {
   skus,
   inventoryItems,
   locations,
+  locationTypes,
   homes,
   issues,
   eq,
@@ -26,6 +27,7 @@ import {
   parseOptionalInteger,
   parseOptionalBoolean,
   parseOptionalJson,
+  ensureHomeAccess,
 } from './shared/validation.js';
 
 const router = Router();
@@ -62,6 +64,7 @@ const ENTITY_TABLES = {
   location: locations,
   home: homes,
   issue: issues,
+  location_type: locationTypes,
 };
 
 type EntityType = keyof typeof ENTITY_TABLES;
@@ -231,6 +234,8 @@ async function resolveHomeIdForEntity(
           .limit(1);
         return rows[0]?.homeId ?? null;
       }
+      case 'location_type':
+        return null;
       default:
         return null;
     }
@@ -267,7 +272,18 @@ router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), 
     });
     const tags = normalizeTagArray(rawTags);
 
-    const homeId = await resolveHomeIdForEntity(scope, entityType, entityId);
+    let homeId: number | null;
+    if (entityType === 'location_type') {
+      const homeIdInput = parseOptionalInteger(req.body?.homeId ?? req.body?.home_id, 'homeId');
+      if (homeIdInput === undefined || homeIdInput === null) {
+        return res.status(400).json({ error: 'homeId is required for location type media' });
+      }
+      ensureHomeAccess(scope, homeIdInput);
+      homeId = homeIdInput;
+    } else {
+      homeId = await resolveHomeIdForEntity(scope, entityType, entityId);
+    }
+
     if (homeId === null) {
       return res.status(400).json({ error: 'Unable to resolve home for this media asset' });
     }
