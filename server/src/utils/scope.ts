@@ -20,9 +20,17 @@ async function fetchUserScope(userId: number): Promise<{ customerId?: number; ho
 }
 
 async function fetchDefaultHomeIds(customerId: number): Promise<number[]> {
-  const res = await db.execute(sql`SELECT id FROM homes WHERE customer_id = ${customerId} ORDER BY id LIMIT 1`);
-  const id = res.rows[0]?.id ? Number(res.rows[0].id) : undefined;
-  return typeof id === 'number' && Number.isFinite(id) ? [id] : [];
+  try {
+    const res = await db.execute(sql`SELECT id FROM homes WHERE customer_id = ${customerId} ORDER BY id LIMIT 1`);
+    const id = res.rows[0]?.id ? Number(res.rows[0].id) : undefined;
+    return typeof id === 'number' && Number.isFinite(id) ? [id] : [];
+  } catch (err) {
+    console.warn('[scope] failed to fetch default homes; falling back to empty list', {
+      customerId,
+      error: err instanceof Error ? err.message : err,
+    });
+    return [];
+  }
 }
 
 // Authoritative scope resolver: derives scope from auth and DB. Headers only in dev.
