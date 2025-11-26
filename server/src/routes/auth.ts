@@ -72,11 +72,13 @@ router.post('/login', async (req, res) => {
       homeAccessCount: homeAccess.length
     });
 
+    const effectiveRole = (user.role as string | null) ?? 'user';
+
     // Generate token
     const token = generateToken({
       id: user.id,
       email: user.email,
-      role: user.role || 'user'
+      role: effectiveRole
     });
 
     const tokenExpiresAtMs = getTokenExpiryMs(token);
@@ -88,11 +90,12 @@ router.post('/login', async (req, res) => {
         id: user.id,
         email: user.email,
         name: `${user.firstName ?? ''}${user.lastName ? ' ' + user.lastName : ''}`,
-        role: user.role,
+        role: effectiveRole,
+        roles: effectiveRole ? [effectiveRole] : [],
         customerId: raw.customer_id ?? (raw as any).customerId ?? null,  // ✅ Get from raw DB result
         allowedHomeIds,           // ✅ Added
         defaultHomeId,            // ✅ Added
-        sessionVersion: 0         // ✅ Added for consistency
+        sessionVersion: raw.session_version ?? 0
       }
     };
 
@@ -150,10 +153,11 @@ router.post('/register', async (req, res) => {
     const newUser = newUsers[0];
 
     // Generate token
+    const newRole = ((newUser as any).role as string) || 'user';
     const token = generateToken({
       id: newUser.id,
       email: (newUser as any).email,
-      role: ((newUser as any).role as string) || 'user'
+      role: newRole
     });
 
     const tokenExpiresAtMs = getTokenExpiryMs(token);
@@ -165,7 +169,8 @@ router.post('/register', async (req, res) => {
         id: newUser.id,
         email: (newUser as any).email,
         name: (newUser as any).first_name,
-        role: (newUser as any).role
+        role: newRole,
+        roles: newRole ? [newRole] : []
       }
     });
 
