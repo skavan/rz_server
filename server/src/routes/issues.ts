@@ -11,10 +11,12 @@ import {
   ilike,
   asc,
   desc,
+  isNull,
 } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { withTenantScope } from '../db/index.js';
 import { getRequestScope } from '../utils/scope.js';
+import type { RequestScope } from '../utils/scope.js';
 import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 import {
@@ -200,6 +202,15 @@ async function resolveEntity(
   }
 }
 
+async function touchInventoryItemLastChecked(scope: RequestScope, inventoryId: number): Promise<void> {
+  await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
+    await scopedDb
+      .update(inventoryItems)
+      .set({ lastChecked: new Date(), updatedAt: new Date() })
+      .where(eq(inventoryItems.id, inventoryId));
+  });
+}
+
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const {
@@ -220,11 +231,21 @@ router.get('/', optionalAuth, async (req, res) => {
       offset,
       sort = 'reportedAt',
       order = 'desc',
+      include_deleted,
+      includeDeleted,
     } = req.query as Record<string, string | undefined>;
 
     const scope = await getRequestScope(req as any);
 
     const filters: any[] = [eq(issues.customerId, scope.customerId)];
+    const includeDeletedRaw = include_deleted ?? includeDeleted;
+    const includeDeletedFlag =
+      includeDeletedRaw !== undefined
+        ? parseOptionalBoolean(includeDeletedRaw, 'includeDeleted')
+        : undefined;
+    if (includeDeletedFlag !== true) {
+      filters.push(isNull(issues.deletedAt));
+    }
 
     const statusFilter = status ? coerceStatus(status, 'status') : undefined;
     if (statusFilter) filters.push(eq(issues.status, statusFilter));
@@ -326,14 +347,25 @@ router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const id = parseInt(req.params.id, 10);
+    const includeDeletedRaw = (req.query?.include_deleted ?? req.query?.includeDeleted) as
+      | string
+      | undefined;
+    const includeDeletedFlag =
+      includeDeletedRaw !== undefined
+        ? parseOptionalBoolean(includeDeletedRaw, 'includeDeleted')
+        : undefined;
 
     const rows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
       async (scopedDb) => {
+        const predicates: any[] = [eq(issues.id, id), eq(issues.customerId, scope.customerId)];
+        if (includeDeletedFlag !== true) {
+          predicates.push(isNull(issues.deletedAt));
+        }
         return scopedDb
           .select()
           .from(issues)
-          .where(and(eq(issues.id, id), eq(issues.customerId, scope.customerId)))
+          .where(and(...predicates))
           .limit(1);
       }
     );
@@ -431,6 +463,10 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
 
     const created = createdRows[0];
 
+    if (created.entityType === 'inventory_item') {
+      await touchInventoryItemLastChecked(scope, created.entityId);
+    }
+
     eventBus.broadcast({
       event: 'data_change:issues',
       data: { type: 'create', resource: 'issues', resourceId: created.id, data: created },
@@ -498,7 +534,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         const existingRows = await scopedDb
           .select()
           .from(issues)
-          .where(and(eq(issues.id, id), eq(issues.customerId, scope.customerId)))
+          .where(and(eq(issues.id, id), eq(issues.customerId, scope.customerId), isNull(issues.deletedAt)))
           .limit(1);
 
         if (existingRows.length === 0) {
@@ -544,7 +580,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         const rows = await scopedDb
           .update(issues)
           .set(updateData)
-          .where(eq(issues.id, id))
+          .where(and(eq(issues.id, id), eq(issues.customerId, scope.customerId), isNull(issues.deletedAt)))
           .returning();
         return rows;
       }
@@ -555,6 +591,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     const updated = updatedRows[0];
+
+    if (updated.entityType === 'inventory_item') {
+      await touchInventoryItemLastChecked(scope, updated.entityId);
+    }
 
     eventBus.broadcast({
       event: 'data_change:issues',
@@ -580,13 +620,19 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const id = parseInt(req.params.id, 10);
+    const deletedBy = (req as any).user?.id ? Number((req as any).user.id) : null;
 
     const deletedRows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
       async (scopedDb) => {
         return scopedDb
-          .delete(issues)
-          .where(and(eq(issues.id, id), eq(issues.customerId, scope.customerId)))
+          .update(issues)
+          .set({
+            deletedAt: new Date(),
+            deletedByUserId: deletedBy,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(issues.id, id), eq(issues.customerId, scope.customerId), isNull(issues.deletedAt)))
           .returning();
       }
     );

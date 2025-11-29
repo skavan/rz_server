@@ -572,6 +572,8 @@ export const issues = pgTable('issues', {
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   resolutionNote: text('resolution_note'),
   tags: integer('tags').array(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deletedByUserId: integer('deleted_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
@@ -581,6 +583,7 @@ export const issues = pgTable('issues', {
   statusIdx: index('idx_issues_status').on(table.status),
   urgencyIdx: index('idx_issues_urgency').on(table.urgency),
   assigneeIdx: index('idx_issues_assignee').on(table.assignedToUserId),
+  deletedIdx: index('idx_issues_deleted_at').on(table.deletedAt),
 }));
 
 // ============================================

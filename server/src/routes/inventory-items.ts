@@ -2,10 +2,24 @@
  * Inventory Items API - Clean Drizzle Implementation
  */
 import { Router } from 'express';
-import { db, withTenantScope } from '../db/index.js';
-import { inventoryItems, eq, ilike, or, asc, desc, and, ne, sql, gte, lte, lt } from '@postgress/shared';
+import { withTenantScope } from '../db/index.js';
+import {
+  inventoryItems,
+  mediaAssets,
+  locations,
+  eq,
+  ilike,
+  or,
+  asc,
+  desc,
+  and,
+  sql,
+  lte,
+  inArray,
+} from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
+import type { RequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
 import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 
@@ -27,6 +41,169 @@ const normalizeDecimalInput = (value: unknown): string | null => {
   return null;
 };
 
+type InventoryItemRow = typeof inventoryItems.$inferSelect;
+type MediaAssetRow = typeof mediaAssets.$inferSelect;
+type MediaSourceType = Extract<
+  MediaAssetRow['entityType'],
+  'inventory_item' | 'product' | 'sku' | 'location' | 'location_type' | 'home'
+>;
+
+type InventoryMediaEntry = MediaAssetRow & {
+  sourceEntityType: MediaSourceType;
+  sourceEntityId: number;
+  priority: number;
+};
+
+const includeTokenSet = new Set(['media', 'inventory_media', 'inventory_items_media']);
+const truthyStringSet = new Set(['true', '1', 'yes', 'on']);
+
+const shouldIncludeMedia = (query: Record<string, any>): boolean => {
+  const includeMediaFlag = query.include_media ?? query.includeMedia;
+  if (Array.isArray(includeMediaFlag)) {
+    if (includeMediaFlag.some((value) => truthyStringSet.has(String(value).toLowerCase()))) {
+      return true;
+    }
+  } else if (typeof includeMediaFlag === 'string') {
+    if (truthyStringSet.has(includeMediaFlag.toLowerCase())) {
+      return true;
+    }
+  } else if (typeof includeMediaFlag === 'boolean' && includeMediaFlag) {
+    return true;
+  }
+
+  const includeParam = query.include;
+  if (typeof includeParam === 'string') {
+    return includeParam
+      .split(',')
+      .map((token) => token.trim().toLowerCase())
+      .some((token) => includeTokenSet.has(token));
+  }
+  if (Array.isArray(includeParam)) {
+    return includeParam
+      .flatMap((item) => String(item).split(','))
+      .map((token) => token.trim().toLowerCase())
+      .some((token) => includeTokenSet.has(token));
+  }
+
+  return false;
+};
+
+const groupMediaByEntity = (rows: MediaAssetRow[]): Map<number, MediaAssetRow[]> => {
+  const map = new Map<number, MediaAssetRow[]>();
+  for (const asset of rows) {
+    const existing = map.get(asset.entityId) ?? [];
+    existing.push(asset);
+    map.set(asset.entityId, existing);
+  }
+  return map;
+};
+
+const buildInventoryMediaMap = async (
+  scope: RequestScope,
+  items: InventoryItemRow[]
+): Promise<Record<number, InventoryMediaEntry[]>> => {
+  if (items.length === 0) {
+    return {};
+  }
+
+  return withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
+    const locationIds = Array.from(
+      new Set(items.map((item) => item.locationId).filter((id): id is number => id != null))
+    );
+
+    const locationTypeByLocationId = new Map<number, number | null>();
+    if (locationIds.length > 0) {
+      const locationRows = await scopedDb
+        .select({ id: locations.id, locationTypeId: locations.locationTypeId })
+        .from(locations)
+        .where(inArray(locations.id, locationIds));
+
+      for (const row of locationRows) {
+        locationTypeByLocationId.set(row.id, row.locationTypeId ?? null);
+      }
+    }
+
+    const locationTypeByInventoryId = new Map<number, number | null>();
+    for (const item of items) {
+      const locationId = item.locationId ?? null;
+      const locationTypeId = locationId ? locationTypeByLocationId.get(locationId) ?? null : null;
+      locationTypeByInventoryId.set(item.id, locationTypeId);
+    }
+
+    const entityBuckets: Record<MediaSourceType, Set<number>> = {
+      inventory_item: new Set<number>(),
+      product: new Set<number>(),
+      sku: new Set<number>(),
+      location: new Set<number>(),
+      location_type: new Set<number>(),
+      home: new Set<number>(),
+    };
+
+    for (const item of items) {
+      entityBuckets.inventory_item.add(item.id);
+      if (item.productId) entityBuckets.product.add(item.productId);
+      if (item.skuId) entityBuckets.sku.add(item.skuId);
+      if (item.locationId) entityBuckets.location.add(item.locationId);
+      const locationTypeId = locationTypeByInventoryId.get(item.id);
+      if (locationTypeId) entityBuckets.location_type.add(locationTypeId);
+      if (item.homeId) entityBuckets.home.add(item.homeId);
+    }
+
+    const assetsByType = new Map<MediaSourceType, Map<number, MediaAssetRow[]>>();
+
+    for (const [entityType, idSet] of Object.entries(entityBuckets) as [MediaSourceType, Set<number>][]) {
+      if (idSet.size === 0) continue;
+      const ids = Array.from(idSet);
+      const rows = await scopedDb
+        .select()
+        .from(mediaAssets)
+        .where(
+          and(
+            eq(mediaAssets.entityType, entityType as any),
+            inArray(mediaAssets.entityId, ids),
+            eq(mediaAssets.isActive, true)
+          )
+        )
+        .orderBy(desc(mediaAssets.isPrimary), mediaAssets.sortOrder);
+
+      assetsByType.set(entityType, groupMediaByEntity(rows));
+    }
+
+    const mediaByInventoryId: Record<number, InventoryMediaEntry[]> = {};
+
+    for (const item of items) {
+      const fallbackChain: Array<{ entityType: MediaSourceType; entityId: number | null }> = [
+        { entityType: 'inventory_item', entityId: item.id },
+        { entityType: 'product', entityId: item.productId ?? null },
+        { entityType: 'sku', entityId: item.skuId ?? null },
+        { entityType: 'location', entityId: item.locationId ?? null },
+        { entityType: 'location_type', entityId: locationTypeByInventoryId.get(item.id) ?? null },
+        { entityType: 'home', entityId: item.homeId ?? null },
+      ];
+
+      let selected: InventoryMediaEntry[] = [];
+      for (let priority = 0; priority < fallbackChain.length; priority++) {
+        const step = fallbackChain[priority];
+        if (!step.entityId) continue;
+        const assets = assetsByType.get(step.entityType)?.get(step.entityId) ?? [];
+        if (assets.length > 0) {
+          selected = assets.map((asset) => ({
+            ...asset,
+            sourceEntityType: step.entityType,
+            sourceEntityId: step.entityId!,
+            priority,
+          }));
+          break;
+        }
+      }
+
+      mediaByInventoryId[item.id] = selected;
+    }
+
+    return mediaByInventoryId;
+  });
+};
+
 /**
  * GET /api/inventory-items
  * Get all inventory items with optional filtering
@@ -46,6 +223,8 @@ router.get('/', optionalAuth, async (req, res) => {
       sort = 'updatedAt',
       order = 'desc'
     } = req.query;
+
+    const includeMedia = shouldIncludeMedia(req.query as Record<string, any>);
 
     // Build WHERE conditions
     const whereConditions = [];
@@ -114,14 +293,25 @@ router.get('/', optionalAuth, async (req, res) => {
         .offset(parseInt(offset as string));
     });
 
-    res.json({
+    let inventoryMedia: Record<number, InventoryMediaEntry[]> | undefined;
+    if (includeMedia) {
+      inventoryMedia = await buildInventoryMediaMap(scope, results);
+    }
+
+    const response: Record<string, any> = {
       data: results,
       meta: {
         count: results.length,
         limit: parseInt(limit as string),
         offset: parseInt(offset as string)
       }
-    });
+    };
+
+    if (inventoryMedia) {
+      response.included = { inventory_items_media: inventoryMedia };
+    }
+
+    res.json(response);
 
   } catch (error: any) {
     console.error('Inventory items GET error:', error);
@@ -136,6 +326,7 @@ router.get('/', optionalAuth, async (req, res) => {
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const includeMedia = shouldIncludeMedia(req.query as Record<string, any>);
 
     const scope = await getRequestScope(req as any);
     const results = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
@@ -150,7 +341,18 @@ router.get('/:id', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Inventory item not found' });
     }
 
-    res.json({ data: results[0] });
+    let included: Record<string, any> | undefined;
+    if (includeMedia) {
+      const media = await buildInventoryMediaMap(scope, results);
+      included = { inventory_items_media: media };
+    }
+
+    const response: Record<string, any> = { data: results[0] };
+    if (included) {
+      response.included = included;
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('Inventory item GET by ID error:', error);

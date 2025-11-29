@@ -20,6 +20,7 @@ We introduced the `issues` feature to capture operational and cosmetic problems 
 - `due_at` lets teams set service-level expectations without creating a separate scheduling table.
 - `resolved_by_user_id`, `resolved_at`, and `resolution_note` record completion details for accountability and retrospective analysis.
 - `tags` is an `integer[]` mirroring the tagging strategy we already use for products, SKUs, locations, and inventory. This keeps the API consistent, allows flexible categorisation, and works with existing GIN index conventions.
+- `deleted_at` and `deleted_by_user_id` let us preserve audit trails when an issue is removed from day-to-day views. We soft-delete instead of purging rows so historical exports and automations keep the data.
 - `created_at` and `updated_at` support chronological sorting, synchronization, and optimistic cache invalidation. We rely on database defaults to avoid clock skew from clients.
 
 ## Column Reference
@@ -46,6 +47,8 @@ We introduced the `issues` feature to capture operational and cosmetic problems 
 | `resolved_at` | `timestamptz` | — | Completion timestamp |
 | `resolution_note` | `text` | — | Optional resolution summary |
 | `tags` | `integer[]` | — | Optional tag ids |
+| `deleted_at` | `timestamptz` | — | Null when active; stamped on soft delete |
+| `deleted_by_user_id` | `integer` | — | Optional FK → `users.id` capturing who deleted |
 | `created_at` | `timestamptz` | `now()` | Inserted timestamp |
 | `updated_at` | `timestamptz` | `now()` | Updated via triggers/app code |
 
@@ -106,12 +109,16 @@ This schema handles enum coercion, optional tag arrays (accepting either numbers
 - `POST /issues` accepts `hasVisibleDamage` and `damageAssessment` in either camelCase or snake_case. If omitted they resolve to `false`/`none`, aligning with database defaults.
 - `PUT /issues/:id` allows partial updates for the new fields. Boolean `null` inputs are rejected so we always store an explicit `true`/`false`.
 - `GET /issues` now supports filtering with `hasVisibleDamage`/`has_visible_damage` as well as `damageAssessment`/`damage_assessment` to keep query ergonomics flexible for clients.
+- `GET /issues` and `GET /issues/:id` accept `include_deleted=true` to surface soft-deleted rows; by default we append `deleted_at IS NULL` so clients only see active work.
+- `DELETE /issues/:id` stamps `deleted_at`/`deleted_by_user_id` instead of removing the row. We still broadcast a `data_change:issues` delete event so existing subscribers continue to reconcile caches without code changes.
+- When an issue is created or updated for an `inventory_item`, the server automatically bumps `inventory_items.last_checked` so operational dashboards stay synchronized with the most recent inspection.
 - Downstream SSE payloads include the new columns unchanged; consumers should plan to surface them where relevant (triage dashboards, insurance exports).
 
 ## Migration Notes
 
 - Migration `0012_windy_crusher_hogan.sql` introduces `issue_damage_assessment`, adds the new columns with defaults, and should be applied to all environments.
 - Because the boolean column is non-nullable with a `false` default, no data backfill is required for existing issues.
+- Migration `0003_issue_soft_delete.sql` adds the `deleted_at`/`deleted_by_user_id` columns and supporting index. Existing rows automatically remain visible (null deleted timestamp) while future deletes simply stamp those fields.
 
 ## Indexing Decisions
 - `idx_issues_customer` underpins tenant-wide filtering and RLS policies.
@@ -123,3 +130,4 @@ This schema handles enum coercion, optional tag arrays (accepting either numbers
 - Tags integrate with the existing tag registry; we intentionally store raw `integer` IDs so server routes can coerce string/number input and reuse shared validation helpers.
 - Event broadcasting relies on these columns to determine channel scope (customer/home) and payload shape, so schema changes should be coordinated with the SSE layer.
 - Future migrations (e.g., adding GIN indexes to `tags`) can reuse patterns from products/locations to maintain query performance as issue volume grows.
+- The soft-delete columns ship with `idx_issues_deleted_at` so we can exclude removed rows quickly without full scans.
