@@ -5,6 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import type { Router as ExpressRouter } from 'express';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -35,6 +36,7 @@ import financeRoutes from './routes/finance/index.js';
 import financeCommissionsRoutes from './routes/finance/commissions.js';
 import mediaRoutes from './routes/media.js';
 import issuesRoutes from './routes/issues.js';
+import tableFallbackRoutes from './routes/table-fallback.js';
 
 // Load environment variables
 dotenv.config();
@@ -47,6 +49,66 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
+if (process.env.LOG_DOUBLE_SLASH_REQUESTS === 'true') {
+  const headerWhitelist = [
+    'user-agent',
+    'referer',
+    'origin',
+    'host',
+    'x-forwarded-for',
+    'x-real-ip',
+    'x-customer-id',
+    'x-home-id'
+  ];
+  app.use((req, _res, next) => {
+    if (req.url.includes('//')) {
+      const headerSnapshot: Record<string, string | undefined> = {};
+      for (const key of headerWhitelist) {
+        const value = req.header(key);
+        if (value) headerSnapshot[key] = value;
+      }
+      const trace = process.env.LOG_DOUBLE_SLASH_STACK === 'true'
+        ? new Error('double-slash request trace').stack
+        : undefined;
+      console.warn('[double-slash]', {
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        originalUrl: req.originalUrl,
+        currentUrl: req.url,
+        path: req.path,
+        query: req.query,
+        ip: req.ip,
+        ips: req.ips,
+        remoteAddress: req.socket?.remoteAddress,
+        headers: headerSnapshot,
+        trace
+      });
+    }
+    next();
+  });
+}
+if (process.env.NORMALIZE_URL_SLASHES === 'true') {
+  app.use((req, _res, next) => {
+    if (req.url.includes('//')) {
+      req.url = req.url.replace(/\/+/g, '/');
+    }
+    next();
+  });
+}
+app.use((req, _res, next) => {
+  const query = req.query as Record<string, any>;
+  if (query && typeof query === 'object' && !Array.isArray(query)) {
+    for (const key of Object.keys(query)) {
+      if (/[A-Z]/.test(key)) {
+        const snake = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+        if (!(snake in query)) {
+          query[snake] = query[key];
+        }
+      }
+    }
+  }
+  next();
+});
 app.use(cors({
   origin: (origin, callback) => {
     const raw = process.env.CLIENT_URL || process.env.CLIENT_URLS;
@@ -71,6 +133,16 @@ app.use((req, res, next) => {
   next();
 });
 
+const mountApiRoute = (basePath: string, handler: ExpressRouter) => {
+  app.use(basePath, handler);
+  if (basePath.includes('-')) {
+    const underscorePath = basePath.replace(/-/g, '_');
+    if (underscorePath !== basePath) {
+      app.use(underscorePath, handler);
+    }
+  }
+};
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
@@ -81,35 +153,36 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productsRoutes);
-app.use('/api/skus', skusRoutes);
-app.use('/api/inventory-items', inventoryItemsRoutes);
-app.use('/api/locations', locationsRoutes);
-app.use('/api/categories', categoriesRoutes);
-app.use('/api/brands', brandsRoutes);
-app.use('/api/vendors', vendorsRoutes);
-app.use('/api/homes', homesRoutes);
-app.use('/api/tags', tagsRoutes);
-app.use('/api/location-types', locationTypesRoutes);
-app.use('/api/reservations', reservationsRoutes);
-app.use('/api/reservations-v1', reservationsV1Routes);
-app.use('/api/crm', crmRoutes);
-app.use('/api/booking', bookingRoutes);
-app.use('/api/finance', financeRoutes);
-app.use('/api/crm-contacts', crmContactsRoutes);
-app.use('/api/crm-lead-sources', crmLeadSourcesRoutes);
-app.use('/api/booking-reservations', bookingReservationsRoutes);
-app.use('/api/booking-financials', bookingFinancialsRoutes);
-app.use('/api/booking-notes', bookingNotesRoutes);
-app.use('/api/finance-commissions', financeCommissionsRoutes);
-app.use('/api/table', drizzleTableRoutes);     // New Drizzle-shaped endpoints
-app.use('/api/table-raw', tableRawRoutes);     // Raw SQL endpoints (no field transformation)
-app.use('/api/dbTable', tableRoutes);          // Raw SQL endpoints
-app.use('/api/events', eventsRoutes);          // SSE events
-app.use('/api/media', mediaRoutes);            // Media upload/management
-app.use('/api/issues', issuesRoutes);
+// API routes with automatic snake_case aliases
+mountApiRoute('/api/auth', authRoutes);
+mountApiRoute('/api/products', productsRoutes);
+mountApiRoute('/api/skus', skusRoutes);
+mountApiRoute('/api/inventory-items', inventoryItemsRoutes);
+mountApiRoute('/api/locations', locationsRoutes);
+mountApiRoute('/api/categories', categoriesRoutes);
+mountApiRoute('/api/brands', brandsRoutes);
+mountApiRoute('/api/vendors', vendorsRoutes);
+mountApiRoute('/api/homes', homesRoutes);
+mountApiRoute('/api/tags', tagsRoutes);
+mountApiRoute('/api/location-types', locationTypesRoutes);
+mountApiRoute('/api/reservations', reservationsRoutes);
+mountApiRoute('/api/reservations-v1', reservationsV1Routes);
+mountApiRoute('/api/crm', crmRoutes);
+mountApiRoute('/api/booking', bookingRoutes);
+mountApiRoute('/api/finance', financeRoutes);
+mountApiRoute('/api/crm-contacts', crmContactsRoutes);
+mountApiRoute('/api/crm-lead-sources', crmLeadSourcesRoutes);
+mountApiRoute('/api/booking-reservations', bookingReservationsRoutes);
+mountApiRoute('/api/booking-financials', bookingFinancialsRoutes);
+mountApiRoute('/api/booking-notes', bookingNotesRoutes);
+mountApiRoute('/api/finance-commissions', financeCommissionsRoutes);
+mountApiRoute('/api/table', drizzleTableRoutes);     // New Drizzle-shaped endpoints
+mountApiRoute('/api/table-raw', tableRawRoutes);     // Raw SQL endpoints (no field transformation)
+mountApiRoute('/api/dbTable', tableRoutes);          // Raw SQL endpoints
+mountApiRoute('/api/events', eventsRoutes);          // SSE events
+mountApiRoute('/api/media', mediaRoutes);            // Media upload/management
+mountApiRoute('/api/issues', issuesRoutes);
+app.use('/api', tableFallbackRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
