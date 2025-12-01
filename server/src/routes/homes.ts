@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
     const { is_active, property_type, search, include_inactive } = req.query;
 
     const results = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
-      const whereConditions = [];
+      const whereConditions = [eq(homes.customerId, scope.customerId)];
 
       if (is_active !== undefined) {
         whereConditions.push(eq(homes.isActive, is_active === 'true'));
@@ -69,7 +69,7 @@ router.get('/:id', async (req, res) => {
       return scopedDb
         .select()
         .from(homes)
-        .where(eq(homes.id, Number(id)))
+        .where(and(eq(homes.customerId, scope.customerId), eq(homes.id, Number(id))))
         .limit(1);
     });
 
@@ -170,7 +170,7 @@ router.put('/:id', async (req, res) => {
       return scopedDb
         .update(homes)
         .set(updates)
-        .where(eq(homes.id, Number(id)))
+        .where(and(eq(homes.customerId, scope.customerId), eq(homes.id, Number(id))))
         .returning();
     });
 
@@ -207,7 +207,7 @@ router.delete('/:id', async (req, res) => {
     const deletedHomes = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .delete(homes)
-        .where(eq(homes.id, Number(id)))
+        .where(and(eq(homes.customerId, scope.customerId), eq(homes.id, Number(id))))
         .returning();
     });
 
