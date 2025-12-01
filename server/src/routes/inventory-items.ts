@@ -7,6 +7,7 @@ import {
   inventoryItems,
   mediaAssets,
   locations,
+  issues,
   eq,
   ilike,
   or,
@@ -16,6 +17,7 @@ import {
   sql,
   lte,
   inArray,
+  isNull,
 } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
@@ -572,12 +574,39 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const itemId = parseInt(id, 10);
+    if (Number.isNaN(itemId)) {
+      return res.status(400).json({ error: 'Invalid inventory item id' });
+    }
 
     const scope = await getRequestScope(req as any);
+
+    const hasBlockingIssues = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
+      const rows = await scopedDb
+        .select({ id: issues.id })
+        .from(issues)
+        .where(
+          and(
+            eq(issues.entityType, 'inventory_item'),
+            eq(issues.entityId, itemId),
+            inArray(issues.status, ['open', 'in_progress']),
+            isNull(issues.deletedAt)
+          )
+        )
+        .limit(1);
+      return rows.length > 0;
+    });
+
+    if (hasBlockingIssues) {
+      return res.status(409).json({
+        error: 'Cannot delete inventory item while open or in-progress issues exist. Resolve or delete those issues first.',
+      });
+    }
+
     const deletedItems = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .delete(inventoryItems)
-        .where(eq(inventoryItems.id, parseInt(id)))
+        .where(eq(inventoryItems.id, itemId))
         .returning();
     });
 

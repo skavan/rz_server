@@ -625,15 +625,35 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const deletedRows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
       async (scopedDb) => {
-        return scopedDb
+        const existingRows = await scopedDb
+          .select()
+          .from(issues)
+          .where(and(eq(issues.id, id), eq(issues.customerId, scope.customerId), isNull(issues.deletedAt)))
+          .limit(1);
+
+        if (existingRows.length === 0) {
+          return [];
+        }
+
+        const deletedAt = new Date();
+
+        await scopedDb
           .update(issues)
           .set({
-            deletedAt: new Date(),
+            deletedAt,
             deletedByUserId: deletedBy,
-            updatedAt: new Date(),
+            updatedAt: deletedAt,
           })
-          .where(and(eq(issues.id, id), eq(issues.customerId, scope.customerId), isNull(issues.deletedAt)))
-          .returning();
+          .where(and(eq(issues.id, id), eq(issues.customerId, scope.customerId), isNull(issues.deletedAt)));
+
+        const deletedRow = {
+          ...existingRows[0],
+          deletedAt,
+          deletedByUserId: deletedBy,
+          updatedAt: deletedAt,
+        } as typeof issues.$inferSelect;
+
+        return [deletedRow];
       }
     );
 

@@ -44,6 +44,7 @@ const upload = multer({
       'image/png',
       'image/gif',
       'image/webp',
+      'image/x-webp',
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
