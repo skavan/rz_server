@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
 
     const results = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       // Build WHERE conditions
-      const whereConditions = [];
+      const whereConditions = [eq(categories.customerId, scope.customerId)];
 
       // Filter by parent ID
       if (parent_id === 'root') {
@@ -78,7 +78,7 @@ router.get('/:id', async (req, res) => {
       return scopedDb
         .select()
         .from(categories)
-        .where(eq(categories.id, Number(id)))
+        .where(and(eq(categories.customerId, scope.customerId), eq(categories.id, Number(id))))
         .limit(1);
     });
 
@@ -191,7 +191,7 @@ router.put('/:id', async (req, res) => {
       return scopedDb
         .update(categories)
         .set(updates)
-        .where(eq(categories.id, Number(id)))
+        .where(and(eq(categories.customerId, scope.customerId), eq(categories.id, Number(id))))
         .returning();
     });
 
@@ -226,7 +226,7 @@ router.delete('/:id', async (req, res) => {
     const deletedCategories = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .delete(categories)
-        .where(eq(categories.id, Number(id)))
+        .where(and(eq(categories.customerId, scope.customerId), eq(categories.id, Number(id))))
         .returning();
     });
 

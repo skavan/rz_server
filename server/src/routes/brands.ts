@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
 
     const results = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       // Build WHERE conditions
-      const whereConditions = [];
+      const whereConditions = [eq(brands.customerId, scope.customerId)];
 
       // Filter by active status
       if (is_active !== undefined) {

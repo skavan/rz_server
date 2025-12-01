@@ -20,8 +20,9 @@ const router = Router();
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const { search, include_inactive, limit = '100', offset = '0', order = 'asc' } = req.query as any;
+    const scope = await getRequestScope(req as any);
 
-    const whereClauses: any[] = [];
+    const whereClauses: any[] = [eq(locationTypes.customerId, scope.customerId)];
     if (include_inactive !== 'true') {
       whereClauses.push(eq(locationTypes.isActive, true));
     }
@@ -34,7 +35,6 @@ router.get('/', optionalAuth, async (req, res) => {
         ? whereClauses[0]
         : and(...whereClauses);
 
-    const scope = await getRequestScope(req as any);
     const rows = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .select()
@@ -60,7 +60,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
       return scopedDb
         .select()
         .from(locationTypes)
-        .where(eq(locationTypes.id, parseInt(req.params.id)))
+        .where(and(eq(locationTypes.customerId, scope.customerId), eq(locationTypes.id, parseInt(req.params.id))))
         .limit(1);
     });
 
@@ -154,7 +154,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return scopedDb
         .update(locationTypes)
         .set(updates)
-        .where(eq(locationTypes.id, parseInt(id)))
+        .where(and(eq(locationTypes.customerId, scope.customerId), eq(locationTypes.id, parseInt(id))))
         .returning();
     });
 
@@ -183,7 +183,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const deleted = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       return scopedDb
         .delete(locationTypes)
-        .where(eq(locationTypes.id, parseInt(req.params.id)))
+        .where(and(eq(locationTypes.customerId, scope.customerId), eq(locationTypes.id, parseInt(req.params.id))))
         .returning();
     });
 

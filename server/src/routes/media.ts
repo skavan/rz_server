@@ -108,7 +108,13 @@ router.get('/serve/:id', authenticateToken, async (req, res) => {
         return scopedDb
           .select()
           .from(mediaAssets)
-          .where(and(eq(mediaAssets.id, mediaId), eq(mediaAssets.isActive, true)))
+          .where(
+            and(
+              eq(mediaAssets.customerId, scope.customerId),
+              eq(mediaAssets.id, mediaId),
+              eq(mediaAssets.isActive, true)
+            )
+          )
           .limit(1);
       }
     );
@@ -358,6 +364,7 @@ router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
           .from(mediaAssets)
           .where(
             and(
+              eq(mediaAssets.customerId, scope.customerId),
               eq(mediaAssets.entityType, entityType as any),
               eq(mediaAssets.entityId, entityId),
               eq(mediaAssets.isActive, true)
@@ -416,7 +423,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const rows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
       async (scopedDb) => {
-        return scopedDb.update(mediaAssets).set(updates).where(eq(mediaAssets.id, mediaId)).returning();
+        return scopedDb
+          .update(mediaAssets)
+          .set(updates)
+          .where(and(eq(mediaAssets.customerId, scope.customerId), eq(mediaAssets.id, mediaId)))
+          .returning();
       }
     );
 
@@ -454,7 +465,10 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const rows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
       async (scopedDb) => {
-        return scopedDb.delete(mediaAssets).where(eq(mediaAssets.id, mediaId)).returning();
+        return scopedDb
+          .delete(mediaAssets)
+          .where(and(eq(mediaAssets.customerId, scope.customerId), eq(mediaAssets.id, mediaId)))
+          .returning();
       }
     );
 
@@ -474,6 +488,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
           .from(mediaAssets)
           .where(
             and(
+              eq(mediaAssets.customerId, scope.customerId),
               eq(mediaAssets.entityType, deleted.entityType),
               eq(mediaAssets.entityId, deleted.entityId),
               eq(mediaAssets.isActive, true)
