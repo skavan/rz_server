@@ -377,6 +377,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), asyn
       quantity,
       serialNumber,
       assetTag,
+      sublocation,
       status,
       condition,
       purchaseDate,
@@ -411,6 +412,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), asyn
           quantity: quantity !== undefined ? Number(quantity) : 1,
           serialNumber: serialNumber || null,
           assetTag: assetTag || null,
+          sublocation: sublocation || null,
           status: status as any || 'unassigned',
           condition: condition as any || 'good',
           purchaseDate: purchaseDate || null,
@@ -455,6 +457,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       quantity,
       serialNumber,
       assetTag,
+      sublocation,
       status,
       condition,
       lastChecked,
@@ -478,6 +481,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     if (skuId !== undefined) {
       updateData.skuId = parseInt(skuId);
+    }
+    if (sublocation !== undefined) {
+      updateData.sublocation = sublocation;
     }
     if (productId !== undefined) {
       updateData.productId = parseInt(productId);
