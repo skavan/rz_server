@@ -428,6 +428,7 @@ export const inventoryItems = pgTable('inventory_items', {
   
   // Location and assignment
   locationId: integer('location_id'),
+  sublocation: text('sublocation'),
   status: varchar('status', { length: 20 }).default('unassigned').$type<'unassigned' | 'in_use' | 'in_storage' | 'damaged' | 'in_repair' | 'missing'>(),
   
   // Quantity and condition tracking
