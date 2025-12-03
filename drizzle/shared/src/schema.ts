@@ -283,6 +283,11 @@ export const issueUrgencyEnum = pgEnum('issue_urgency', ['normal', 'high']);
 export const issueTypeEnum = pgEnum('issue_type', ['operational', 'cosmetic', 'safety', 'supplies']);
 export const issueActionEnum = pgEnum('issue_recommended_action', ['none', 'repair', 'replace', 'inspect']);
 export const issueDamageAssessmentEnum = pgEnum('issue_damage_assessment', ['none', 'minor', 'major']);
+export const issueResolutionEnum = pgEnum('issue_resolution_type', ['monitor', 'repair', 'replace', 'claim']);
+export const purchaseRequestStatusEnum = pgEnum('inventory_purchase_request_status', ['draft', 'pending', 'requires_approval', 'approved', 'queued_for_po', 'ordered', 'fulfilled', 'canceled']);
+export const purchaseRequestActionEnum = pgEnum('purchase_request_action', ['repair', 'replace', 'bulk_claim']);
+export const purchaseOrderStatusEnum = pgEnum('inventory_purchase_order_status', ['draft', 'pending_vendor', 'ordered', 'receiving', 'closed', 'canceled']);
+export const shippingTaxTypeEnum = pgEnum('shipping_tax_type', ['percent', 'fixed']);
 
 export const tags = pgTable('tags', {
   id: serial('id').primaryKey(),
@@ -565,6 +570,12 @@ export const issues = pgTable('issues', {
   recommendedAction: issueActionEnum('recommended_action').default('none').notNull(),
   hasVisibleDamage: boolean('has_visible_damage').default(false).notNull(),
   damageAssessment: issueDamageAssessmentEnum('damage_assessment').default('none').notNull(),
+  resolutionType: issueResolutionEnum('resolution_type').default('monitor').notNull(),
+  requiresPurchase: boolean('requires_purchase').default(false).notNull(),
+  purchaseRequestId: integer('purchase_request_id'),
+  estimatedClaimAmount: decimal('estimated_claim_amount', { precision: 12, scale: 2 }),
+  insurancePolicyRef: varchar('insurance_policy_ref', { length: 100 }),
+  insuranceClaimRef: varchar('insurance_claim_ref', { length: 100 }),
   reportedByUserId: integer('reported_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
   assignedToUserId: integer('assigned_to_user_id').references(() => users.id, { onDelete: 'set null' }),
@@ -585,6 +596,110 @@ export const issues = pgTable('issues', {
   urgencyIdx: index('idx_issues_urgency').on(table.urgency),
   assigneeIdx: index('idx_issues_assignee').on(table.assignedToUserId),
   deletedIdx: index('idx_issues_deleted_at').on(table.deletedAt),
+  purchaseRequestIdx: index('idx_issues_purchase_request').on(table.purchaseRequestId),
+}));
+
+// ============================================
+// INVENTORY PURCHASE ORDERS TABLE
+// ============================================
+export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  vendorId: integer('vendor_id').references(() => vendors.id, { onDelete: 'set null' }),
+  purchaseNumber: varchar('purchase_number', { length: 64 }).notNull(),
+  status: purchaseOrderStatusEnum('status').default('draft').notNull(),
+  createdByUserId: integer('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  assignedToUserId: integer('assigned_to_user_id').references(() => users.id, { onDelete: 'set null' }),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).default('0').notNull(),
+  shippingAmount: decimal('shipping_amount', { precision: 14, scale: 2 }).default('0').notNull(),
+  taxAmount: decimal('tax_amount', { precision: 14, scale: 2 }).default('0').notNull(),
+  currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  notes: text('notes'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerIdx: index('idx_purchase_orders_customer').on(table.customerId),
+  vendorIdx: index('idx_purchase_orders_vendor').on(table.vendorId),
+  numberIdx: index('idx_purchase_orders_number').on(table.purchaseNumber),
+  statusIdx: index('idx_purchase_orders_status').on(table.status),
+  assigneeIdx: index('idx_purchase_orders_assignee').on(table.assignedToUserId),
+  uniqueCustomerNumber: unique('inventory_purchase_orders_customer_number_unique').on(table.customerId, table.purchaseNumber),
+}));
+
+// ============================================
+// INVENTORY PURCHASE REQUESTS TABLE
+// ============================================
+export const inventoryPurchaseRequests = pgTable('inventory_purchase_requests', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  issueId: integer('issue_id').references(() => issues.id, { onDelete: 'cascade' }).notNull(),
+  inventoryItemId: integer('inventory_item_id').references(() => inventoryItems.id, { onDelete: 'set null' }),
+  homeId: integer('home_id').references(() => homes.id, { onDelete: 'set null' }),
+  productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
+  skuId: integer('sku_id').references(() => skus.id, { onDelete: 'set null' }),
+  replacementSkuId: integer('replacement_sku_id').references(() => skus.id, { onDelete: 'set null' }),
+  requestedQuantity: integer('requested_quantity').default(1).notNull(),
+  intendedAction: purchaseRequestActionEnum('intended_action').default('replace').notNull(),
+  requiresApproval: boolean('requires_approval').default(false).notNull(),
+  isApproved: boolean('is_approved').default(false).notNull(),
+  approvedByUserId: integer('approved_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+  claimAmount: decimal('claim_amount', { precision: 14, scale: 2 }),
+  isAmountEstimate: boolean('is_amount_estimate').default(true).notNull(),
+  shippingTaxType: shippingTaxTypeEnum('shipping_tax_type'),
+  shippingTaxValue: decimal('shipping_tax_value', { precision: 14, scale: 2 }),
+  leadTimeWeeks: decimal('lead_time_weeks', { precision: 5, scale: 2 }),
+  shippingTimeWeeks: decimal('shipping_time_weeks', { precision: 5, scale: 2 }),
+  etaDate: date('eta_date'),
+  vendorPreferenceId: integer('vendor_preference_id').references(() => vendors.id, { onDelete: 'set null' }),
+  vendorNotes: text('vendor_notes'),
+  status: purchaseRequestStatusEnum('status').default('draft').notNull(),
+  queuedForPoAt: timestamp('queued_for_po_at', { withTimezone: true }),
+  orderedAt: timestamp('ordered_at', { withTimezone: true }),
+  fulfilledAt: timestamp('fulfilled_at', { withTimezone: true }),
+  canceledAt: timestamp('canceled_at', { withTimezone: true }),
+  createdByUserId: integer('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  assignedToUserId: integer('assigned_to_user_id').references(() => users.id, { onDelete: 'set null' }),
+  purchaseOrderId: integer('purchase_order_id').references(() => inventoryPurchaseOrders.id, { onDelete: 'set null' }),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerIdx: index('idx_purchase_requests_customer').on(table.customerId),
+  issueIdx: index('idx_purchase_requests_issue').on(table.issueId),
+  inventoryIdx: index('idx_purchase_requests_inventory').on(table.inventoryItemId),
+  statusIdx: index('idx_purchase_requests_status').on(table.status),
+  vendorIdx: index('idx_purchase_requests_vendor_pref').on(table.vendorPreferenceId),
+  purchaseOrderIdx: index('idx_purchase_requests_po').on(table.purchaseOrderId),
+  assigneeIdx: index('idx_purchase_requests_assignee').on(table.assignedToUserId),
+}));
+
+// ============================================
+// INVENTORY PURCHASE ORDER ITEMS TABLE
+// ============================================
+export const inventoryPurchaseOrderItems = pgTable('inventory_purchase_order_items', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  purchaseOrderId: integer('purchase_order_id').references(() => inventoryPurchaseOrders.id, { onDelete: 'cascade' }).notNull(),
+  purchaseRequestId: integer('purchase_request_id').references(() => inventoryPurchaseRequests.id, { onDelete: 'set null' }),
+  skuId: integer('sku_id').references(() => skus.id, { onDelete: 'set null' }),
+  replacementSkuId: integer('replacement_sku_id').references(() => skus.id, { onDelete: 'set null' }),
+  orderedQuantity: integer('ordered_quantity').default(1).notNull(),
+  receivedQuantity: integer('received_quantity').default(0).notNull(),
+  unitPriceSnapshot: decimal('unit_price_snapshot', { precision: 14, scale: 2 }),
+  extendedPrice: decimal('extended_price', { precision: 14, scale: 2 }),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerIdx: index('idx_purchase_order_items_customer').on(table.customerId),
+  purchaseOrderIdx: index('idx_purchase_order_items_po').on(table.purchaseOrderId),
+  purchaseRequestIdx: index('idx_purchase_order_items_pr').on(table.purchaseRequestId),
+  skuIdx: index('idx_purchase_order_items_sku').on(table.skuId),
 }));
 
 // ============================================
@@ -904,6 +1019,12 @@ export type NewReservation = typeof reservations.$inferInsert;
 
 export type Issue = typeof issues.$inferSelect;
 export type NewIssue = typeof issues.$inferInsert;
+export type InventoryPurchaseOrder = typeof inventoryPurchaseOrders.$inferSelect;
+export type NewInventoryPurchaseOrder = typeof inventoryPurchaseOrders.$inferInsert;
+export type InventoryPurchaseRequest = typeof inventoryPurchaseRequests.$inferSelect;
+export type NewInventoryPurchaseRequest = typeof inventoryPurchaseRequests.$inferInsert;
+export type InventoryPurchaseOrderItem = typeof inventoryPurchaseOrderItems.$inferSelect;
+export type NewInventoryPurchaseOrderItem = typeof inventoryPurchaseOrderItems.$inferInsert;
 
 // API-friendly types (camelCase) - for client consumption
 export type CustomerAPI = {

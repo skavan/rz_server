@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues } from "./schema.js";
+import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryPurchaseRequests, inventoryPurchaseOrderItems } from "./schema.js";
 import { cadenceConfigSchema } from "./types/json-fields.js";
 import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
@@ -110,6 +110,18 @@ const toRequiredInt = (value: unknown) => {
 };
 
 const toOptionalInt = (value: unknown) => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return undefined;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return value;
+};
+
+const toOptionalNumber = (value: unknown) => {
   if (value === "" || value === null || value === undefined) return undefined;
   if (typeof value === "number") return value;
   if (typeof value === "string") {
@@ -413,6 +425,15 @@ export const issuesValidationSchema = createValidationSchema(
   recommendedAction: z.enum(['none', 'repair', 'replace', 'inspect']).default('none'),
   hasVisibleDamage: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
   damageAssessment: z.enum(['none', 'minor', 'major']).default('none'),
+  resolutionType: z.enum(['monitor', 'repair', 'replace', 'claim']).default('monitor'),
+  requiresPurchase: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+  purchaseRequestId: z
+    .preprocess(toOptionalInt, z.number().int().positive())
+    .nullable()
+    .optional(),
+  estimatedClaimAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  insurancePolicyRef: z.preprocess(toNullableString, z.string().nullable().optional()),
+  insuranceClaimRef: z.preprocess(toNullableString, z.string().nullable().optional()),
   tags: z
     .array(z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]))
     .nullable()
@@ -422,6 +443,56 @@ export const issuesValidationSchema = createValidationSchema(
       if (value === null) return null;
       return value.map((item) => (typeof item === 'string' ? Number(item) : item));
     }),
+});
+
+export const inventoryPurchaseOrdersValidationSchema = createValidationSchema(
+  inventoryPurchaseOrders,
+  refineDateFields('submittedAt', 'acknowledgedAt', 'closedAt', 'createdAt', 'updatedAt')
+).extend({
+  status: z.enum(['draft', 'pending_vendor', 'ordered', 'receiving', 'closed', 'canceled']).default('draft'),
+  totalAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().default(0)),
+  shippingAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().default(0)),
+  taxAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().default(0)),
+  currency: z.string().default('USD'),
+});
+
+export const inventoryPurchaseRequestsValidationSchema = createValidationSchema(
+  inventoryPurchaseRequests,
+  refineDateFields(
+    'approvedAt',
+    'etaDate',
+    'queuedForPoAt',
+    'orderedAt',
+    'fulfilledAt',
+    'canceledAt',
+    'createdAt',
+    'updatedAt'
+  )
+).extend({
+  requestedQuantity: z.preprocess(toOptionalInt, z.number().int().positive().default(1)),
+  intendedAction: z.enum(['repair', 'replace', 'bulk_claim']).default('replace'),
+  requiresApproval: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+  isApproved: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+  claimAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  isAmountEstimate: z.preprocess(toOptionalBoolean, z.boolean().default(true)),
+  shippingTaxType: z.enum(['percent', 'fixed']).nullable().optional(),
+  shippingTaxValue: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  leadTimeWeeks: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  shippingTimeWeeks: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  vendorNotes: z.preprocess(toNullableString, z.string().nullable().optional()),
+  status: z
+    .enum(['draft', 'pending', 'requires_approval', 'approved', 'queued_for_po', 'ordered', 'fulfilled', 'canceled'])
+    .default('draft'),
+});
+
+export const inventoryPurchaseOrderItemsValidationSchema = createValidationSchema(
+  inventoryPurchaseOrderItems,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  orderedQuantity: z.preprocess(toOptionalInt, z.number().int().positive().default(1)),
+  receivedQuantity: z.preprocess(toOptionalInt, z.number().int().min(0).default(0)),
+  unitPriceSnapshot: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  extendedPrice: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
 });
 
 /**
