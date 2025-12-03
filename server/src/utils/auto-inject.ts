@@ -20,6 +20,7 @@ export const TABLE_SCOPE = {
   skus: { customerId: true, homeId: false },
   reservations: { customerId: true, homeId: true },
   issues: { customerId: true, homeId: false },
+  inventoryActionRequests: { customerId: true, homeId: false },
   
   // Home-scoped (implicitly customer-scoped via home)
   homes: { customerId: true, homeId: false }, // customerId required, homeId is the record being created

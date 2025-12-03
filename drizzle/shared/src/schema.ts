@@ -284,10 +284,11 @@ export const issueTypeEnum = pgEnum('issue_type', ['operational', 'cosmetic', 's
 export const issueActionEnum = pgEnum('issue_recommended_action', ['none', 'repair', 'replace', 'inspect']);
 export const issueDamageAssessmentEnum = pgEnum('issue_damage_assessment', ['none', 'minor', 'major']);
 export const issueResolutionEnum = pgEnum('issue_resolution_type', ['monitor', 'repair', 'replace', 'claim']);
-export const purchaseRequestStatusEnum = pgEnum('inventory_purchase_request_status', ['draft', 'pending', 'requires_approval', 'approved', 'queued_for_po', 'ordered', 'fulfilled', 'canceled']);
-export const purchaseRequestActionEnum = pgEnum('purchase_request_action', ['repair', 'replace', 'bulk_claim']);
+export const inventoryActionTypeEnum = pgEnum('inventory_action_type', ['replace', 'repair', 'claim']);
+export const inventoryActionProcurementStatusEnum = pgEnum('inventory_action_procurement_status', ['pending', 'in_review', 'ready_for_order', 'queued_for_po', 'ordered', 'fulfilled', 'canceled']);
+export const inventoryActionRepairStatusEnum = pgEnum('inventory_action_repair_status', ['not_applicable', 'pending', 'awaiting_vendor', 'in_service', 'completed', 'canceled']);
 export const purchaseOrderStatusEnum = pgEnum('inventory_purchase_order_status', ['draft', 'pending_vendor', 'ordered', 'receiving', 'closed', 'canceled']);
-export const shippingTaxTypeEnum = pgEnum('shipping_tax_type', ['percent', 'fixed']);
+export const shippingChargeTypeEnum = pgEnum('shipping_charge_type', ['percent', 'fixed']);
 
 export const tags = pgTable('tags', {
   id: serial('id').primaryKey(),
@@ -572,7 +573,7 @@ export const issues = pgTable('issues', {
   damageAssessment: issueDamageAssessmentEnum('damage_assessment').default('none').notNull(),
   resolutionType: issueResolutionEnum('resolution_type').default('monitor').notNull(),
   requiresPurchase: boolean('requires_purchase').default(false).notNull(),
-  purchaseRequestId: integer('purchase_request_id'),
+  actionRequestId: integer('action_request_id'),
   estimatedClaimAmount: decimal('estimated_claim_amount', { precision: 12, scale: 2 }),
   insurancePolicyRef: varchar('insurance_policy_ref', { length: 100 }),
   insuranceClaimRef: varchar('insurance_claim_ref', { length: 100 }),
@@ -596,7 +597,7 @@ export const issues = pgTable('issues', {
   urgencyIdx: index('idx_issues_urgency').on(table.urgency),
   assigneeIdx: index('idx_issues_assignee').on(table.assignedToUserId),
   deletedIdx: index('idx_issues_deleted_at').on(table.deletedAt),
-  purchaseRequestIdx: index('idx_issues_purchase_request').on(table.purchaseRequestId),
+  actionRequestIdx: index('idx_issues_action_request').on(table.actionRequestId),
 }));
 
 // ============================================
@@ -631,51 +632,59 @@ export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
 }));
 
 // ============================================
-// INVENTORY PURCHASE REQUESTS TABLE
+// INVENTORY ACTION REQUESTS TABLE
 // ============================================
-export const inventoryPurchaseRequests = pgTable('inventory_purchase_requests', {
+export const inventoryActionRequests = pgTable('inventory_action_requests', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
   issueId: integer('issue_id').references(() => issues.id, { onDelete: 'cascade' }).notNull(),
-  inventoryItemId: integer('inventory_item_id').references(() => inventoryItems.id, { onDelete: 'set null' }),
   homeId: integer('home_id').references(() => homes.id, { onDelete: 'set null' }),
+  inventoryItemId: integer('inventory_item_id').references(() => inventoryItems.id, { onDelete: 'set null' }),
   productId: integer('product_id').references(() => products.id, { onDelete: 'set null' }),
-  skuId: integer('sku_id').references(() => skus.id, { onDelete: 'set null' }),
+  currentSkuId: integer('current_sku_id').references(() => skus.id, { onDelete: 'set null' }),
   replacementSkuId: integer('replacement_sku_id').references(() => skus.id, { onDelete: 'set null' }),
+  actionType: inventoryActionTypeEnum('action_type').default('replace').notNull(),
+  procurementStatus: inventoryActionProcurementStatusEnum('procurement_status').default('pending').notNull(),
+  repairStatus: inventoryActionRepairStatusEnum('repair_status').default('not_applicable').notNull(),
   requestedQuantity: integer('requested_quantity').default(1).notNull(),
-  intendedAction: purchaseRequestActionEnum('intended_action').default('replace').notNull(),
-  requiresApproval: boolean('requires_approval').default(false).notNull(),
-  isApproved: boolean('is_approved').default(false).notNull(),
-  approvedByUserId: integer('approved_by_user_id').references(() => users.id, { onDelete: 'set null' }),
-  approvedAt: timestamp('approved_at', { withTimezone: true }),
-  claimAmount: decimal('claim_amount', { precision: 14, scale: 2 }),
-  isAmountEstimate: boolean('is_amount_estimate').default(true).notNull(),
-  shippingTaxType: shippingTaxTypeEnum('shipping_tax_type'),
-  shippingTaxValue: decimal('shipping_tax_value', { precision: 14, scale: 2 }),
-  leadTimeWeeks: decimal('lead_time_weeks', { precision: 5, scale: 2 }),
-  shippingTimeWeeks: decimal('shipping_time_weeks', { precision: 5, scale: 2 }),
-  etaDate: date('eta_date'),
-  vendorPreferenceId: integer('vendor_preference_id').references(() => vendors.id, { onDelete: 'set null' }),
+  fieldNotes: text('field_notes'),
+  internalNotes: text('internal_notes'),
+  createdByUserId: integer('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  assignedToUserId: integer('assigned_to_user_id').references(() => users.id, { onDelete: 'set null' }),
+  decisionByUserId: integer('decision_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  decisionMadeAt: timestamp('decision_made_at', { withTimezone: true }),
+  preferredVendorId: integer('preferred_vendor_id').references(() => vendors.id, { onDelete: 'set null' }),
   vendorNotes: text('vendor_notes'),
-  status: purchaseRequestStatusEnum('status').default('draft').notNull(),
+  unitPriceEstimate: decimal('unit_price_estimate', { precision: 14, scale: 2 }),
+  claimAmount: decimal('claim_amount', { precision: 14, scale: 2 }),
+  isClaimEstimate: boolean('is_claim_estimate').default(true).notNull(),
+  isInsuranceClaim: boolean('is_insurance_claim').default(false).notNull(),
+  shippingChargeType: shippingChargeTypeEnum('shipping_charge_type'),
+  shippingChargeValue: decimal('shipping_charge_value', { precision: 14, scale: 2 }),
+  leadTimeDays: integer('lead_time_days'),
+  shippingTimeDays: integer('shipping_time_days'),
+  etaDate: date('eta_date'),
+  currentPurchaseOrderId: integer('current_purchase_order_id').references(() => inventoryPurchaseOrders.id, { onDelete: 'set null' }),
   queuedForPoAt: timestamp('queued_for_po_at', { withTimezone: true }),
   orderedAt: timestamp('ordered_at', { withTimezone: true }),
   fulfilledAt: timestamp('fulfilled_at', { withTimezone: true }),
   canceledAt: timestamp('canceled_at', { withTimezone: true }),
-  createdByUserId: integer('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
-  assignedToUserId: integer('assigned_to_user_id').references(() => users.id, { onDelete: 'set null' }),
-  purchaseOrderId: integer('purchase_order_id').references(() => inventoryPurchaseOrders.id, { onDelete: 'set null' }),
   metadata: jsonb('metadata'),
+  actionContext: jsonb('action_context'),
+  lastWorkflowTouchedAt: timestamp('last_workflow_touched_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
-  customerIdx: index('idx_purchase_requests_customer').on(table.customerId),
-  issueIdx: index('idx_purchase_requests_issue').on(table.issueId),
-  inventoryIdx: index('idx_purchase_requests_inventory').on(table.inventoryItemId),
-  statusIdx: index('idx_purchase_requests_status').on(table.status),
-  vendorIdx: index('idx_purchase_requests_vendor_pref').on(table.vendorPreferenceId),
-  purchaseOrderIdx: index('idx_purchase_requests_po').on(table.purchaseOrderId),
-  assigneeIdx: index('idx_purchase_requests_assignee').on(table.assignedToUserId),
+  customerIdx: index('idx_action_requests_customer').on(table.customerId),
+  issueIdx: index('idx_action_requests_issue').on(table.issueId),
+  homeIdx: index('idx_action_requests_home').on(table.homeId),
+  inventoryIdx: index('idx_action_requests_inventory').on(table.inventoryItemId),
+  procurementStatusIdx: index('idx_action_requests_procurement_status').on(table.procurementStatus),
+  repairStatusIdx: index('idx_action_requests_repair_status').on(table.repairStatus),
+  vendorIdx: index('idx_action_requests_vendor_pref').on(table.preferredVendorId),
+  purchaseOrderIdx: index('idx_action_requests_po').on(table.currentPurchaseOrderId),
+  assigneeIdx: index('idx_action_requests_assignee').on(table.assignedToUserId),
+  typeIdx: index('idx_action_requests_type').on(table.actionType),
 }));
 
 // ============================================
@@ -685,9 +694,9 @@ export const inventoryPurchaseOrderItems = pgTable('inventory_purchase_order_ite
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
   purchaseOrderId: integer('purchase_order_id').references(() => inventoryPurchaseOrders.id, { onDelete: 'cascade' }).notNull(),
-  purchaseRequestId: integer('purchase_request_id').references(() => inventoryPurchaseRequests.id, { onDelete: 'set null' }),
+  actionRequestId: integer('action_request_id').references(() => inventoryActionRequests.id, { onDelete: 'set null' }),
   skuId: integer('sku_id').references(() => skus.id, { onDelete: 'set null' }),
-  replacementSkuId: integer('replacement_sku_id').references(() => skus.id, { onDelete: 'set null' }),
+  description: text('description'),
   orderedQuantity: integer('ordered_quantity').default(1).notNull(),
   receivedQuantity: integer('received_quantity').default(0).notNull(),
   unitPriceSnapshot: decimal('unit_price_snapshot', { precision: 14, scale: 2 }),
@@ -698,7 +707,7 @@ export const inventoryPurchaseOrderItems = pgTable('inventory_purchase_order_ite
 }, (table) => ({
   customerIdx: index('idx_purchase_order_items_customer').on(table.customerId),
   purchaseOrderIdx: index('idx_purchase_order_items_po').on(table.purchaseOrderId),
-  purchaseRequestIdx: index('idx_purchase_order_items_pr').on(table.purchaseRequestId),
+  actionRequestIdx: index('idx_purchase_order_items_action_request').on(table.actionRequestId),
   skuIdx: index('idx_purchase_order_items_sku').on(table.skuId),
 }));
 
@@ -1021,8 +1030,8 @@ export type Issue = typeof issues.$inferSelect;
 export type NewIssue = typeof issues.$inferInsert;
 export type InventoryPurchaseOrder = typeof inventoryPurchaseOrders.$inferSelect;
 export type NewInventoryPurchaseOrder = typeof inventoryPurchaseOrders.$inferInsert;
-export type InventoryPurchaseRequest = typeof inventoryPurchaseRequests.$inferSelect;
-export type NewInventoryPurchaseRequest = typeof inventoryPurchaseRequests.$inferInsert;
+export type InventoryActionRequest = typeof inventoryActionRequests.$inferSelect;
+export type NewInventoryActionRequest = typeof inventoryActionRequests.$inferInsert;
 export type InventoryPurchaseOrderItem = typeof inventoryPurchaseOrderItems.$inferSelect;
 export type NewInventoryPurchaseOrderItem = typeof inventoryPurchaseOrderItems.$inferInsert;
 

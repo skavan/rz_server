@@ -11,9 +11,9 @@ We decided to treat existing **issues** as the authoritative “work order” su
 | Entity | Purpose | Key Links |
 | --- | --- | --- |
 | `issues` (existing) | Source of truth for damaged inventory | `entity_type='inventory_item'`, `entity_id` |
-| `inventory_purchase_requests` | Hand-off from an issue to procurement | `issue_id`, `inventory_item_id`, `replacement_sku_id` |
+| `inventory_action_requests` | Hand-off from an issue to procurement | `issue_id`, `inventory_item_id`, `replacement_sku_id` |
 | `inventory_purchase_orders` | Vendor orders bundling many purchase requests | `vendor_id`, `created_by_user_id`, `assigned_to_user_id` |
-| `inventory_purchase_order_items` | PO line items pointing back to purchase requests | `purchase_order_id`, `purchase_request_id`, `sku_id` |
+| `inventory_purchase_order_items` | PO line items pointing back to action requests | `purchase_order_id`, `action_request_id`, `sku_id` |
 | `claim_summaries` (materialized view/report) | Aggregates issues + PRs + POs for insurers | grouped by event/policy |
 
 > Optional: keep a lightweight `issue_events` audit log later; today comments + timestamps cover most needs.
@@ -22,7 +22,7 @@ We decided to treat existing **issues** as the authoritative “work order” su
 Add a few columns / metadata fields to `issues` so they can declare intent:
 - `resolution_type` enum(`monitor`,`repair`,`replace`,`claim`) – lets ops express their plan.
 - `requires_purchase` bool – gate for whether a purchase request should be spawned.
-- `purchase_request_id` nullable FK – once created, keeps navigation easy (issue detail links to PR).
+- `action_request_id` nullable FK – once created, keeps navigation easy (issue detail links to the request).
 - `estimated_claim_amount`, `insurance_policy_ref`, `insurance_claim_ref` – store insurer-facing context directly on the issue for rollups.
 
 Issues already have:
@@ -30,7 +30,7 @@ Issues already have:
 - Comments/attachments for photos, inspector notes, receipts.
 - SSE + auth guardrails.
 
-## 4. inventory_purchase_requests Data Model (draft)
+## 4. inventory_action_requests Data Model (draft)
 | Column | Notes |
 | --- | --- |
 | `id` PK | |
@@ -78,7 +78,7 @@ issue -> purchase request draft -> pending -> requires_approval -> approved -> q
 | --- | --- |
 | `id` PK |
 | `purchase_order_id` FK |
-| `purchase_request_id` FK | ensures back-reference to issue context |
+| `action_request_id` FK | ensures back-reference to issue context |
 | `sku_id`, `replacement_sku_id` | redundancy for reports |
 | `ordered_quantity`, `received_quantity` | partial fulfillment support |
 | `unit_price_snapshot`, `extended_price` | locked in at order time |
@@ -86,7 +86,7 @@ issue -> purchase request draft -> pending -> requires_approval -> approved -> q
 
 **State sync:**
 - When procurement attaches a PR to a PO, set PR `status='queued_for_po'` and store `queued_for_po_at`.
-- PO submission flips PR status to `ordered` and records `ordered_at` + `purchase_order_id`.
+- PO submission flips the request procurement status to `ordered` and records `ordered_at` + `current_purchase_order_id`.
 - Receiving goods updates `received_quantity`; once quantities satisfied, PR status → `fulfilled` and the originating issue can auto-transition to `resolved` (or `closed_pending_install` if onsite work remains).
 
 ## 7. Insurance Conversation Support
@@ -116,7 +116,7 @@ That report gives insurers the narrative (“we have 23 damaged items with evide
 
 ## 9. Integrations & Notifications
 - **Comments/Attachments**: reuse issue threads; PRs/POs can embed quick links back to issue discussion.
-- **Eventing**: new channels `data_change:purchase_requests` and `data_change:purchase_orders` so UI + automation stay current.
+- **Eventing**: new channels `data_change:action_requests` and `data_change:purchase_orders` so UI + automation stay current.
 - **Approvals**: when PR status enters `requires_approval`, notify managers; when PO ordered, ping originating issue owners.
 
 ## 10. Security & RLS

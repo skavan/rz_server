@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryPurchaseRequests, inventoryPurchaseOrderItems } from "./schema.js";
+import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems } from "./schema.js";
 import { cadenceConfigSchema } from "./types/json-fields.js";
 import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
@@ -427,7 +427,7 @@ export const issuesValidationSchema = createValidationSchema(
   damageAssessment: z.enum(['none', 'minor', 'major']).default('none'),
   resolutionType: z.enum(['monitor', 'repair', 'replace', 'claim']).default('monitor'),
   requiresPurchase: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
-  purchaseRequestId: z
+  actionRequestId: z
     .preprocess(toOptionalInt, z.number().int().positive())
     .nullable()
     .optional(),
@@ -456,39 +456,43 @@ export const inventoryPurchaseOrdersValidationSchema = createValidationSchema(
   currency: z.string().default('USD'),
 });
 
-export const inventoryPurchaseRequestsValidationSchema = createValidationSchema(
-  inventoryPurchaseRequests,
+export const inventoryActionRequestsValidationSchema = createValidationSchema(
+  inventoryActionRequests,
   refineDateFields(
-    'approvedAt',
     'etaDate',
+    'decisionMadeAt',
     'queuedForPoAt',
     'orderedAt',
     'fulfilledAt',
     'canceledAt',
+    'lastWorkflowTouchedAt',
     'createdAt',
     'updatedAt'
   )
 ).extend({
   requestedQuantity: z.preprocess(toOptionalInt, z.number().int().positive().default(1)),
-  intendedAction: z.enum(['repair', 'replace', 'bulk_claim']).default('replace'),
-  requiresApproval: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
-  isApproved: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+  actionType: z.enum(['replace', 'repair', 'claim']).default('replace'),
   claimAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
-  isAmountEstimate: z.preprocess(toOptionalBoolean, z.boolean().default(true)),
-  shippingTaxType: z.enum(['percent', 'fixed']).nullable().optional(),
-  shippingTaxValue: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
-  leadTimeWeeks: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
-  shippingTimeWeeks: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  isClaimEstimate: z.preprocess(toOptionalBoolean, z.boolean().default(true)),
+  isInsuranceClaim: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+  shippingChargeType: z.enum(['percent', 'fixed']).nullable().optional(),
+  shippingChargeValue: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  leadTimeDays: z.preprocess(toOptionalInt, z.number().int().nonnegative().optional()),
+  shippingTimeDays: z.preprocess(toOptionalInt, z.number().int().nonnegative().optional()),
   vendorNotes: z.preprocess(toNullableString, z.string().nullable().optional()),
-  status: z
-    .enum(['draft', 'pending', 'requires_approval', 'approved', 'queued_for_po', 'ordered', 'fulfilled', 'canceled'])
-    .default('draft'),
+  procurementStatus: z
+    .enum(['pending', 'in_review', 'ready_for_order', 'queued_for_po', 'ordered', 'fulfilled', 'canceled'])
+    .default('pending'),
+  repairStatus: z
+    .enum(['not_applicable', 'pending', 'awaiting_vendor', 'in_service', 'completed', 'canceled'])
+    .default('not_applicable'),
 });
 
 export const inventoryPurchaseOrderItemsValidationSchema = createValidationSchema(
   inventoryPurchaseOrderItems,
   refineDateFields('createdAt', 'updatedAt')
 ).extend({
+  description: z.preprocess(toNullableString, z.string().nullable().optional()),
   orderedQuantity: z.preprocess(toOptionalInt, z.number().int().positive().default(1)),
   receivedQuantity: z.preprocess(toOptionalInt, z.number().int().min(0).default(0)),
   unitPriceSnapshot: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),

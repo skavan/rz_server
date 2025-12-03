@@ -36,6 +36,7 @@ import financeRoutes from './routes/finance/index.js';
 import financeCommissionsRoutes from './routes/finance/commissions.js';
 import mediaRoutes from './routes/media.js';
 import issuesRoutes from './routes/issues.js';
+import inventoryActionRequestsRoutes from './routes/inventory-action-requests.js';
 import tableFallbackRoutes from './routes/table-fallback.js';
 
 // Load environment variables
@@ -182,6 +183,7 @@ mountApiRoute('/api/dbTable', tableRoutes);          // Raw SQL endpoints
 mountApiRoute('/api/events', eventsRoutes);          // SSE events
 mountApiRoute('/api/media', mediaRoutes);            // Media upload/management
 mountApiRoute('/api/issues', issuesRoutes);
+mountApiRoute('/api/inventory-action-requests', inventoryActionRequestsRoutes);
 app.use('/api', tableFallbackRoutes);
 
 // Root endpoint

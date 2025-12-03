@@ -16,7 +16,7 @@ export type DataSourceKey =
   | "customers"
   | "homes"
   | "issues"
-  | "inventory_purchase_requests"
+  | "inventory_action_requests"
   | "inventory_purchase_orders"
   | "inventory_purchase_order_items"
   | string; // extensible
@@ -36,7 +36,7 @@ export type CoreTableData = {
   customers?: any[];
   homes?: any[];
   issues?: any[];
-  inventory_purchase_requests?: any[];
+  inventory_action_requests?: any[];
   inventory_purchase_orders?: any[];
   inventory_purchase_order_items?: any[];
   [key: string]: any[] | undefined;
