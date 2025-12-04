@@ -11,8 +11,10 @@ import {
   unique,
   index,
   jsonb,
-  pgEnum
+  pgEnum,
+  foreignKey,
 } from 'drizzle-orm/pg-core';
+import type { CommentBody } from './types/json-fields.js';
 
 // ============================================
 // AUTHENTICATION TABLES (NextAuth.js compatible)
@@ -289,6 +291,8 @@ export const inventoryActionProcurementStatusEnum = pgEnum('inventory_action_pro
 export const inventoryActionRepairStatusEnum = pgEnum('inventory_action_repair_status', ['not_applicable', 'pending', 'awaiting_vendor', 'in_service', 'completed', 'canceled']);
 export const purchaseOrderStatusEnum = pgEnum('inventory_purchase_order_status', ['draft', 'pending_vendor', 'ordered', 'receiving', 'closed', 'canceled']);
 export const shippingChargeTypeEnum = pgEnum('shipping_charge_type', ['percent', 'fixed']);
+export const commentVisibilityEnum = pgEnum('comment_visibility', ['tenant', 'internal', 'external']);
+export const commentTypeEnum = pgEnum('comment_type', ['user', 'system', 'email_inbound', 'email_outbound', 'note']);
 
 export const tags = pgTable('tags', {
   id: serial('id').primaryKey(),
@@ -533,7 +537,7 @@ export const mediaAssets = pgTable('media_assets', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
   homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }),
-  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'location_type'>(),
+  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'location_type' | 'comment'>(),
   entityId: integer('entity_id').notNull(),
   url: text('url').notNull(),
   title: varchar('title', { length: 255 }),
@@ -556,6 +560,60 @@ export const mediaAssets = pgTable('media_assets', {
   activeIdx: index('idx_media_assets_active').on(table.isActive),
   tagsIdx: index('idx_media_assets_tags_gin').on(table.tags),
   sortIdx: index('idx_media_assets_sort').on(table.entityType, table.entityId, table.sortOrder),
+}));
+
+// ============================================
+// COMMENTS TABLE
+// ============================================
+export const comments = pgTable('comments', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  homeId: integer('home_id').references(() => homes.id, { onDelete: 'set null' }),
+  entityType: varchar('entity_type', { length: 50 })
+    .notNull()
+    .$type<
+      | 'issue'
+      | 'inventory_item'
+      | 'inventory_action_request'
+      | 'inventory_purchase_order'
+      | 'inventory_purchase_order_item'
+      | 'home'
+      | 'location'
+      | 'product'
+      | 'sku'
+      | 'todo'
+      | 'booking_reservation'
+      | 'customer'
+    >(),
+  entityId: integer('entity_id').notNull(),
+  parentCommentId: integer('parent_comment_id'),
+  commentType: commentTypeEnum('comment_type').default('user').notNull(),
+  visibility: commentVisibilityEnum('visibility').default('tenant').notNull(),
+  authorUserId: integer('author_user_id').references(() => users.id, { onDelete: 'set null' }),
+  actorEmail: varchar('actor_email', { length: 320 }),
+  body: jsonb('body').notNull().$type<CommentBody>(),
+  mentions: integer('mentions').array(),
+  metadata: jsonb('metadata'),
+  hasAttachments: boolean('has_attachments').default(false).notNull(),
+  isSystem: boolean('is_system').default(false).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deletedByUserId: integer('deleted_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+}, (table) => ({
+  parentFk: foreignKey({
+    columns: [table.parentCommentId],
+    foreignColumns: [table.id],
+    name: 'comments_parent_comment_id_fkey',
+  }).onDelete('cascade'),
+  customerIdx: index('idx_comments_customer').on(table.customerId),
+  entityIdx: index('idx_comments_entity').on(table.entityType, table.entityId),
+  homeIdx: index('idx_comments_home').on(table.homeId),
+  parentIdx: index('idx_comments_parent').on(table.parentCommentId),
+  authorIdx: index('idx_comments_author').on(table.authorUserId),
+  visibilityIdx: index('idx_comments_visibility').on(table.visibility),
+  deletedIdx: index('idx_comments_deleted_at').on(table.deletedAt),
+  createdIdx: index('idx_comments_created_at').on(table.createdAt),
 }));
 
 export const issues = pgTable('issues', {
@@ -617,6 +675,7 @@ export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
   totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).default('0').notNull(),
   shippingAmount: decimal('shipping_amount', { precision: 14, scale: 2 }).default('0').notNull(),
   taxAmount: decimal('tax_amount', { precision: 14, scale: 2 }).default('0').notNull(),
+  dutiesAmount: decimal('duties_amount', { precision: 14, scale: 2 }).default('0').notNull(),
   currency: varchar('currency', { length: 10 }).default('USD').notNull(),
   notes: text('notes'),
   metadata: jsonb('metadata'),

@@ -37,6 +37,7 @@ import financeCommissionsRoutes from './routes/finance/commissions.js';
 import mediaRoutes from './routes/media.js';
 import issuesRoutes from './routes/issues.js';
 import inventoryActionRequestsRoutes from './routes/inventory-action-requests.js';
+import commentsRoutes from './routes/comments.js';
 import tableFallbackRoutes from './routes/table-fallback.js';
 
 // Load environment variables
@@ -184,6 +185,7 @@ mountApiRoute('/api/events', eventsRoutes);          // SSE events
 mountApiRoute('/api/media', mediaRoutes);            // Media upload/management
 mountApiRoute('/api/issues', issuesRoutes);
 mountApiRoute('/api/inventory-action-requests', inventoryActionRequestsRoutes);
+mountApiRoute('/api/comments', commentsRoutes);
 app.use('/api', tableFallbackRoutes);
 
 // Root endpoint
@@ -218,6 +220,11 @@ app.get('/', (req, res) => {
       'PUT /api/inventory-items/:id',
       'DELETE /api/inventory-items/:id',
       'PATCH /api/inventory-items/:id/adjust-quantity',
+      'GET /api/comments',
+      'GET /api/comments/:id',
+      'POST /api/comments',
+      'PATCH /api/comments/:id',
+      'DELETE /api/comments/:id',
         'GET /api/issues',
         'GET /api/issues/:id',
         'POST /api/issues',

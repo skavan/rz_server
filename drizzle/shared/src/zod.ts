@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems } from "./schema.js";
-import { cadenceConfigSchema } from "./types/json-fields.js";
+import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems, comments } from "./schema.js";
+import { cadenceConfigSchema, commentBodySchema } from "./types/json-fields.js";
 import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
 /**
@@ -168,6 +168,88 @@ const toOptionalBoolean = (value: unknown) => {
   return value;
 };
 
+const toCommentBody = (value: unknown) => {
+  if (value === undefined || value === null) return undefined;
+
+  const wrapParagraph = (text: string) => ({ type: 'paragraph' as const, text });
+  const wrapSystemData = (data: unknown) => ({ type: 'system' as const, data: data as Record<string, unknown> });
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed === 'string') {
+        return { version: 1, blocks: [wrapParagraph(parsed)] };
+      }
+      if (Array.isArray(parsed)) {
+        const normalizedBlocks = parsed.map((block) => {
+          if (typeof block === 'string') return wrapParagraph(block);
+          return block;
+        });
+        return { version: 1, blocks: normalizedBlocks };
+      }
+      if (parsed && typeof parsed === 'object' && 'blocks' in parsed) {
+        return parsed;
+      }
+      if (parsed && typeof parsed === 'object' && 'type' in parsed) {
+        return { version: 1, blocks: [parsed] };
+      }
+      return { version: 1, blocks: [wrapSystemData(parsed)] };
+    } catch {
+      return { version: 1, blocks: [wrapParagraph(trimmed)] };
+    }
+  }
+
+  if (Array.isArray(value)) {
+    const normalizedBlocks = value.map((block) => {
+      if (typeof block === 'string') return wrapParagraph(block);
+      if (block && typeof block === 'object' && 'type' in block) return block;
+      return wrapSystemData(block);
+    });
+    return { version: 1, blocks: normalizedBlocks };
+  }
+
+  if (typeof value === 'object') {
+    if (value && 'blocks' in (value as Record<string, unknown>)) {
+      return value;
+    }
+    if (value && 'type' in (value as Record<string, unknown>)) {
+      return { version: 1, blocks: [value] };
+    }
+    return { version: 1, blocks: [wrapSystemData(value)] };
+  }
+
+  return { version: 1, blocks: [wrapParagraph(String(value))] };
+};
+
+const toJsonRecord = (value: unknown) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    return parseJsonMaybe(trimmed);
+  }
+  return value;
+};
+
+const commentVisibilityValues = ['tenant', 'internal', 'external'] as const;
+const commentTypeValues = ['user', 'system', 'email_inbound', 'email_outbound', 'note'] as const;
+const commentEntityTypes = [
+  'issue',
+  'inventory_item',
+  'inventory_action_request',
+  'inventory_purchase_order',
+  'inventory_purchase_order_item',
+  'home',
+  'location',
+  'product',
+  'sku',
+  'todo',
+  'booking_reservation',
+  'customer',
+] as const;
+
 /**
  * Normalizes relation arrays from form submissions or JSON payloads.
  * - Accepts strings (JSON), arrays, or undefined
@@ -246,6 +328,40 @@ export const mediaAssetsValidationSchema = createValidationSchema(
   sortOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
   tags: z.array(z.number().int()).nullable().optional(),
+});
+
+export const commentsValidationSchema = createValidationSchema(
+  comments,
+  refineDateFields('createdAt', 'updatedAt', 'deletedAt')
+).extend({
+  homeId: z
+    .preprocess(toOptionalInt, z.number().int().positive())
+    .nullable()
+    .optional(),
+  entityType: z.enum(commentEntityTypes),
+  entityId: z.preprocess(toRequiredInt, z.number().int().positive()),
+  parentCommentId: z
+    .preprocess(toOptionalInt, z.number().int().positive())
+    .nullable()
+    .optional(),
+  commentType: z.enum(commentTypeValues).default('user'),
+  visibility: z.enum(commentVisibilityValues).default('tenant'),
+  authorUserId: z
+    .preprocess(toOptionalInt, z.number().int().positive())
+    .nullable()
+    .optional(),
+  actorEmail: z.preprocess(toNullableString, z.string().max(320).nullable().optional()),
+  body: z.preprocess(toCommentBody, commentBodySchema),
+  metadata: z.preprocess(toJsonRecord, z.record(z.any())).nullable().optional(),
+  mentions: relationArrayField(
+    z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)])
+  ).transform((value) => value.map((item) => (typeof item === 'string' ? Number(item) : item))),
+  hasAttachments: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+  isSystem: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+  deletedByUserId: z
+    .preprocess(toOptionalInt, z.number().int().positive())
+    .nullable()
+    .optional(),
 });
 
 /**

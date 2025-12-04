@@ -534,7 +534,7 @@ CREATE TABLE media_assets (
   id SERIAL PRIMARY KEY,
   customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
   home_id INTEGER REFERENCES homes(id) ON DELETE CASCADE,
-  entity_type VARCHAR(20) NOT NULL,  -- 'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue'
+  entity_type VARCHAR(20) NOT NULL,  -- 'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'comment'
   entity_id INTEGER NOT NULL,
   url TEXT NOT NULL,                 -- Relative path: "customers/1/product/42/1730476800-file.jpg"
   title VARCHAR(255),

@@ -9,6 +9,7 @@ import {
   locationTypes,
   homes,
   issues,
+  comments,
   eq,
   and,
   inArray,
@@ -66,6 +67,7 @@ const ENTITY_TABLES = {
   home: homes,
   issue: issues,
   location_type: locationTypes,
+  comment: comments,
 };
 
 type EntityType = keyof typeof ENTITY_TABLES;
@@ -168,6 +170,16 @@ async function updateEntityMediaFlag(
   entityId: number,
   hasMedia: boolean
 ): Promise<void> {
+  if (entityType === 'comment') {
+    await withTenantScope({ customerId, homeIds }, async (scopedDb) => {
+      await scopedDb
+        .update(comments)
+        .set({ hasAttachments: hasMedia, updatedAt: new Date() })
+        .where(eq(comments.id, entityId));
+    });
+    return;
+  }
+
   const table = ENTITY_TABLES[entityType as EntityType];
   if (!table || !('hasMediaAssets' in table)) return;
 
@@ -241,6 +253,14 @@ async function resolveHomeIdForEntity(
           .limit(1);
         return rows[0]?.homeId ?? null;
       }
+      case 'comment': {
+        const rows = await scopedDb
+          .select({ homeId: comments.homeId })
+          .from(comments)
+          .where(and(eq(comments.customerId, scope.customerId), eq(comments.id, entityId)))
+          .limit(1);
+        return rows[0]?.homeId ?? null;
+      }
       case 'location_type':
         return null;
       default:
@@ -291,7 +311,7 @@ router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), 
       homeId = await resolveHomeIdForEntity(scope, entityType, entityId);
     }
 
-    if (homeId === null) {
+    if (homeId === null && entityType !== 'comment') {
       return res.status(400).json({ error: 'Unable to resolve home for this media asset' });
     }
 

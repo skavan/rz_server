@@ -13,7 +13,7 @@ We decided to treat existing **issues** as the authoritative “work order” su
 | `issues` (existing) | Source of truth for damaged inventory | `entity_type='inventory_item'`, `entity_id` |
 | `inventory_action_requests` | Hand-off from an issue to procurement | `issue_id`, `inventory_item_id`, `replacement_sku_id` |
 | `inventory_purchase_orders` | Vendor orders bundling many purchase requests | `vendor_id`, `created_by_user_id`, `assigned_to_user_id` |
-| `inventory_purchase_order_items` | PO line items pointing back to action requests | `purchase_order_id`, `action_request_id`, `sku_id` |
+| `inventory_purchase_order_items` | PO line items pointing back to action requests | `purchase_order_id`, `action_request_id`, `sku_id (copy of replacement_sku_id)` |
 | `claim_summaries` (materialized view/report) | Aggregates issues + PRs + POs for insurers | grouped by event/policy |
 
 > Optional: keep a lightweight `issue_events` audit log later; today comments + timestamps cover most needs.
@@ -71,7 +71,7 @@ issue -> purchase request draft -> pending -> requires_approval -> approved -> q
 | `status` enum(`draft`,`pending_vendor`,`ordered`,`receiving`,`closed`,`canceled`) | procurement lifecycle |
 | `created_by_user_id`, `assigned_to_user_id` | procurement ownership |
 | `submitted_at`, `acknowledged_at`, `closed_at` | timeline |
-| `total_amount`, `shipping_amount`, `tax_amount`, `currency` | financial snapshot |
+| `total_amount`, `shipping_amount`, `tax_amount`, `duties_amount`, `currency` | financial snapshot |
 | `notes`, `metadata` | tracking numbers, shipping accounts, insurer references |
 
 | inventory_purchase_order_items Column | Notes |
@@ -79,10 +79,12 @@ issue -> purchase request draft -> pending -> requires_approval -> approved -> q
 | `id` PK |
 | `purchase_order_id` FK |
 | `action_request_id` FK | ensures back-reference to issue context |
-| `sku_id`, `replacement_sku_id` | redundancy for reports |
+| `sku_id` | copies the action request's `replacement_sku_id` at order time |
 | `ordered_quantity`, `received_quantity` | partial fulfillment support |
-| `unit_price_snapshot`, `extended_price` | locked in at order time |
+| `unit_price_snapshot`, `extended_price` | locked in at order time (no per-line shipping/tax) |
 | `metadata` | lot numbers, shipment splits |
+
+PO-level charges are tracked once on the header (`shipping_amount`, `tax_amount`, `duties_amount`), so line items only manage quantity and unit price snapshots. If procurement needs to note how shipping was allocated, they can capture that in the PO or line `metadata` without extra math.
 
 **State sync:**
 - When procurement attaches a PR to a PO, set PR `status='queued_for_po'` and store `queued_for_po_at`.
@@ -94,7 +96,7 @@ To answer the insurer’s questions (“23 issues, intent, total claim”):
 
 1. **Evidence** – already in issues via photos/comments. Ensure PR creation copies issue ID so exports can pull the narrative.
 2. **Intent** – `intended_action`, `replacement_sku_id`, `requested_quantity`, `repair_vendor_notes` explain whether we’re buying or repairing.
-3. **Claim dollars** – `claim_amount`, `shipping_tax_value`, plus per-line pricing captured on PO items. Exports can roll these up by event (`metadata.eventId`) and show totals by replace vs repair.
+3. **Claim dollars** – `claim_amount`, `shipping_tax_value`, plus PO line pricing snapshots. Actual spend equals `Σ line.extended_price + shipping_amount + tax_amount + duties_amount`, so exports can roll these up by event (`metadata.eventId`) and show totals by replace vs repair.
 
 ### Pricing defaults & claim linkage
 - The API now derives a `pricingSummary` for every `inventory_action_requests` row (base amount, shipping contribution, and `calculatedTotal`). That summary is returned on all list/detail/create/update/delete responses so the client can show the live estimate without re-implementing math.
@@ -140,19 +142,18 @@ That report gives insurers the narrative (“we have 23 damaged items with evide
     - TV #3 (preferred vendor = “Amazon”)
     - Mattress (preferred vendor = “MattressCo”)
 3. **Batch Selection** – They decide to order all four items from Amazon to save shipping. In the UI, they check all four rows and click **Create Purchase Order**.
-4. **PO Form** – The dialog asks for:
-    - Vendor (dropdown) – they pick **Amazon** (this overrides any preferred vendors on the individual requests).
-    - Ship-to location – choose the warehouse.
-    - Notes / internal reference – “Hurricane Delta replacements.”
-    - Optional: assign buyer, add tags, mark insurance intent.
-    When they confirm, the server:
-    - Creates a master PO record in `inventory_purchase_orders` with the chosen vendor, totals at $0 for now, and status `draft`.
-    - Creates four child rows in `inventory_purchase_order_items`, each pointing to the new PO and the matching action request (`action_request_id` column).
-    - Updates each action request with:
-      - `procurement_status = 'queued_for_po'`
-      - `queued_for_po_at = now()`
-      - `current_purchase_order_id = <new PO id>`
-5. **Finalize Order** – Back on the PO screen, the coordinator enters the actual unit prices, shipping, and taxes provided by Amazon, then clicks “Submit Order.” That flips the PO status to `ordered` and pushes the same state change back down to the action requests (`procurement_status = 'ordered'`, `ordered_at = now()`).
+4. **PO Form** – A single dialog collects everything:
+        - Vendor (dropdown) – they pick **Amazon** (overrides any preferred vendor hints).
+        - Ship-to location – choose the warehouse.
+        - Per-line overrides – adjust quantity or unit price (each line auto-loads the action request’s replacement SKU and estimated price).
+        - Header charges – shipping, tax, duties, internal notes (“Hurricane Delta replacements”), assignment, and optional tags/insurance intent.
+        When they confirm, the server in one transaction:
+        - Creates the PO header with final totals (lines + shipping + tax + duties) and status `ordered`.
+        - Creates four child rows in `inventory_purchase_order_items`, each pointing to the PO and its action request, snapshotting `ordered_quantity`, `unit_price_snapshot`, and `extended_price`.
+        - Updates each action request with:
+            - `procurement_status = 'ordered'`
+            - `queued_for_po_at = ordered_at = now()`
+            - `current_purchase_order_id = <new PO id>`
 6. **Warehouse Handoff** – Receiving teams now filter the action requests list to “Ordered” and can see all four items share PO #PO-2025-1203-AMZN. When the boxes arrive, they edit each action request (or the PO line) to update `received_quantity`. Once an item is fully received, they set the request to `fulfilled` so the original Issue can be closed.
 7. **Insurance / Finance** – Finance downloads the claim summary. Because all four requests now share the same PO, the export shows the estimated claim amount versus the actual PO spend for each line, along with the shared vendor.
 

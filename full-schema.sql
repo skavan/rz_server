@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS "inventory_purchase_orders" (
 	"total_amount" numeric(14, 2) DEFAULT '0' NOT NULL,
 	"shipping_amount" numeric(14, 2) DEFAULT '0' NOT NULL,
 	"tax_amount" numeric(14, 2) DEFAULT '0' NOT NULL,
+	"duties_amount" numeric(14, 2) DEFAULT '0' NOT NULL,
 	"currency" varchar(10) DEFAULT 'USD' NOT NULL,
 	"notes" text,
 	"metadata" jsonb,
