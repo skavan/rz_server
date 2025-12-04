@@ -96,6 +96,11 @@ To answer the insurer’s questions (“23 issues, intent, total claim”):
 2. **Intent** – `intended_action`, `replacement_sku_id`, `requested_quantity`, `repair_vendor_notes` explain whether we’re buying or repairing.
 3. **Claim dollars** – `claim_amount`, `shipping_tax_value`, plus per-line pricing captured on PO items. Exports can roll these up by event (`metadata.eventId`) and show totals by replace vs repair.
 
+### Pricing defaults & claim linkage
+- The API now derives a `pricingSummary` for every `inventory_action_requests` row (base amount, shipping contribution, and `calculatedTotal`). That summary is returned on all list/detail/create/update/delete responses so the client can show the live estimate without re-implementing math.
+- When a request is created or updated **without** an explicit `claim_amount`, the server automatically sets it to the `calculatedTotal` (and flags `is_claim_estimate=true`). Operators can still override the field later; the default only runs when the claim amount is blank.
+- Shipping math is normalized server-side: `shipping_charge_type='percent'` applies to the extended unit price (`requested_quantity × unit_price_estimate`), while `fixed` adds a flat dollar value.
+
 We can generate a `claim_summaries` materialized view:
 | Field | Source |
 | --- | --- |
@@ -113,6 +118,62 @@ That report gives insurers the narrative (“we have 23 damaged items with evide
 - Purchase request form: prefill SKU price, allow toggling “estimate vs firm,” capture shipping % or dollar.
 - Procurement queue: filter by vendor preference, disaster event, urgency.
 - Insurance export screen: select event/policy, download CSV/PDF with issue photos + cost breakdown.
+
+## 8.1 Manager Playbook (Plain English)
+
+**Field / Property Manager**
+- Walks a home, spots a damaged or missing item, and opens an Issue with photos.
+- Inside the Issue drawer they choose “Repair” or “Replace” and hit “Request Action.” No extra forms—this auto-creates an inventory action request and sets the Issue’s status so everyone sees it needs procurement help.
+- Once they submit, their job is to keep the Issue updated (attach more evidence, mark resident impact, etc.). If ops later fixes it on site, they can cancel the action request straight from the Issue detail.
+
+**Procurement Coordinator**
+- Lives in the “Action Requests” queue. Each row shows the Issue context, current SKU, quantity, owner, and the server-calculated estimated total (unit price × qty + shipping).
+- Reviews new entries, assigns themselves (or another buyer), and fills in anything the field team skipped: preferred vendor, replacement SKU, ETA, and whether insurance should be billed.
+- If multiple requests hit the same vendor, they select them and choose “Create Purchase Order.” That automatically sets each request to “Queued for PO” and stamps the PO ID back onto the cards so the field team can track progress.
+- When the vendor confirms, they flip the procurement status to “Ordered,” capture tracking numbers in internal notes, and the system timestamps `ordered_at` for KPI reporting.
+
+### Example Walkthrough: 3 TVs + 1 Mattress
+1. **Trigger** – Field teams log four issues (three TVs, one mattress) and click “Request Action.” The server creates four action requests, all in `procurement_status='pending'` with their own estimated totals.
+2. **Queue Review** – A procurement coordinator filters the Action Requests list to “Open” and sees:
+    - TV #1 (preferred vendor = “Best Buy”) 
+    - TV #2 (no vendor hint)
+    - TV #3 (preferred vendor = “Amazon”)
+    - Mattress (preferred vendor = “MattressCo”)
+3. **Batch Selection** – They decide to order all four items from Amazon to save shipping. In the UI, they check all four rows and click **Create Purchase Order**.
+4. **PO Form** – The dialog asks for:
+    - Vendor (dropdown) – they pick **Amazon** (this overrides any preferred vendors on the individual requests).
+    - Ship-to location – choose the warehouse.
+    - Notes / internal reference – “Hurricane Delta replacements.”
+    - Optional: assign buyer, add tags, mark insurance intent.
+    When they confirm, the server:
+    - Creates a master PO record in `inventory_purchase_orders` with the chosen vendor, totals at $0 for now, and status `draft`.
+    - Creates four child rows in `inventory_purchase_order_items`, each pointing to the new PO and the matching action request (`action_request_id` column).
+    - Updates each action request with:
+      - `procurement_status = 'queued_for_po'`
+      - `queued_for_po_at = now()`
+      - `current_purchase_order_id = <new PO id>`
+5. **Finalize Order** – Back on the PO screen, the coordinator enters the actual unit prices, shipping, and taxes provided by Amazon, then clicks “Submit Order.” That flips the PO status to `ordered` and pushes the same state change back down to the action requests (`procurement_status = 'ordered'`, `ordered_at = now()`).
+6. **Warehouse Handoff** – Receiving teams now filter the action requests list to “Ordered” and can see all four items share PO #PO-2025-1203-AMZN. When the boxes arrive, they edit each action request (or the PO line) to update `received_quantity`. Once an item is fully received, they set the request to `fulfilled` so the original Issue can be closed.
+7. **Insurance / Finance** – Finance downloads the claim summary. Because all four requests now share the same PO, the export shows the estimated claim amount versus the actual PO spend for each line, along with the shared vendor.
+
+**Key callouts for this example**
+- `preferred_vendor_id` on action requests is advisory. The PO creator decides the real vendor at step 4.
+- All PO line items inherit the same `purchase_order_id`, so reports can trace “which replacements were bundled together.”
+- Status changes (`pending → queued_for_po → ordered → fulfilled`) happen automatically when the PO is created, submitted, and received; coordinators only need to confirm shipping/receiving data.
+
+**Receiving / Warehouse**
+- Watches the PO detail or the action request list filtered to “Ordered.” When goods arrive, they update “received quantity.” Once the quantity matches what was requested (or the repair ticket comes back completed), they set the action request to “Fulfilled.”
+- That fulfillment triggers a notification back to the Issue so the original reporter can close the loop (install the new item, mark the guest impact resolved, etc.).
+
+**Finance / Insurance Lead**
+- Opens the built-in “Claim Summary” report, which now pulls from three sources: Issues (evidence), Action Requests (estimated claim amount), and Purchase Order Items (actual spend). They can export a CSV/PDF grouped by disaster event, policy, or home.
+- Because the API auto-defaults claim amount to the latest estimated total, finance quickly sees whether a request has a missing number. As soon as PO invoices arrive, they compare “estimated vs actual” to spot overruns before submitting to the carrier.
+
+**Key guardrails**
+- Every screen respects tenant + home scope, so managers only see the homes they own.
+- SSE `data_change:inventory_action_requests` events power live updates; no need to refresh dashboards.
+- If a request is linked to a PO, deletion is blocked (prevents finance mismatches). Cancel instead, which keeps the audit trail but sets status to “Canceled.”
+- System refuses to create a new action request if the targeted inventory item already has an active one (prevents duplicate replacements for the same physical asset).
 
 ## 9. Integrations & Notifications
 - **Comments/Attachments**: reuse issue threads; PRs/POs can embed quick links back to issue discussion.

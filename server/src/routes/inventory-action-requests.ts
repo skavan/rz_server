@@ -5,6 +5,7 @@ import {
   inventoryPurchaseOrders,
   issues,
   eq,
+  ne,
   and,
   inArray,
   ilike,
@@ -201,6 +202,143 @@ const setNullableInteger = (
   }
 };
 
+type PricingSummary = {
+  quantity: number;
+  unitPrice: number | null;
+  baseAmount: number | null;
+  shippingType: ShippingChargeType | null;
+  shippingValue: number | null;
+  shippingAmount: number | null;
+  totalAmount: number | null;
+};
+
+type InventoryActionRequestResponse = InventoryActionRequestRow & {
+  pricingSummary: PricingSummary;
+  calculatedTotal: number | null;
+};
+
+type PricingComputationSource = {
+  requestedQuantity?: number | null;
+  unitPriceEstimate?: string | number | null;
+  shippingChargeType?: ShippingChargeType | null;
+  shippingChargeValue?: string | number | null;
+};
+
+const toNumericValue = (value: unknown): number | null => {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  const text = String(value).trim();
+  if (!text) return null;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const roundCurrency = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const buildPricingSummary = (source: PricingComputationSource): PricingSummary => {
+  const quantity = typeof source.requestedQuantity === 'number' && Number.isFinite(source.requestedQuantity)
+    ? source.requestedQuantity
+    : 1;
+  const unitPrice = toNumericValue(source.unitPriceEstimate);
+  const baseAmount = unitPrice != null ? roundCurrency(unitPrice * quantity) : null;
+  const shippingValue = toNumericValue(source.shippingChargeValue);
+  let shippingAmount: number | null = null;
+  if (shippingValue != null) {
+    if (source.shippingChargeType === 'percent') {
+      if (baseAmount != null) {
+        shippingAmount = roundCurrency(baseAmount * (shippingValue / 100));
+      }
+    } else if (source.shippingChargeType === 'fixed') {
+      shippingAmount = roundCurrency(shippingValue);
+    }
+  }
+  let totalAmount: number | null = null;
+  if (baseAmount != null || shippingAmount != null) {
+    totalAmount = roundCurrency((baseAmount ?? 0) + (shippingAmount ?? 0));
+  }
+  return {
+    quantity,
+    unitPrice,
+    baseAmount,
+    shippingType: source.shippingChargeType ?? null,
+    shippingValue: shippingValue,
+    shippingAmount,
+    totalAmount,
+  };
+};
+
+const attachPricingSummary = (row: InventoryActionRequestRow): InventoryActionRequestResponse => {
+  const pricingSummary = buildPricingSummary(row);
+  return {
+    ...row,
+    pricingSummary,
+    calculatedTotal: pricingSummary.totalAmount,
+  };
+};
+
+const formatDecimalValue = (value: number): string => roundCurrency(value).toFixed(2);
+
+const BLOCKING_PROCUREMENT_STATUSES: ProcurementStatus[] = [
+  'pending',
+  'in_review',
+  'ready_for_order',
+  'queued_for_po',
+  'ordered',
+];
+
+const hasBlockingInventoryRequest = async (
+  scopedDb: any,
+  params: { customerId: number; inventoryItemId: number; excludeId?: number }
+): Promise<boolean> => {
+  const predicates = [
+    eq(inventoryActionRequests.customerId, params.customerId),
+    eq(inventoryActionRequests.inventoryItemId, params.inventoryItemId),
+    inArray(inventoryActionRequests.procurementStatus, BLOCKING_PROCUREMENT_STATUSES),
+  ];
+
+  if (params.excludeId) {
+    predicates.push(ne(inventoryActionRequests.id, params.excludeId));
+  }
+
+  const rows = await scopedDb
+    .select({ id: inventoryActionRequests.id })
+    .from(inventoryActionRequests)
+    .where(and(...predicates))
+    .limit(1);
+
+  return rows.length > 0;
+};
+
+const ensureClaimAmount = (
+  target: Record<string, any>,
+  options: { claimTouched: boolean; baseRow?: InventoryActionRequestRow | null }
+): void => {
+  if (options.claimTouched) return;
+  if (target.claimAmount !== undefined && target.claimAmount !== null) return;
+  const existingClaim = options.baseRow?.claimAmount;
+  if (existingClaim !== undefined && existingClaim !== null) {
+    return;
+  }
+
+  const pricingSource: PricingComputationSource = {
+    requestedQuantity: target.requestedQuantity ?? options.baseRow?.requestedQuantity ?? 1,
+    unitPriceEstimate: target.unitPriceEstimate ?? options.baseRow?.unitPriceEstimate ?? null,
+    shippingChargeType: target.shippingChargeType ?? options.baseRow?.shippingChargeType ?? null,
+    shippingChargeValue: target.shippingChargeValue ?? options.baseRow?.shippingChargeValue ?? null,
+  };
+
+  const summary = buildPricingSummary(pricingSource);
+  if (summary.totalAmount == null) {
+    return;
+  }
+  target.claimAmount = formatDecimalValue(summary.totalAmount);
+  if (target.isClaimEstimate === undefined && (options.baseRow?.isClaimEstimate ?? null) == null) {
+    target.isClaimEstimate = true;
+  }
+};
+
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
@@ -356,10 +494,12 @@ router.get('/', optionalAuth, async (req, res) => {
       }
     );
 
+    const responseRows = rows.map(attachPricingSummary);
+
     const response: Record<string, any> = {
-      data: rows,
+      data: responseRows,
       meta: {
-        count: rows.length,
+        count: responseRows.length,
         limit: parsedLimit,
         offset: parsedOffset,
       },
@@ -447,7 +587,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Action request not found' });
     }
 
-    const response: Record<string, any> = { data: result.record };
+    const recordWithPricing = attachPricingSummary(result.record);
+    const response: Record<string, any> = { data: recordWithPricing };
     if (Object.keys(result.included).length > 0) {
       response.included = result.included;
     }
@@ -467,8 +608,9 @@ const applyWritableFields = (
   body: Record<string, any>,
   scope: RequestScope,
   options: { isUpdate?: boolean } = {}
-): { statusesTouched: boolean; manualWorkflow?: Date | null } => {
+): { statusesTouched: boolean; manualWorkflow?: Date | null; claimTouched: boolean } => {
   let statusesTouched = false;
+  let claimTouched = false;
 
   const actionType = parseEnumValue(
     pickValue(body, 'actionType', 'action_type', 'requestType', 'request_type'),
@@ -585,11 +727,11 @@ const applyWritableFields = (
     'unitPriceEstimate',
     buildDecimal(pickValue(body, 'unitPriceEstimate', 'unit_price_estimate'), 'unitPriceEstimate')
   );
-  assignIfDefined(
-    data,
-    'claimAmount',
-    buildDecimal(pickValue(body, 'claimAmount', 'claim_amount'), 'claimAmount')
-  );
+  const claimAmountValue = buildDecimal(pickValue(body, 'claimAmount', 'claim_amount'), 'claimAmount');
+  if (claimAmountValue !== undefined) {
+    claimTouched = true;
+    data.claimAmount = claimAmountValue;
+  }
   assignIfDefined(
     data,
     'shippingChargeValue',
@@ -638,7 +780,7 @@ const applyWritableFields = (
     'lastWorkflowTouchedAt'
   );
 
-  return { statusesTouched, manualWorkflow };
+  return { statusesTouched, manualWorkflow, claimTouched };
 };
 
 router.post(
@@ -652,7 +794,7 @@ router.post(
       const issueId = requireNumber(pickValue(body, 'issueId', 'issue_id'), 'issueId');
       const data: Record<string, any> = { issueId, customerId: scope.customerId };
 
-      const { statusesTouched, manualWorkflow } = applyWritableFields(data, body, scope, { isUpdate: false });
+      const { statusesTouched, manualWorkflow, claimTouched } = applyWritableFields(data, body, scope, { isUpdate: false });
 
       const createdBy = parseOptionalInteger(
         pickValue(body, 'createdByUserId', 'created_by_user_id'),
@@ -678,11 +820,13 @@ router.post(
       data.lastWorkflowTouchedAt = manualWorkflow ?? new Date();
       data.updatedAt = new Date();
 
+      ensureClaimAmount(data, { claimTouched });
+
       const created = await withTenantScope(
         { customerId: scope.customerId, homeIds: scope.homeIds },
         async (scopedDb) => {
           const issueRows = await scopedDb
-            .select({ id: issues.id, homeId: issues.homeId })
+            .select({ id: issues.id, homeId: issues.homeId, entityType: issues.entityType, entityId: issues.entityId })
             .from(issues)
             .where(and(eq(issues.customerId, scope.customerId), eq(issues.id, issueId)))
             .limit(1);
@@ -691,8 +835,26 @@ router.post(
             throw new ValidationError('Issue not found or not accessible', 404);
           }
 
-          if (data.homeId === undefined && issueRows[0].homeId != null) {
-            data.homeId = issueRows[0].homeId;
+          const issueRow = issueRows[0];
+
+          if (data.homeId === undefined && issueRow.homeId != null) {
+            data.homeId = issueRow.homeId;
+          }
+
+          let resolvedInventoryItemId = data.inventoryItemId ?? null;
+          if (resolvedInventoryItemId == null && issueRow.entityType === 'inventory_item') {
+            resolvedInventoryItemId = issueRow.entityId;
+          }
+
+          if (resolvedInventoryItemId != null) {
+            const alreadyExists = await hasBlockingInventoryRequest(scopedDb, {
+              customerId: scope.customerId,
+              inventoryItemId: resolvedInventoryItemId,
+            });
+            if (alreadyExists) {
+              throw new ValidationError('This inventory item already has an active action request', 409);
+            }
+            data.inventoryItemId = resolvedInventoryItemId;
           }
 
           const inserted = (await scopedDb.insert(inventoryActionRequests).values(data).returning()) as InventoryActionRequestRow[];
@@ -700,13 +862,15 @@ router.post(
         }
       );
 
+      const responsePayload = attachPricingSummary(created);
+
       eventBus.broadcast({
         event: 'data_change:inventory_action_requests',
-        data: { type: 'create', resource: 'inventory_action_requests', resourceId: created.id, data: created },
+        data: { type: 'create', resource: 'inventory_action_requests', resourceId: created.id, data: responsePayload },
         meta: { timestamp: Date.now(), source: 'api', audience: { customerId: scope.customerId } },
       });
 
-      res.status(201).json({ data: created });
+      res.status(201).json({ data: responsePayload });
     } catch (error) {
       if (error instanceof ValidationError) {
         return res.status(error.status).json({ error: error.message });
@@ -727,7 +891,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     const data: Record<string, any> = {};
-    const { statusesTouched, manualWorkflow } = applyWritableFields(data, body, scope, { isUpdate: true });
+    const { statusesTouched, manualWorkflow, claimTouched } = applyWritableFields(data, body, scope, { isUpdate: true });
 
     const issueId = parseOptionalInteger(pickValue(body, 'issueId', 'issue_id'), 'issueId');
     if (issueId !== undefined) {
@@ -779,6 +943,36 @@ router.put('/:id', authenticateToken, async (req, res) => {
           }
         }
 
+        const existingRows = (await scopedDb
+          .select()
+          .from(inventoryActionRequests)
+          .where(and(eq(inventoryActionRequests.customerId, scope.customerId), eq(inventoryActionRequests.id, id)))
+          .limit(1)) as InventoryActionRequestRow[];
+
+        if (existingRows.length === 0) {
+          return null;
+        }
+
+        const existing = existingRows[0];
+
+        if (data.inventoryItemId !== undefined) {
+          const incomingInventoryItemId = data.inventoryItemId;
+          const existingInventoryItemId = existing.inventoryItemId ?? null;
+          const hasChanged = incomingInventoryItemId !== existingInventoryItemId;
+          if (incomingInventoryItemId != null && hasChanged) {
+            const alreadyExists = await hasBlockingInventoryRequest(scopedDb, {
+              customerId: scope.customerId,
+              inventoryItemId: incomingInventoryItemId,
+              excludeId: existing.id,
+            });
+            if (alreadyExists) {
+              throw new ValidationError('This inventory item already has an active action request', 409);
+            }
+          }
+        }
+
+        ensureClaimAmount(data, { claimTouched, baseRow: existing });
+
         const rows = (await scopedDb
           .update(inventoryActionRequests)
           .set(data)
@@ -792,13 +986,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Action request not found' });
     }
 
+    const responsePayload = attachPricingSummary(updated);
+
     eventBus.broadcast({
       event: 'data_change:inventory_action_requests',
-      data: { type: 'update', resource: 'inventory_action_requests', resourceId: updated.id, data: updated },
+      data: { type: 'update', resource: 'inventory_action_requests', resourceId: responsePayload.id, data: responsePayload },
       meta: { timestamp: Date.now(), source: 'api', audience: { customerId: scope.customerId } },
     });
 
-    res.json({ data: updated });
+    res.json({ data: responsePayload });
   } catch (error) {
     if (error instanceof ValidationError) {
       return res.status(error.status).json({ error: error.message });
@@ -845,13 +1041,15 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Action request not found' });
     }
 
+    const responsePayload = attachPricingSummary(deleted);
+
     eventBus.broadcast({
       event: 'data_change:inventory_action_requests',
-      data: { type: 'delete', resource: 'inventory_action_requests', resourceId: deleted.id, data: deleted },
+      data: { type: 'delete', resource: 'inventory_action_requests', resourceId: responsePayload.id, data: responsePayload },
       meta: { timestamp: Date.now(), source: 'api', audience: { customerId: scope.customerId } },
     });
 
-    res.json({ message: 'Action request deleted', data: deleted });
+    res.json({ message: 'Action request deleted', data: responsePayload });
   } catch (error) {
     if (error instanceof ValidationError) {
       return res.status(error.status).json({ error: error.message });
