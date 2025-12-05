@@ -24,6 +24,7 @@ import { getRequestScope } from '../utils/scope.js';
 import type { RequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
 import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { parsePagination } from './shared/validation.js';
 
 const router = Router();
 
@@ -220,11 +221,10 @@ router.get('/', optionalAuth, async (req, res) => {
       status,
       low_stock,
       expiring_soon,
-      limit = '50',
-      offset = '0',
       sort = 'updatedAt',
       order = 'desc'
     } = req.query;
+    const { limit, offset } = parsePagination(req.query.limit, req.query.offset);
 
     const includeMedia = shouldIncludeMedia(req.query as Record<string, any>);
 
@@ -291,8 +291,8 @@ router.get('/', optionalAuth, async (req, res) => {
         .from(inventoryItems)
         .where(whereClause)
         .orderBy(orderBy)
-        .limit(parseInt(limit as string))
-        .offset(parseInt(offset as string));
+        .limit(limit)
+        .offset(offset);
     });
 
     let inventoryMedia: Record<number, InventoryMediaEntry[]> | undefined;
@@ -304,8 +304,8 @@ router.get('/', optionalAuth, async (req, res) => {
       data: results,
       meta: {
         count: results.length,
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string)
+        limit,
+        offset
       }
     };
 

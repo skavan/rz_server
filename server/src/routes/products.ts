@@ -12,6 +12,7 @@ import { getRequestScope } from '../utils/scope.js';
 import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
+import { parsePagination } from './shared/validation.js';
 
 const router = Router();
 
@@ -71,11 +72,10 @@ router.get('/', optionalAuth, async (req, res) => {
       home_id,
       search,
       is_visible,
-      limit = '50',
-      offset = '0',
       sort = 'name',
       order = 'asc'
     } = req.query;
+    const { limit, offset } = parsePagination(req.query.limit, req.query.offset);
 
     // Build WHERE conditions
     const whereConditions = [];
@@ -115,16 +115,16 @@ router.get('/', optionalAuth, async (req, res) => {
         .from(products)
         .where(whereClause)
         .orderBy(orderBy)
-        .limit(parseInt(limit as string))
-        .offset(parseInt(offset as string));
+        .limit(limit)
+        .offset(offset);
     });
 
     res.json({
       data: results,
       meta: {
         count: results.length,
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string)
+        limit,
+        offset
       }
     });
 
