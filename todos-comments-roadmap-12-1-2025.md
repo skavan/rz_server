@@ -16,7 +16,6 @@
 | `comments` | Shared discussion/event feed for any entity | `entity_type`, `entity_id`, optional threading via `parent_comment_id` |
 
 ### 3.1 Todos Table Sketch
-```
 id PK
 customer_id FK tenants
 home_id FK homes nullable
@@ -122,6 +121,11 @@ created_at, updated_at, deleted_at
 - How will email ingress authenticate/route to entity (unique dropbox per customer vs. per issue/todo)?
 - Do we need per-comment reactions/emoji immediately, or leave as metadata for later?
 - Should watchers auto-include issue reporters/home owners?
+
+## 12. Long-Term Technical TODOs
+- **Inventory item field sync** – Refactor `server/src/routes/inventory-items.ts` so both POST/PUT handlers rely on the shared `inventoryItemsValidationSchema`. Today every column is manually mirrored, which is how `markedGoodDate` slipped through. Goal: parse once via shared schema, whitelist mutually exclusive fields (e.g., computed data), and write the parsed object directly so any future column additions just work.
+- **Mark-good lifecycle contract** – Document and enforce the rule that supplying `markedGoodDate` backfills `lastChecked`/`updatedAt`, while creating/updating issues automatically clears the mark-good timestamp. Add regression coverage (unit or integration) to guard this behavior.
+- **Sync script enhancements** – Extend `scripts/sync-db-and-shared.mjs` (or successor) to optionally run schema-aware smoke tests (inventory/items/comments) after rebuilding so we catch missing-field cases earlier.
 
 ---
 _Last updated: 2025-12-01 by roadmap automation request._

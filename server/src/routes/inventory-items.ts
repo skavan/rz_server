@@ -28,6 +28,9 @@ import { parsePagination } from './shared/validation.js';
 
 const router = Router();
 
+// TODO(shared-schema-sync): This route manually mirrors every inventory_items field. Refactor to use
+// shared schema parsing (e.g., inventoryItemsValidationSchema) so newly added columns are handled
+// automatically rather than patched in one-by-one.
 const normalizeDecimalInput = (value: unknown): string | null => {
   if (value === undefined || value === null) return null;
   if (typeof value === 'number') {
@@ -380,6 +383,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), asyn
       sublocation,
       status,
       condition,
+      lastChecked,
+      lastMaintained,
       purchaseDate,
       purchasePrice,
       currency,
@@ -388,7 +393,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), asyn
       parentItemId,
       isKitComponent,
       tags,
-      notes
+      notes,
+      markedGoodDate,
     } = req.body || {};
 
     if (!productId) {
@@ -398,6 +404,9 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), asyn
       return res.status(400).json({ error: 'SKU ID is required' });
     }
 
+    const normalizedMarkedGoodDate = markedGoodDate ? new Date(markedGoodDate) : null;
+    const normalizedLastChecked =
+      lastChecked !== undefined ? (lastChecked ? new Date(lastChecked) : null) : normalizedMarkedGoodDate;
     // homeId and customerId are now guaranteed by middleware
     const scope = getScopeFromRequest(req as any);
     const newItems = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
@@ -415,6 +424,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), asyn
           sublocation: sublocation || null,
           status: status as any || 'unassigned',
           condition: condition as any || 'good',
+          lastChecked: normalizedLastChecked ?? null,
+          lastMaintained: lastMaintained ? new Date(lastMaintained) : null,
           purchaseDate: purchaseDate || null,
           purchasePrice: normalizeDecimalInput(purchasePrice),
           currency: currency || 'USD',
@@ -424,6 +435,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), asyn
           isKitComponent: isKitComponent !== undefined ? !!isKitComponent : false,
           tags: Array.isArray(tags) ? tags : null,
           notes: notes || null,
+          markedGoodDate: normalizedMarkedGoodDate,
         })
         .returning();
     });
@@ -472,12 +484,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
       hasMediaAssets,
       tags,
       notes,
-      isActive
+      isActive,
+      markedGoodDate,
     } = req.body || {};
 
     const updateData: any = {
       updatedAt: new Date()
     };
+
+    // TODO: This entire update block should be driven by shared schema parsing rather than manual field lists.
 
     if (skuId !== undefined) {
       updateData.skuId = parseInt(skuId);
@@ -544,6 +559,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
     if (isActive !== undefined) {
       updateData.isActive = !!isActive;
+    }
+    if (markedGoodDate !== undefined) {
+      const normalizedMarkedGoodDate = markedGoodDate ? new Date(markedGoodDate) : null;
+      updateData.markedGoodDate = normalizedMarkedGoodDate;
+      if (lastChecked === undefined) {
+        updateData.lastChecked = normalizedMarkedGoodDate;
+      }
     }
 
     const scope = await getRequestScope(req as any);
