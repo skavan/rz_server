@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import multer from 'multer';
 import {
   mediaAssets,
@@ -548,7 +548,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-router.patch('/:id/primary', authenticateToken, async (req, res) => {
+async function handleSetPrimaryMedia(req: Request, res: Response) {
   try {
     const scope = await getRequestScope(req as any);
     const mediaId = requireNumber(req.params.id, 'id');
@@ -608,6 +608,14 @@ router.patch('/:id/primary', authenticateToken, async (req, res) => {
     console.error('Media set primary error:', error);
     res.status(500).json({ error: 'Failed to set primary media' });
   }
+}
+
+router.patch('/:id/primary', authenticateToken, async (req, res) => {
+  await handleSetPrimaryMedia(req, res);
+});
+
+router.put('/:id/primary', authenticateToken, async (req, res) => {
+  await handleSetPrimaryMedia(req, res);
 });
 
 export default router;

@@ -382,7 +382,7 @@ Response 200:
 
 ### Set Primary Image
 ```http
-PATCH /api/media/:id/primary
+PATCH or PUT /api/media/:id/primary
 Authorization: Bearer {token}
 
 Response 200:
@@ -390,7 +390,7 @@ Response 200:
   "data": { /* updated media record with isPrimary: true */ }
 }
 ```
-**Note**: Automatically sets all other media for the same entity to `isPrimary: false`
+**Note**: Automatically sets all other media for the same entity to `isPrimary: false`. `PUT` is treated identically to `PATCH` if you need idempotent semantics.
 
 ### Delete Media
 ```http
@@ -479,7 +479,7 @@ class MediaManager {
     const response = await fetch(
       `${this.baseUrl}/api/media/${mediaId}/primary`,
       {
-        method: 'PATCH',
+        method: 'PATCH', // or 'PUT'
         headers: { 'Authorization': `Bearer ${this.getToken()}` }
       }
     );

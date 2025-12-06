@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
 import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems, comments } from "./schema.js";
-import { cadenceConfigSchema, commentBodySchema } from "./types/json-fields.js";
+import { cadenceConfigSchema } from "./types/json-fields.js";
 import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
 /**
@@ -168,59 +168,41 @@ const toOptionalBoolean = (value: unknown) => {
   return value;
 };
 
-const toCommentBody = (value: unknown) => {
+const toHtmlString = (value: unknown) => {
   if (value === undefined || value === null) return undefined;
-
-  const wrapParagraph = (text: string) => ({ type: 'paragraph' as const, text });
-  const wrapSystemData = (data: unknown) => ({ type: 'system' as const, data: data as Record<string, unknown> });
-
-  if (typeof value === 'string') {
+  let candidate: unknown = value;
+  if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (typeof parsed === 'string') {
-        return { version: 1, blocks: [wrapParagraph(parsed)] };
+    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+      const parsed = parseJsonMaybe(trimmed);
+      if (typeof parsed === "string") {
+        candidate = parsed;
+      } else if (parsed && typeof parsed === "object" && "html" in (parsed as Record<string, unknown>)) {
+        const html = (parsed as Record<string, unknown>).html;
+        if (typeof html === "string") {
+          candidate = html;
+        } else {
+          candidate = trimmed;
+        }
+      } else {
+        candidate = trimmed;
       }
-      if (Array.isArray(parsed)) {
-        const normalizedBlocks = parsed.map((block) => {
-          if (typeof block === 'string') return wrapParagraph(block);
-          return block;
-        });
-        return { version: 1, blocks: normalizedBlocks };
-      }
-      if (parsed && typeof parsed === 'object' && 'blocks' in parsed) {
-        return parsed;
-      }
-      if (parsed && typeof parsed === 'object' && 'type' in parsed) {
-        return { version: 1, blocks: [parsed] };
-      }
-      return { version: 1, blocks: [wrapSystemData(parsed)] };
-    } catch {
-      return { version: 1, blocks: [wrapParagraph(trimmed)] };
+    } else {
+      candidate = trimmed;
+    }
+  } else if (typeof value === "object") {
+    const maybeHtml = (value as Record<string, unknown>).html;
+    if (typeof maybeHtml === "string") {
+      candidate = maybeHtml;
+    } else {
+      candidate = JSON.stringify(value);
     }
   }
 
-  if (Array.isArray(value)) {
-    const normalizedBlocks = value.map((block) => {
-      if (typeof block === 'string') return wrapParagraph(block);
-      if (block && typeof block === 'object' && 'type' in block) return block;
-      return wrapSystemData(block);
-    });
-    return { version: 1, blocks: normalizedBlocks };
-  }
-
-  if (typeof value === 'object') {
-    if (value && 'blocks' in (value as Record<string, unknown>)) {
-      return value;
-    }
-    if (value && 'type' in (value as Record<string, unknown>)) {
-      return { version: 1, blocks: [value] };
-    }
-    return { version: 1, blocks: [wrapSystemData(value)] };
-  }
-
-  return { version: 1, blocks: [wrapParagraph(String(value))] };
+  const str = typeof candidate === "string" ? candidate : String(candidate ?? "");
+  const finalValue = str.trim();
+  return finalValue === "" ? undefined : finalValue;
 };
 
 const toJsonRecord = (value: unknown) => {
@@ -248,6 +230,7 @@ const commentEntityTypes = [
   'todo',
   'booking_reservation',
   'customer',
+  'user',
 ] as const;
 
 /**
@@ -351,7 +334,8 @@ export const commentsValidationSchema = createValidationSchema(
     .nullable()
     .optional(),
   actorEmail: z.preprocess(toNullableString, z.string().max(320).nullable().optional()),
-  body: z.preprocess(toCommentBody, commentBodySchema),
+  subject: z.preprocess(toNullableString, z.string().max(255).nullable().optional()),
+  body: z.preprocess(toHtmlString, z.string().min(1).max(40000)),
   metadata: z.preprocess(toJsonRecord, z.record(z.any())).nullable().optional(),
   mentions: relationArrayField(
     z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)])

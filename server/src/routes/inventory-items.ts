@@ -1,7 +1,7 @@
 /**
  * Inventory Items API - Clean Drizzle Implementation
  */
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { withTenantScope } from '../db/index.js';
 import {
   inventoryItems,
@@ -635,11 +635,11 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 /**
- * PATCH /api/inventory-items/:id/adjust-quantity
+ * PATCH/PUT /api/inventory-items/:id/adjust-quantity
  * Adjust inventory quantity (add or subtract)
  * Body: { adjustment: number, reason?: string }
  */
-router.patch('/:id/adjust-quantity', authenticateToken, async (req, res) => {
+async function handleInventoryQuantityAdjustment(req: Request, res: Response) {
   try {
     const { id } = req.params;
     const { adjustment, reason } = req.body || {};
@@ -648,35 +648,48 @@ router.patch('/:id/adjust-quantity', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Adjustment value is required and must be a number' });
     }
 
+    const itemId = Number.parseInt(id, 10);
+    if (!Number.isFinite(itemId)) {
+      return res.status(400).json({ error: 'Invalid inventory item id' });
+    }
+
     const scope = await getRequestScope(req as any);
-    const updatedItems = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
-      // First get current item to calculate new quantity
-      const current = await scopedDb
-        .select()
-        .from(inventoryItems)
-        .where(eq(inventoryItems.id, parseInt(id)))
-        .limit(1);
+    const updatedItems = await withTenantScope(
+      { customerId: scope.customerId, homeIds: scope.homeIds },
+      async (scopedDb) => {
+        const current = await scopedDb
+          .select()
+          .from(inventoryItems)
+          .where(eq(inventoryItems.id, itemId))
+          .limit(1);
 
-      if (current.length === 0) {
-        throw new Error('Inventory item not found');
+        if (current.length === 0) {
+          return [];
+        }
+
+        const newQuantity = (current[0].quantity || 0) + adjustment;
+        if (newQuantity < 0) {
+          throw Object.assign(new Error('Adjustment would result in negative quantity'), { status: 400 });
+        }
+
+        const now = new Date();
+        const reasonText = typeof reason === 'string' ? reason.trim() : '';
+        const notesValue =
+          reasonText.length > 0
+            ? `${current[0].notes || ''}\n[${now.toISOString()}] Adjusted by ${adjustment}: ${reasonText}`.trim() || null
+            : current[0].notes ?? null;
+
+        return scopedDb
+          .update(inventoryItems)
+          .set({
+            quantity: newQuantity,
+            notes: notesValue,
+            updatedAt: now,
+          })
+          .where(eq(inventoryItems.id, itemId))
+          .returning();
       }
-
-      const newQuantity = (current[0].quantity || 0) + adjustment;
-      
-      if (newQuantity < 0) {
-        throw Object.assign(new Error('Adjustment would result in negative quantity'), { status: 400 });
-      }
-
-      return scopedDb
-        .update(inventoryItems)
-        .set({
-          quantity: newQuantity,
-          notes: reason ? `${current[0].notes || ''}\n[${new Date().toISOString()}] Adjusted by ${adjustment}: ${reason}`.trim() : current[0].notes,
-          updatedAt: new Date()
-        })
-        .where(eq(inventoryItems.id, parseInt(id)))
-        .returning();
-    });
+    );
 
     if (updatedItems.length === 0) {
       return res.status(404).json({ error: 'Inventory item not found' });
@@ -686,10 +699,9 @@ router.patch('/:id/adjust-quantity', authenticateToken, async (req, res) => {
     eventBus.broadcast({
       event: 'data_change:inventory_items',
       data: { type: 'update', resource: 'inventory_items', resourceId: updated.id, data: updated },
-      meta: { timestamp: Date.now(), source: 'api', audience: { homeIds: updated.homeId ? [updated.homeId] : [] } }
+      meta: { timestamp: Date.now(), source: 'api', audience: { homeIds: updated.homeId ? [updated.homeId] : [] } },
     });
     res.json({ data: updated });
-
   } catch (error: any) {
     console.error('Inventory item quantity adjustment error:', error);
     if (error.status === 400) {
@@ -697,6 +709,14 @@ router.patch('/:id/adjust-quantity', authenticateToken, async (req, res) => {
     }
     res.status(500).json({ error: 'Internal server error' });
   }
+}
+
+router.patch('/:id/adjust-quantity', authenticateToken, async (req, res) => {
+  await handleInventoryQuantityAdjustment(req, res);
+});
+
+router.put('/:id/adjust-quantity', authenticateToken, async (req, res) => {
+  await handleInventoryQuantityAdjustment(req, res);
 });
 
 export default router;

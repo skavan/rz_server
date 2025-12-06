@@ -39,6 +39,7 @@ import issuesRoutes from './routes/issues.js';
 import inventoryActionRequestsRoutes from './routes/inventory-action-requests.js';
 import commentsRoutes from './routes/comments.js';
 import tableFallbackRoutes from './routes/table-fallback.js';
+// import { startDevSkuTestEvents } from './utils/dev-test-sse.js';
 
 // Load environment variables
 dotenv.config();
@@ -354,6 +355,7 @@ async function startServer() {
       const { startPgListener } = await import('./realtime/pg-listener.js');
       await startPgListener();
       console.log('🔔 Realtime changefeed active (LISTEN data_change)');
+      // startDevSkuTestEvents(); // temporarily disabled 2025-12-05
     } catch (e: any) {
       console.warn('⚠️ Realtime setup failed; SSE will only receive route-emitted events:', e?.message || e);
     }

@@ -14,7 +14,6 @@ import {
   pgEnum,
   foreignKey,
 } from 'drizzle-orm/pg-core';
-import type { CommentBody } from './types/json-fields.js';
 
 // ============================================
 // AUTHENTICATION TABLES (NextAuth.js compatible)
@@ -584,6 +583,7 @@ export const comments = pgTable('comments', {
       | 'todo'
       | 'booking_reservation'
       | 'customer'
+      | 'user'
     >(),
   entityId: integer('entity_id').notNull(),
   parentCommentId: integer('parent_comment_id'),
@@ -591,7 +591,8 @@ export const comments = pgTable('comments', {
   visibility: commentVisibilityEnum('visibility').default('tenant').notNull(),
   authorUserId: integer('author_user_id').references(() => users.id, { onDelete: 'set null' }),
   actorEmail: varchar('actor_email', { length: 320 }),
-  body: jsonb('body').notNull().$type<CommentBody>(),
+  subject: varchar('subject', { length: 255 }),
+  body: text('body').notNull(),
   mentions: integer('mentions').array(),
   metadata: jsonb('metadata'),
   hasAttachments: boolean('has_attachments').default(false).notNull(),

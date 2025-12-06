@@ -50,7 +50,7 @@ router.get("/", optionalAuth, async (req, res) => {
  * GET /api/table/:tableName - Query any table using raw SQL + field transformation
  * Always returns camelCase field names regardless of database schema
  */
-router.get("/:tableName", optionalAuth, async (req, res) => {
+router.get(":tableName", optionalAuth, async (req, res) => {
 	try {
 		const enforce = process.env.ENFORCE_AUTH === 'true' || process.env.NODE_ENV === 'production';
 		if (enforce && !(req as any).user) {
@@ -76,8 +76,54 @@ router.get("/:tableName", optionalAuth, async (req, res) => {
 			return res.status(404).json({ error: `Table '${tableName}' not found` });
 		}
 
-			// Build scoped WHERE clause (server-authoritative)
-			const scope = await getRequestScope(req);
+		const scope = await getRequestScope(req);
+		const requesterRole = String((req as any)?.user?.role || '').toLowerCase();
+
+		if (tableName === 'users') {
+			const normalizedHomes = (scope.homeIds || [])
+				.map((n) => Number(n))
+				.filter((n) => Number.isFinite(n));
+			const isAdmin = requesterRole === 'admin';
+			if (!isAdmin && normalizedHomes.length === 0) {
+				return res.json({ table: tableName, data: [], count: 0 });
+			}
+
+			const homesArray = !isAdmin
+				? sql.raw(`ARRAY[${normalizedHomes.join(',')}]::int[]`)
+				: null;
+
+			const results = await withTenantScope(
+				{ customerId: scope.customerId, homeIds: scope.homeIds },
+				async (scopedDb) => {
+					if (isAdmin) {
+						return scopedDb.execute(sql`
+							SELECT * FROM users
+							WHERE customer_id = ${scope.customerId}
+							ORDER BY id
+							LIMIT 1000
+						`);
+					}
+					return scopedDb.execute(sql`
+						SELECT u.*
+						FROM users u
+						WHERE u.customer_id = ${scope.customerId}
+						  AND EXISTS (
+							SELECT 1
+							FROM user_home_access uha
+							WHERE uha.user_id = u.id
+							  AND uha.home_id = ANY(${homesArray!})
+						  )
+						ORDER BY u.id
+						LIMIT 1000
+					`);
+				}
+			);
+
+			const transformed = transformRows(results.rows, tableName);
+			return res.json({ table: tableName, data: transformed, count: transformed.length });
+		}
+
+		// Build scoped WHERE clause (server-authoritative)
 			const policy = await getTablePolicy(tableName);
 
 			// Build WHERE clause with inline parameters

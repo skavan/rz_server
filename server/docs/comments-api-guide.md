@@ -4,11 +4,12 @@ This document explains how client developers should work with the unified commen
 
 ## 1. Supported Entities & Terminology
 
-- **Entity targets** – `issue`, `inventory_item`, `inventory_action_request`, `inventory_purchase_order`, `inventory_purchase_order_item`, `home`, `location`, `product`, `sku`, `booking_reservation`, `customer`. `todo` is reserved for the upcoming todos module and currently blocked at validation time.
+- **Entity targets** – `issue`, `inventory_item`, `inventory_action_request`, `inventory_purchase_order`, `inventory_purchase_order_item`, `home`, `location`, `product`, `sku`, `booking_reservation`, `customer`, `user`. `todo` is reserved for the upcoming todos module and currently blocked at validation time.
 - **Visibility** – `tenant` (default, share with everyone inside the tenant), `internal` (limit to staff/internal roles), `external` (explicitly safe for customer-facing channels).
 - **Comment types** – `user` (default), `system`, `email_inbound`, `email_outbound`, `note`. Only admins can submit explicit `system` comments or flip the `isSystem` flag.
 - **Mentions** – store numeric user IDs in `mentions` (`int[]`). Duplicates are removed; non-numeric values are rejected.
-- **Rich body** – payload is normalized against `commentBodySchema` (versioned block array). Raw strings are auto-wrapped into `{ version: 1, blocks: [{ type: 'paragraph', text: '...' }] }`.
+- **Subject** – optional short line (≤255 chars). When omitted the API auto-fills with a friendly `${entityType} #${entityId}` pattern so clients can ignore it until they need richer headers.
+- **Body format** – payload is normalized into an HTML string (TipTap output). Strings are trimmed and validated (1–40k chars). Legacy block JSON is still accepted but is stringified as plain text.
 
 ## 2. Data Model Cheatsheet
 
@@ -19,7 +20,8 @@ This document explains how client developers should work with the unified commen
 | `homeId` | Derived from the target entity or inherited from the parent comment. May be `null` for global/customer-level records.
 | `entityType` / `entityId` | Required; must match one of the whitelisted entity types above.
 | `parentCommentId` | Optional. Must reference an existing comment on the same entity. Replies are returned when `includeReplies=true` (default).
-| `body` | `commentBodySchema` JSON. Server auto-normalizes strings/arrays.
+| `subject` | Optional short label (<=255 chars). Defaults to `Inventory Item #42`, `Issue #17`, etc. Set `null` to clear it.
+| `body` | HTML string (TipTap). The server trims input, enforces 1–40k chars, and falls back to stringified JSON for legacy payloads.
 | `commentType` | Enum listed above. Enforced on create/update.
 | `visibility` | Enum listed above.
 | `mentions` | Integer array (nullable). Use to drive client-side mention badges/notifications.
@@ -58,6 +60,7 @@ Content-Type: application/json
   "entityType": "issue",
   "entityId": 42,
   "parentCommentId": null,
+  "subject": "Punch list prep",
   "body": "Need a second quote from HVAC vendor",
   "visibility": "tenant",
   "commentType": "user",
@@ -75,14 +78,15 @@ Behavior:
 
 ### 3.4 Update Comment
 ```
-PATCH /api/comments/:id
+PATCH or PUT /api/comments/:id
 {
-  "body": [{ "type": "paragraph", "text": "Updated scope after inspection" }],
+  "body": "<p>Updated scope after inspection</p>",
+  "subject": "Issue #42 follow-up",
   "mentions": "17,32",
   "visibility": "internal"
 }
 ```
-Editable fields: `body`, `visibility`, `commentType`, `metadata`, `mentions`. Only the original author or an admin may edit. Soft-deleted comments cannot be edited. Returns the updated row and emits an SSE update event.
+Editable fields: `body`, `visibility`, `commentType`, `metadata`, `mentions`. Only the original author or an admin may edit. Soft-deleted comments cannot be edited. Returns the updated row and emits an SSE update event. `PUT` is treated identically to `PATCH` for callers that prefer idempotent semantics.
 
 ### 3.5 Soft Delete Comment
 ```

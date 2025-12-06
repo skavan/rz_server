@@ -146,8 +146,8 @@ Update an existing inventory item. **Requires authentication.**
 
 ---
 
-### PATCH `/api/inventory-items/:id/adjust-quantity`
-Adjust inventory quantity by a positive or negative amount. **Requires authentication.**
+### PATCH or PUT `/api/inventory-items/:id/adjust-quantity`
+Adjust inventory quantity by a positive or negative amount. **Requires authentication.** `PUT` behaves the same as `PATCH` for clients that prefer idempotent semantics.
 
 **Request Body:**
 ```json

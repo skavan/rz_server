@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import {
   comments,
   issues,
@@ -12,13 +12,13 @@ import {
   skus,
   bookingReservations,
   customers,
+  users,
   eq,
   and,
   asc,
   desc,
   isNull,
 } from '@postgress/shared';
-import { commentBodySchema } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 import { getRequestScope, type RequestScope } from '../utils/scope.js';
@@ -50,6 +50,7 @@ const COMMENT_ENTITY_VALUES = [
   'todo',
   'booking_reservation',
   'customer',
+  'user',
 ] as const;
 
 type CommentEntityType = (typeof COMMENT_ENTITY_VALUES)[number];
@@ -133,54 +134,65 @@ function parseMentions(value: unknown): number[] {
   return mentions;
 }
 
-function normalizeCommentBody(value: unknown) {
+const MAX_SUBJECT_LENGTH = 255;
+
+function sanitizeSubjectInput(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  const parsed = parseOptionalString(value);
+  if (parsed && parsed.length > MAX_SUBJECT_LENGTH) {
+    throw new ValidationError(`subject must be ${MAX_SUBJECT_LENGTH} characters or fewer`);
+  }
+  return parsed;
+}
+
+function generateDefaultSubject(entityType: CommentEntityType, entityId: number): string {
+  const friendly = entityType
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+  const base = `${friendly} #${entityId}`;
+  return base.length > MAX_SUBJECT_LENGTH ? base.slice(0, MAX_SUBJECT_LENGTH) : base;
+}
+
+function normalizeCommentBody(value: unknown): string {
   if (value === undefined || value === null || value === '') {
     throw new ValidationError('body is required');
   }
 
-  const wrapParagraph = (text: string) => ({ type: 'paragraph' as const, text });
-  const wrapSystemData = (data: unknown) => ({ type: 'system' as const, data: data as Record<string, unknown> });
-
-  let candidate: unknown = value;
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
+  const extract = (input: unknown): string => {
+    if (input === undefined || input === null || input === '') {
       throw new ValidationError('body is required');
     }
-    try {
-      candidate = JSON.parse(trimmed);
-    } catch {
-      candidate = { version: 1, blocks: [wrapParagraph(trimmed)] };
+    if (typeof input === 'string') {
+      const trimmed = input.trim();
+      if (!trimmed) {
+        throw new ValidationError('body is required');
+      }
+      return trimmed;
     }
-  } else if (Array.isArray(value)) {
-    candidate = {
-      version: 1,
-      blocks: value.map((block) => {
-        if (typeof block === 'string') return wrapParagraph(block);
-        if (block && typeof block === 'object' && 'type' in block) return block;
-        return wrapSystemData(block);
-      }),
-    };
-  } else if (typeof value === 'object') {
-    if (value && 'blocks' in (value as Record<string, unknown>)) {
-      candidate = value;
-    } else if (value && 'type' in (value as Record<string, unknown>)) {
-      candidate = { version: 1, blocks: [value] };
-    } else {
-      candidate = { version: 1, blocks: [wrapSystemData(value)] };
+    if (typeof input === 'object') {
+      const html = (input as any)?.html;
+      if (typeof html === 'string') {
+        return extract(html);
+      }
+      const serialized = JSON.stringify(input);
+      if (serialized && serialized !== '{}') {
+        return serialized;
+      }
+      throw new ValidationError('body must include HTML content');
     }
-  }
+    const coerced = String(input).trim();
+    if (!coerced) {
+      throw new ValidationError('body is required');
+    }
+    return coerced;
+  };
 
-  const parsed = commentBodySchema.safeParse(candidate);
-  if (parsed.success) {
-    return parsed.data;
+  const html = extract(value);
+  if (html.length > 40000) {
+    throw new ValidationError('body exceeds 40k character limit');
   }
-
-  const firstError = parsed.error.errors?.[0];
-  if (firstError?.message) {
-    throw new ValidationError(firstError.message);
-  }
-  throw new ValidationError('Invalid comment body');
+  return html;
 }
 
 async function assertEntityContext(
@@ -327,6 +339,17 @@ async function assertEntityContext(
         if (!rows.length) throw new ValidationError('Customer not found', 404);
         return { homeId: null };
       }
+      case 'user': {
+        const rows = await scopedDb
+          .select({ customerId: users.customerId })
+          .from(users)
+          .where(eq(users.id, entityId))
+          .limit(1);
+        if (!rows.length || rows[0].customerId !== scope.customerId) {
+          throw new ValidationError('User not found', 404);
+        }
+        return { homeId: null };
+      }
       default:
         throw new ValidationError(`Unsupported entityType: ${entityType}`);
     }
@@ -381,13 +404,15 @@ router.get('/', optionalAuth, async (req, res) => {
     const entityTypeRaw = (req.query.entityType ?? req.query.entity_type) as string | undefined;
     const entityIdRaw = req.query.entityId ?? req.query.entity_id;
 
-    const entityType = coerceEntityType(entityTypeRaw);
+    const entityType = entityTypeRaw !== undefined ? coerceEntityType(entityTypeRaw) : undefined;
     const entityId = parseOptionalInteger(entityIdRaw, 'entityId');
-    if (entityId == null) {
-      throw new ValidationError('entityId is required');
+    if (entityId != null && !entityType) {
+      throw new ValidationError('entityType is required when entityId is provided');
     }
 
-    await assertEntityContext(scope, entityType, entityId);
+    if (entityType && entityId != null) {
+      await assertEntityContext(scope, entityType, entityId);
+    }
 
     const includeDeleted = parseOptionalBoolean(
       req.query.includeDeleted ?? req.query.include_deleted,
@@ -400,11 +425,14 @@ router.get('/', optionalAuth, async (req, res) => {
     const parentId = parseOptionalInteger(req.query.parentId ?? req.query.parent_comment_id, 'parentId');
     const order = parseOrder(req.query.order);
 
-    const predicates = [
-      eq(comments.customerId, scope.customerId),
-      eq(comments.entityType, entityType),
-      eq(comments.entityId, entityId),
-    ];
+    const predicates = [eq(comments.customerId, scope.customerId)];
+
+    if (entityType) {
+      predicates.push(eq(comments.entityType, entityType));
+    }
+    if (entityId != null) {
+      predicates.push(eq(comments.entityId, entityId));
+    }
 
     if (includeDeleted !== true) {
       predicates.push(isNull(comments.deletedAt));
@@ -440,8 +468,8 @@ router.get('/', optionalAuth, async (req, res) => {
         count: rows.length,
         limit,
         offset,
-        entityType,
-        entityId,
+        entityType: entityType ?? null,
+        entityId: entityId ?? null,
       },
     });
   } catch (error: any) {
@@ -513,6 +541,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('comments'), async (req
     }
 
     const commentBody = normalizeCommentBody(req.body.body ?? req.body.content ?? req.body.message);
+    const subjectInput = sanitizeSubjectInput(req.body.subject ?? req.body.title ?? req.body.topic);
+    const subject = subjectInput === undefined ? generateDefaultSubject(entityType, entityId) : subjectInput;
     const commentType = coerceCommentType(req.body.commentType ?? req.body.comment_type);
     if (commentType === 'system' && user.role !== 'admin') {
       throw new ValidationError('Only admins can create system comments', 403);
@@ -543,6 +573,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('comments'), async (req
             visibility,
             authorUserId: user.id,
             actorEmail: actorEmail ?? null,
+            subject,
             body: commentBody,
             mentions: mentions.length ? mentions : null,
             metadata: metadata ?? null,
@@ -565,7 +596,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('comments'), async (req
   }
 });
 
-router.patch('/:id', authenticateToken, async (req, res) => {
+async function handleCommentUpdate(req: Request, res: Response) {
   try {
     const scope = await getRequestScope(req as any);
     const user = (req as any)?.user;
@@ -593,16 +624,29 @@ router.patch('/:id', authenticateToken, async (req, res) => {
       hasChanges = true;
     }
 
+    if (
+      req.body.subject !== undefined ||
+      req.body.title !== undefined ||
+      req.body.topic !== undefined
+    ) {
+      const subjectUpdate = sanitizeSubjectInput(req.body.subject ?? req.body.title ?? req.body.topic);
+      if (subjectUpdate !== undefined) {
+        updates.subject = subjectUpdate;
+        hasChanges = true;
+      }
+    }
+
     if (req.body.visibility !== undefined) {
       updates.visibility = coerceVisibility(req.body.visibility);
       hasChanges = true;
     }
 
     if (req.body.commentType !== undefined || req.body.comment_type !== undefined) {
-      updates.commentType = coerceCommentType(req.body.commentType ?? req.body.comment_type);
-      if (updates.commentType === 'system' && user.role !== 'admin') {
-        throw new ValidationError('Only admins can set system comment type', 403);
+      const commentType = coerceCommentType(req.body.commentType ?? req.body.comment_type);
+      if (commentType === 'system' && user.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can set system comment type' });
       }
+      updates.commentType = commentType;
       hasChanges = true;
     }
 
@@ -639,9 +683,17 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     if (error instanceof ValidationError) {
       return res.status(error.status).json({ error: error.message });
     }
-    console.error('Comments PATCH error:', error);
+    console.error('Comments update error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+}
+
+router.patch('/:id', authenticateToken, async (req, res) => {
+  await handleCommentUpdate(req, res);
+});
+
+router.put('/:id', authenticateToken, async (req, res) => {
+  await handleCommentUpdate(req, res);
 });
 
 router.delete('/:id', authenticateToken, async (req, res) => {

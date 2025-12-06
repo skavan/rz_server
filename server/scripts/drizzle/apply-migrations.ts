@@ -2,7 +2,6 @@ import { Pool } from 'pg';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readdirSync, readFileSync } from 'fs';
-import { execSync } from 'child_process';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -11,10 +10,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function applyMigrations(databaseUrl: string) {
-  // Generate SQL from shared schema
+  // Expect SQL migrations to already exist under drizzle/shared/drizzle
   const sharedRoot = join(__dirname, '../../../drizzle/shared');
-  console.log('🧩 Generating migrations from shared schema...');
-  execSync('npx drizzle-kit generate', { cwd: sharedRoot, stdio: 'inherit' });
 
   const drizzleDir = join(sharedRoot, 'drizzle');
   const sqlFiles = readdirSync(drizzleDir).filter(f => f.endsWith('.sql')).sort();

@@ -36,14 +36,43 @@ async function fetchDefaultHomeIds(customerId: number): Promise<number[]> {
 // Authoritative scope resolver: derives scope from auth and DB. Headers only in dev.
 export async function getRequestScope(req: Request): Promise<RequestScope> {
   const isProd = process.env.NODE_ENV === 'production';
+  const query = req.query as Record<string, any> | undefined;
+
+  const queryValue = (...keys: string[]) => {
+    if (!query) return undefined;
+    for (const key of keys) {
+      if (key in query) return query[key];
+    }
+    return undefined;
+  };
+
+  const parseNumberList = (value: any): number[] => {
+    if (Array.isArray(value)) {
+      return value
+        .map((v) => Number(String(v).trim()))
+        .filter((n) => Number.isFinite(n));
+    }
+    if (value == null) return [];
+    return String(value)
+      .split(',')
+      .map((part) => Number(part.trim()))
+      .filter((n) => Number.isFinite(n));
+  };
 
   // Helper to parse single requested home from query/header
   const parseRequestedHomeId = (): number | null => {
-    const q = (req.query as any)?.homeId;
+    const q = queryValue('homeId', 'home_id', 'HomeId');
     const h = req.header('x-home-id') || req.header('X-Home-Id');
     const raw = (Array.isArray(q) ? q[0] : q) ?? h;
     const n = raw != null ? Number(raw) : NaN;
     return Number.isFinite(n) ? n : null;
+  };
+
+  // Helper to parse multi-home selection (query ?homeIds=1,2,3)
+  const parseRequestedHomeIds = (): number[] => {
+    const raw = queryValue('homeIds', 'home_ids', 'HomeIds');
+    if (raw === undefined) return [];
+    return parseNumberList(raw);
   };
 
   // If authenticated, derive from DB and validate selected home
@@ -56,8 +85,13 @@ export async function getRequestScope(req: Request): Promise<RequestScope> {
       return { customerId: 1, homeIds: await fetchDefaultHomeIds(1) };
     }
     const allowed = homeIds.length > 0 ? homeIds : await fetchDefaultHomeIds(customerId);
+    const multiRequested = parseRequestedHomeIds().filter((id) => allowed.includes(id));
     const requested = parseRequestedHomeId();
-    const effective = requested && allowed.includes(requested) ? [requested] : allowed;
+    const effective = multiRequested.length > 0
+      ? multiRequested
+      : requested && allowed.includes(requested)
+        ? [requested]
+        : allowed;
     return { customerId, homeIds: effective };
   }
 
@@ -66,6 +100,7 @@ export async function getRequestScope(req: Request): Promise<RequestScope> {
     const hdrCustomer = req.header('x-customer-id');
     const hdrHomes = req.header('x-home-ids');
     const singleHome = parseRequestedHomeId();
+    const multiQueryHomes = parseRequestedHomeIds();
 
     const customerId = hdrCustomer ? parseInt(hdrCustomer, 10) : 1; // dev default
     // If x-home-ids present, use it; else if single selected present (query/header), use that; else default homes
@@ -77,6 +112,8 @@ export async function getRequestScope(req: Request): Promise<RequestScope> {
         .filter(Boolean)
         .map((n) => parseInt(n, 10))
         .filter((n) => !Number.isNaN(n));
+    } else if (multiQueryHomes.length) {
+      homeIds = multiQueryHomes;
     } else if (singleHome) {
       homeIds = [singleHome];
     } else {

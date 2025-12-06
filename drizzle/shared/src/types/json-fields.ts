@@ -30,48 +30,19 @@ export const cadencePreprocessor = z.preprocess(
   cadenceConfigSchema
 );
 
-const hasContent = (value?: string | null) => typeof value === 'string' && value.trim().length > 0;
+/**
+ * Comments now store HTML strings (TipTap output) instead of structured block JSON.
+ * Legacy block helpers remain exported for compatibility but resolve to `never`.
+ */
+export type CommentBodyBlock = never;
 
-const hasData = (value?: Record<string, unknown> | null) => Boolean(value && Object.keys(value).length);
+export type CommentBody = string;
 
-const commentBlockTypes = [
-  'paragraph',
-  'heading',
-  'blockquote',
-  'ordered_list',
-  'bullet_list',
-  'code',
-  'system',
-  'action',
-] as const;
-
-export type CommentBodyBlock = {
-  type: (typeof commentBlockTypes)[number];
-  text?: string;
-  html?: string;
-  data?: Record<string, unknown>;
-};
-
-export type CommentBody = {
-  version?: number;
-  blocks: CommentBodyBlock[];
-};
-
-export const commentBodyBlockSchema = z
-  .object({
-    type: z.enum(commentBlockTypes),
-    text: z.string().max(20000).optional(),
-    html: z.string().max(40000).optional(),
-    data: z.record(z.any()).optional(),
-  })
-  .refine((block) => hasContent(block.text) || hasContent(block.html) || hasData(block.data), {
-    message: 'Block must include text, html, or data payload',
-  });
-
-export const commentBodySchema = z.object({
-  version: z.number().int().positive().default(1),
-  blocks: z.array(commentBodyBlockSchema).min(1, 'Provide at least one content block'),
+export const commentBodyBlockSchema = z.never({
+  message: 'Comment blocks are no longer supported; send an HTML string instead.',
 });
+
+export const commentBodySchema = z.string().min(1).max(40000);
 
 // Future: Add other JSON field types as needed
 // export type MediaConfig = { ... };
