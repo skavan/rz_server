@@ -17,7 +17,7 @@ List all inventory items with optional filtering and pagination.
 - `low_stock` - Set to 'true' to filter items with low quantity
 - `low_stock_threshold` - Quantity threshold for low stock (default: 5)
 - `expiring_soon` - Set to 'true' to filter items with warranty expiring in next 30 days
-- `limit` - Results per page (default: 50)
+- `limit` - Results per page (default: 1000; configurable via `DEFAULT_PAGE_LIMIT`)
 - `offset` - Pagination offset (default: 0)
 - `sort` - Sort column: quantity, purchaseDate, createdAt, purchasePrice, updatedAt (default: updatedAt)
 - `order` - Sort order: asc or desc (default: desc)
@@ -49,7 +49,7 @@ List all inventory items with optional filtering and pagination.
   ],
   "meta": {
     "count": 1,
-    "limit": 50,
+    "limit": 1000,
     "offset": 0
   }
 }

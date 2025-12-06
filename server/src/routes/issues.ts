@@ -206,7 +206,7 @@ async function touchInventoryItemLastChecked(scope: RequestScope, inventoryId: n
   await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
     await scopedDb
       .update(inventoryItems)
-      .set({ lastChecked: new Date(), updatedAt: new Date() })
+      .set({ lastChecked: new Date(), markedGoodDate: null, updatedAt: new Date() })
       .where(eq(inventoryItems.id, inventoryId));
   });
 }
@@ -308,10 +308,7 @@ router.get('/', optionalAuth, async (req, res) => {
 
     const orderBy = order === 'asc' ? asc(sortColumn) : desc(sortColumn);
 
-    const { limit: parsedLimit, offset: parsedOffset } = parsePagination(limit, offset, {
-      defaultLimit: 50,
-      maxLimit: 200,
-    });
+    const { limit: parsedLimit, offset: parsedOffset } = parsePagination(limit, offset);
 
     const rows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },

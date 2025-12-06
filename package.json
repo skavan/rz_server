@@ -2,6 +2,7 @@
   "name": "rz_server-root",
   "private": true,
   "scripts": {
-    "seed:365": "npm run seed:365 --prefix server"
+    "seed:365": "npm run seed:365 --prefix server",
+    "sync:db-and-shared": "node scripts/sync-db-and-shared.mjs"
   }
 }

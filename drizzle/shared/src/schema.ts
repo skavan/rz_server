@@ -445,6 +445,7 @@ export const inventoryItems = pgTable('inventory_items', {
   condition: varchar('condition', { length: 20 }).default('good').$type<'excellent' | 'good' | 'fair' | 'poor'>(),
   lastChecked: timestamp('last_checked', { withTimezone: true }),
   lastMaintained: timestamp('last_maintained', { withTimezone: true }),
+  markedGoodDate: timestamp('marked_good_date', { withTimezone: true }),
   
   // Purchase and lifecycle
   purchaseDate: date('purchase_date'),

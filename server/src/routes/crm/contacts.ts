@@ -159,7 +159,7 @@ router.get('/', optionalAuth, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const { search, status } = req.query as Record<string, any>;
-    const { limit, offset } = parsePagination(req.query.limit, req.query.offset, { defaultLimit: 50, maxLimit: 200 });
+    const { limit, offset } = parsePagination(req.query.limit, req.query.offset);
 
     const searchTerm = typeof search === 'string' ? search.trim() : '';
     const statusFilter = typeof status === 'string' ? status.trim() : '';

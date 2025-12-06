@@ -42,7 +42,7 @@ Query params (snake_case mirrors camelCase automatically):
 - `includeReplies` – default `true`; set `false` to only show top-level comments
 - `includeDeleted` – default `false`
 - `order` – `asc` or `desc` (default `asc`)
-- `limit`/`offset` – pagination (default 50 / 0; max limit 200)
+- `limit`/`offset` – pagination (default 1000 / 0; max limit 2000, both overridable via `DEFAULT_PAGE_LIMIT` / `MAX_PAGE_LIMIT` env)
 
 Returns `{ data: CommentRow[], meta: { count, limit, offset, entityType, entityId } }`.
 

@@ -425,10 +425,7 @@ router.get('/', optionalAuth, async (req, res) => {
     const sortColumn = SORTABLE_COLUMNS[sortKey] ?? inventoryActionRequests.updatedAt;
     const orderBy = order === 'asc' ? asc(sortColumn) : desc(sortColumn);
 
-    const { limit: parsedLimit, offset: parsedOffset } = parsePagination(limit, offset, {
-      defaultLimit: 50,
-      maxLimit: 200,
-    });
+    const { limit: parsedLimit, offset: parsedOffset } = parsePagination(limit, offset);
 
     const includeSet = parseIncludeTokens(include);
     const includeIssue = includeSet.has('issue') || includeSet.has('issues');

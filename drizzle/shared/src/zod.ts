@@ -358,6 +358,7 @@ export const inventoryItemsValidationSchema = createValidationSchema(
   refineDateFields(
     'lastChecked',
     'lastMaintained',
+    'markedGoodDate',
     'purchaseDate',
     'warrantyExpires',
     'expectedReplacement',

@@ -244,7 +244,7 @@ router.get('/', optionalAuth, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const { status, homeId, search, from, to } = req.query as Record<string, any>;
-    const { limit, offset } = parsePagination(req.query.limit, req.query.offset, { defaultLimit: 50, maxLimit: 200 });
+    const { limit, offset } = parsePagination(req.query.limit, req.query.offset);
 
     const clauses: any[] = [];
 
