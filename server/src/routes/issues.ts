@@ -435,6 +435,25 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
 
         ensureHomeAccess(scope, homeId);
 
+        if (entityType === 'inventory_item') {
+          const existingInventoryIssue = await scopedDb
+            .select({ id: issues.id })
+            .from(issues)
+            .where(
+              and(
+                eq(issues.customerId, scope.customerId),
+                eq(issues.entityType, 'inventory_item'),
+                eq(issues.entityId, entityId),
+                isNull(issues.deletedAt)
+              )
+            )
+            .limit(1);
+
+          if (existingInventoryIssue.length > 0) {
+            throw new ValidationError('An issue already exists for this inventory item', 409);
+          }
+        }
+
         return scopedDb
           .insert(issues)
           .values({
