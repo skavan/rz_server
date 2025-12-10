@@ -105,13 +105,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('locations'), async (re
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-  const { name, slug, parentId, locationTypeId, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
-    
-    console.log('🔍 PUT /api/locations/:id - Received:');
-    console.log('   ID:', id);
-    console.log('   Body:', JSON.stringify(req.body, null, 2));
-    console.log('   locationTypeId:', locationTypeId, '(type:', typeof locationTypeId, ')');
-    
+  const { name, slug, parentId, locationType, locationTypeId, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
     const updateData: any = { updatedAt: new Date() };
     if (name !== undefined) {
       updateData.name = name;
@@ -120,13 +114,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
       updateData.slug = resolveSlug(slug, typeof name === 'string' ? name : undefined);
     }
     if (parentId !== undefined) updateData.parentId = parentId ? parseInt(parentId) : null;
+    if (locationType !== undefined) updateData.locationType = locationType || null;
     if (locationTypeId !== undefined) {
       updateData.locationTypeId = locationTypeId !== null && locationTypeId !== '' ? parseInt(locationTypeId) : null;
-      console.log('   ✅ Setting locationTypeId to:', updateData.locationTypeId);
     }
     if (squareFootage !== undefined) updateData.squareFootage = squareFootage ? parseInt(squareFootage) : null;
-    
-    console.log('📦 Update payload:', JSON.stringify(updateData, null, 2));
     if (isActive !== undefined) updateData.isActive = !!isActive;
     if (cleaningCadence !== undefined) updateData.cleaningCadence = cleaningCadence || null;
     if (checkingCadence !== undefined) updateData.checkingCadence = checkingCadence || null;

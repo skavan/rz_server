@@ -402,6 +402,8 @@ export const skusValidationSchema = createValidationSchema(
   hasMediaAssets: z.boolean().default(false),
   kind: z.enum(['simple', 'bom']).default('simple'),
   status: z.enum(['active', 'discontinued', 'unknown']).default('active'),
+  isPurchasable: z.boolean().default(true),
+  estRepairPrice: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
 });
 
 /**
@@ -533,6 +535,8 @@ export const issuesValidationSchema = createValidationSchema(
     .nullable()
     .optional(),
   estimatedClaimAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  replacePrice: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  repairPrice: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
   insurancePolicyRef: z.preprocess(toNullableString, z.string().nullable().optional()),
   insuranceClaimRef: z.preprocess(toNullableString, z.string().nullable().optional()),
   tags: z

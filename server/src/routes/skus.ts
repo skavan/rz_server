@@ -13,7 +13,7 @@ import { getRequestScope } from '../utils/scope.js';
 import { getScopeFromRequest } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
-import { parsePagination } from './shared/validation.js';
+import { parsePagination, parseOptionalDecimal } from './shared/validation.js';
 
 const router = Router();
 
@@ -182,7 +182,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
  */
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, slug, productId, vendorId, brandId, vendorSku, purchaseUrl, price, isPurchasable, currency, lifespanYears, notes, status, kind, tags } = req.body || {};
+    const { name, slug, productId, vendorId, brandId, vendorSku, purchaseUrl, price, estRepairPrice, isPurchasable, currency, lifespanYears, notes, status, kind, tags } = req.body || {};
 
     if (!name) {
       return res.status(400).json({ error: 'SKU name is required' });
@@ -191,6 +191,10 @@ router.post('/', authenticateToken, async (req, res) => {
     const scope = await getRequestScope(req as any);
     const newSkus = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       const normalizedSlug = await generateUniqueSlug(scopedDb, slug, name, scope.customerId);
+      const estRepairPriceValue = parseOptionalDecimal(
+        estRepairPrice ?? (req.body?.est_repair_price as unknown),
+        'estRepairPrice'
+      );
       return scopedDb
         .insert(skus)
         .values({
@@ -203,6 +207,7 @@ router.post('/', authenticateToken, async (req, res) => {
           vendorSku: vendorSku || null,
           purchaseUrl: purchaseUrl || null,
           price: price || null,
+          estRepairPrice: estRepairPriceValue ?? null,
           isPurchasable: isPurchasable !== undefined ? !!isPurchasable : true,
           currency: currency || 'USD',
           lifespanYears: lifespanYears ? parseInt(lifespanYears) : null,
@@ -246,6 +251,10 @@ router.post('/composite', authenticateToken, async (req, res) => {
     const created = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb, client) => {
       // Create SKU first
   const slug = await generateUniqueSlug(scopedDb, skuInput?.slug, skuInput.name, scope.customerId);
+      const estRepairPriceValue = parseOptionalDecimal(
+        skuInput?.estRepairPrice ?? skuInput?.est_repair_price,
+        'estRepairPrice'
+      );
       const newSkus = await scopedDb
         .insert(skus)
         .values({
@@ -258,6 +267,7 @@ router.post('/composite', authenticateToken, async (req, res) => {
           vendorSku: skuInput.vendorSku || null,
           purchaseUrl: skuInput.purchaseUrl || null,
           price: skuInput.price || null,
+          estRepairPrice: estRepairPriceValue ?? null,
           isPurchasable: skuInput.isPurchasable !== undefined ? !!skuInput.isPurchasable : true,
           currency: skuInput.currency || 'USD',
           lifespanYears: skuInput.lifespanYears ? parseInt(skuInput.lifespanYears) : null,
@@ -322,7 +332,7 @@ router.post('/composite', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
   const { id } = req.params;
-  const { name, slug, productId, vendorId, brandId, vendorSku, purchaseUrl, price, isPurchasable, currency, lifespanYears, notes, status, kind, tags } = req.body || {};
+  const { name, slug, productId, vendorId, brandId, vendorSku, purchaseUrl, price, estRepairPrice, isPurchasable, currency, lifespanYears, notes, status, kind, tags } = req.body || {};
 
     const updateData: any = {
       updatedAt: new Date()
@@ -348,6 +358,15 @@ router.put('/:id', authenticateToken, async (req, res) => {
       if (!('priceUpdated' in req.body)) {
         updateData.priceUpdated = new Date();
       }
+    }
+    const hasEstRepairPriceField =
+      Object.prototype.hasOwnProperty.call(req.body ?? {}, 'estRepairPrice') ||
+      Object.prototype.hasOwnProperty.call(req.body ?? {}, 'est_repair_price');
+    if (hasEstRepairPriceField) {
+      updateData.estRepairPrice = parseOptionalDecimal(
+        estRepairPrice ?? (req.body?.est_repair_price as unknown),
+        'estRepairPrice'
+      );
     }
     if (req.body.priceUpdated !== undefined) {
       updateData.priceUpdated = req.body.priceUpdated ? new Date(req.body.priceUpdated) : null;

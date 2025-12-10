@@ -24,6 +24,7 @@ import {
   parseOptionalInteger,
   parseOptionalString,
   parseOptionalDate,
+  parseOptionalDecimal,
   parseOptionalBoolean,
   ensureHomeAccess,
   parsePagination,
@@ -136,7 +137,32 @@ const parseTagIds = (value: unknown): number[] | null | undefined => {
   });
 };
 
-type EntityResolution = { exists: boolean; homeId: number | null };
+type IssuePricingContext = {
+  inventoryPurchasePrice?: string | null;
+  skuPrice?: string | null;
+  skuRepairEstimate?: string | null;
+  productId?: number | null;
+  skuId?: number | null;
+};
+
+type EntityResolution = {
+  exists: boolean;
+  homeId: number | null;
+  pricing?: IssuePricingContext;
+};
+
+type DerivedPricingDefaults = {
+  replacePrice?: string | null;
+  repairPrice?: string | null;
+};
+
+const derivePricingDefaults = (pricing?: IssuePricingContext): DerivedPricingDefaults => {
+  if (!pricing) return {};
+  return {
+    replacePrice: pricing.skuPrice ?? pricing.inventoryPurchasePrice ?? null,
+    repairPrice: pricing.skuRepairEstimate ?? null,
+  };
+};
 
 async function resolveEntity(
   scopedDb: any,
@@ -146,12 +172,51 @@ async function resolveEntity(
   switch (entityType) {
     case 'inventory_item': {
       const rows = await scopedDb
-        .select({ homeId: inventoryItems.homeId })
+        .select({
+          homeId: inventoryItems.homeId,
+          productId: inventoryItems.productId,
+          skuId: inventoryItems.skuId,
+          purchasePrice: inventoryItems.purchasePrice,
+        })
         .from(inventoryItems)
         .where(eq(inventoryItems.id, entityId))
         .limit(1);
       if (rows.length === 0) return { exists: false, homeId: null };
-      return { exists: true, homeId: rows[0].homeId ?? null };
+      const row = rows[0];
+      const pricing: IssuePricingContext = {
+        inventoryPurchasePrice: row.purchasePrice ?? null,
+        productId: row.productId ?? null,
+        skuId: row.skuId ?? null,
+      };
+
+      if (row.skuId != null) {
+        const skuRows = await scopedDb
+          .select({ price: skus.price, repairEstimate: skus.estRepairPrice })
+          .from(skus)
+          .where(eq(skus.id, row.skuId))
+          .limit(1);
+        if (skuRows.length > 0) {
+          pricing.skuPrice = skuRows[0].price ?? null;
+          pricing.skuRepairEstimate = skuRows[0].repairEstimate ?? null;
+        }
+      }
+
+      let resolvedHomeId = row.homeId ?? null;
+      if (row.productId != null) {
+        const productRows = await scopedDb
+          .select({ homeId: products.homeId })
+          .from(products)
+          .where(eq(products.id, row.productId))
+          .limit(1);
+        if (productRows.length > 0) {
+          const productRow = productRows[0];
+          if (resolvedHomeId == null) {
+            resolvedHomeId = productRow.homeId ?? null;
+          }
+        }
+      }
+
+      return { exists: true, homeId: resolvedHomeId, pricing };
     }
     case 'location': {
       const rows = await scopedDb
@@ -178,16 +243,23 @@ async function resolveEntity(
         .where(eq(products.id, entityId))
         .limit(1);
       if (rows.length === 0) return { exists: false, homeId: null };
-      return { exists: true, homeId: rows[0].homeId ?? null };
+      const row = rows[0];
+      return {
+        exists: true,
+        homeId: row.homeId ?? null,
+        pricing: {
+          productId: entityId,
+        },
+      };
     }
     case 'sku': {
       const skuRows = await scopedDb
-        .select({ productId: skus.productId })
+        .select({ productId: skus.productId, price: skus.price, repairEstimate: skus.estRepairPrice })
         .from(skus)
         .where(eq(skus.id, entityId))
         .limit(1);
       if (skuRows.length === 0) return { exists: false, homeId: null };
-      const productId = skuRows[0].productId;
+      const { productId, price, repairEstimate } = skuRows[0];
       if (productId == null) return { exists: false, homeId: null };
       const productRows = await scopedDb
         .select({ homeId: products.homeId })
@@ -195,7 +267,17 @@ async function resolveEntity(
         .where(eq(products.id, productId))
         .limit(1);
       if (productRows.length === 0) return { exists: false, homeId: null };
-      return { exists: true, homeId: productRows[0].homeId ?? null };
+      const productRow = productRows[0];
+      return {
+        exists: true,
+        homeId: productRow.homeId ?? null,
+        pricing: {
+          productId,
+          skuId: entityId,
+          skuPrice: price ?? null,
+          skuRepairEstimate: repairEstimate ?? null,
+        },
+      };
     }
     default:
       return { exists: false, homeId: null };
@@ -416,6 +498,14 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
 
     const explicitHomeId = parseOptionalInteger(body.homeId, 'homeId');
     const tags = parseTagIds(body.tags);
+    const replacePriceInput = parseOptionalDecimal(
+      body.replacePrice ?? body.replace_price,
+      'replacePrice'
+    );
+    const repairPriceInput = parseOptionalDecimal(
+      body.repairPrice ?? body.repair_price,
+      'repairPrice'
+    );
 
     const createdRows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
@@ -454,6 +544,12 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
           }
         }
 
+        const pricingDefaults = derivePricingDefaults(entity.pricing);
+        const replacePrice =
+          replacePriceInput !== undefined ? replacePriceInput : pricingDefaults.replacePrice ?? null;
+        const repairPrice =
+          repairPriceInput !== undefined ? repairPriceInput : pricingDefaults.repairPrice ?? null;
+
         return scopedDb
           .insert(issues)
           .values({
@@ -472,6 +568,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
             reportedByUserId: reportedBy ?? null,
             dueAt: dueAt ?? null,
             tags: tags ?? null,
+            replacePrice,
+            repairPrice,
           })
           .returning();
       }
@@ -543,6 +641,18 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const damageAssessmentUpdate = hasDamageAssessmentValue
       ? coerceDamageAssessment(body.damageAssessment ?? body.damage_assessment, 'damageAssessment')
       : undefined;
+    const hasReplacePriceField =
+      Object.prototype.hasOwnProperty.call(body, 'replacePrice') ||
+      Object.prototype.hasOwnProperty.call(body, 'replace_price');
+    const replacePrice = hasReplacePriceField
+      ? parseOptionalDecimal(body.replacePrice ?? body.replace_price, 'replacePrice')
+      : undefined;
+    const hasRepairPriceField =
+      Object.prototype.hasOwnProperty.call(body, 'repairPrice') ||
+      Object.prototype.hasOwnProperty.call(body, 'repair_price');
+    const repairPrice = hasRepairPriceField
+      ? parseOptionalDecimal(body.repairPrice ?? body.repair_price, 'repairPrice')
+      : undefined;
 
     const updatedRows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
@@ -588,6 +698,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
         if (damageAssessmentUpdate !== undefined) {
           updateData.damageAssessment = damageAssessmentUpdate;
         }
+        if (replacePrice !== undefined) updateData.replacePrice = replacePrice;
+        if (repairPrice !== undefined) updateData.repairPrice = repairPrice;
 
         if (Object.keys(updateData).length === 1) {
           return existingRows; // Nothing to update beyond updatedAt fallback
