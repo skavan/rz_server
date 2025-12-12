@@ -20,7 +20,7 @@ import {
   isNull,
 } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { getRequestScope, type RequestScope } from '../utils/scope.js';
 import { withTenantScope } from '../db/index.js';
 import { eventBus } from '../utils/event-bus.js';
@@ -505,7 +505,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
   }
 });
 
-router.post('/', authenticateToken, autoInjectMiddleware('comments'), async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('comments', { requireWrite: true }), async (req, res) => {
   try {
     const scope = getScopeFromRequest(req as any);
     const user = (req as any)?.user;
@@ -689,11 +689,11 @@ router.patch('/:id', authenticateToken, async (req, res) => {
   await handleCommentUpdate(req, res);
 });
 
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   await handleCommentUpdate(req, res);
 });
 
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const user = (req as any)?.user;

@@ -3,7 +3,8 @@ import { withTenantScope } from '../db/index.js';
 import { tags, eq, and, ilike } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
+import { authenticateToken } from '../auth/index.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
 const router = Router();
@@ -99,7 +100,7 @@ router.get('/:id', async (req, res) => {
  * POST /api/tags
  * Create new tag (requires auth)
  */
-router.post('/', autoInjectMiddleware('tags'), async (req, res) => {
+router.post('/', autoInjectMiddleware('tags', { requireWrite: true }), async (req, res) => {
   try {
     const { 
       name, slug, description, color, tagType, tagScope, 
@@ -162,7 +163,7 @@ router.post('/', autoInjectMiddleware('tags'), async (req, res) => {
  * Update tag (requires auth)
  * Note: System tags and locked tags may have restrictions
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { 
@@ -243,7 +244,7 @@ router.put('/:id', async (req, res) => {
  * Delete tag (requires auth)
  * Note: System tags and locked tags cannot be deleted
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 

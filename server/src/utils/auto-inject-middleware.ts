@@ -8,7 +8,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { getRequestScope } from './scope.js';
+import { getRequestScope, canWrite } from './scope.js';
 import { autoInjectScope, type TableName } from './auto-inject.js';
 
 /**
@@ -36,6 +36,8 @@ export function autoInjectMiddleware(
   options: {
     /** Skip auto-injection for these routes (useful for bulk operations) */
     skipForPaths?: string[];
+    /** Require write access (non-viewer role) - defaults to false */
+    requireWrite?: boolean;
     /** Custom error handler */
     onError?: (error: Error, req: Request, res: Response) => void;
   } = {}
@@ -49,6 +51,11 @@ export function autoInjectMiddleware(
 
       // Get authenticated scope
       const scope = await getRequestScope(req as any);
+
+      // Check write access if required
+      if (options.requireWrite && !canWrite(scope)) {
+        return res.status(403).json({ error: 'Read-only access. Write operations not permitted.' });
+      }
 
       // Auto-inject scoping fields into request body
       req.body = autoInjectScope(tableName, scope, req.body || {});
@@ -125,4 +132,30 @@ export function autoInjectBulkMiddleware(
  */
 export function getScopeFromRequest(req: Request) {
   return (req as any).scope;
+}
+
+/**
+ * Middleware: Require write access for mutations (PUT/DELETE)
+ * Resolves scope and checks homeAccessRole. Use after authenticateToken.
+ * 
+ * @example
+ * router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {...});
+ */
+export function requireWriteMiddleware(req: Request, res: Response, next: NextFunction) {
+  (async () => {
+    try {
+      const scope = await getRequestScope(req as any);
+      (req as any).scope = scope;
+      if (!canWrite(scope)) {
+        return res.status(403).json({ error: 'Read-only access. Write operations not permitted.' });
+      }
+      next();
+    } catch (error) {
+      const err = error as Error;
+      if (err.message.includes('Unauthorized')) {
+        return res.status(403).json({ error: err.message });
+      }
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  })();
 }

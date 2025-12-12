@@ -16,7 +16,7 @@ import {
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { withTenantScope } from '../db/index.js';
 import { eventBus } from '../utils/event-bus.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { getRequestScope, type RequestScope } from '../utils/scope.js';
 import {
   ValidationError,
@@ -783,7 +783,7 @@ const applyWritableFields = (
 router.post(
   '/',
   authenticateToken,
-  autoInjectMiddleware('inventoryActionRequests'),
+  autoInjectMiddleware('inventoryActionRequests', { requireWrite: true }),
   async (req, res) => {
     try {
       const scope = getScopeFromRequest(req as any);
@@ -878,7 +878,7 @@ router.post(
   }
 );
 
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const body = req.body ?? {};
@@ -1001,7 +1001,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const id = Number(req.params.id);

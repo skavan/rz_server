@@ -2,21 +2,40 @@ import type { Request } from 'express';
 import { db } from '../db/index.js';
 import { sql } from '@postgress/shared';
 
+export type HomeAccessRole = 'admin' | 'manager' | 'viewer';
+
 export type RequestScope = {
   customerId: number;
   homeIds: number[]; // always concrete list on return
+  homeAccessRole: HomeAccessRole; // highest role across all accessible homes
 };
 
-async function fetchUserScope(userId: number): Promise<{ customerId?: number; homeIds: number[] }> {
+const ROLE_PRIORITY: Record<HomeAccessRole, number> = { admin: 3, manager: 2, viewer: 1 };
+
+function getHighestRole(roles: string[]): HomeAccessRole {
+  let highest: HomeAccessRole = 'viewer';
+  for (const role of roles) {
+    const r = role as HomeAccessRole;
+    if (ROLE_PRIORITY[r] > ROLE_PRIORITY[highest]) {
+      highest = r;
+    }
+  }
+  return highest;
+}
+
+async function fetchUserScope(userId: number): Promise<{ customerId?: number; homeIds: number[]; homeAccessRole: HomeAccessRole }> {
   // Get user's customer_id
   const userRes = await db.execute(sql`SELECT customer_id FROM users WHERE id = ${userId} LIMIT 1`);
   const rawUserRow: any = (userRes.rows as any[])[0];
   const customerId: number | undefined = rawUserRow && rawUserRow.customer_id != null ? Number(rawUserRow.customer_id) : undefined;
 
-  // Get homes user has access to
-  const homesRes = await db.execute(sql`SELECT home_id FROM user_home_access WHERE user_id = ${userId}`);
-  const homeIds: number[] = (homesRes.rows as any[]).map((r) => Number(r.home_id)).filter((n) => Number.isFinite(n));
-  return { customerId, homeIds };
+  // Get homes user has access to with their roles
+  const homesRes = await db.execute(sql`SELECT home_id, role FROM user_home_access WHERE user_id = ${userId}`);
+  const rows = homesRes.rows as any[];
+  const homeIds: number[] = rows.map((r) => Number(r.home_id)).filter((n) => Number.isFinite(n));
+  const roles: string[] = rows.map((r) => r.role).filter(Boolean);
+  const homeAccessRole = getHighestRole(roles);
+  return { customerId, homeIds, homeAccessRole };
 }
 
 async function fetchDefaultHomeIds(customerId: number): Promise<number[]> {
@@ -78,11 +97,11 @@ export async function getRequestScope(req: Request): Promise<RequestScope> {
   // If authenticated, derive from DB and validate selected home
   const authUser: any = (req as any).user;
   if (authUser?.id) {
-    const { customerId, homeIds } = await fetchUserScope(Number(authUser.id));
+    const { customerId, homeIds, homeAccessRole } = await fetchUserScope(Number(authUser.id));
     if (!customerId) {
       // No customer association; deny in prod, fallback to dev defaults otherwise
       if (isProd) throw new Error('Unauthorized: no customer association');
-      return { customerId: 1, homeIds: await fetchDefaultHomeIds(1) };
+      return { customerId: 1, homeIds: await fetchDefaultHomeIds(1), homeAccessRole: 'admin' };
     }
     const allowed = homeIds.length > 0 ? homeIds : await fetchDefaultHomeIds(customerId);
     const multiRequested = parseRequestedHomeIds().filter((id) => allowed.includes(id));
@@ -92,7 +111,7 @@ export async function getRequestScope(req: Request): Promise<RequestScope> {
       : requested && allowed.includes(requested)
         ? [requested]
         : allowed;
-    return { customerId, homeIds: effective };
+    return { customerId, homeIds: effective, homeAccessRole };
   }
 
   // No auth token: allow dev header overrides only when not in production
@@ -120,9 +139,16 @@ export async function getRequestScope(req: Request): Promise<RequestScope> {
       homeIds = await fetchDefaultHomeIds(customerId);
     }
 
-    return { customerId, homeIds };
+    return { customerId, homeIds, homeAccessRole: 'admin' };
   }
 
   // Production without auth: fail closed
   throw new Error('Unauthorized');
+}
+
+/**
+ * Check if the scope allows write operations (non-viewer role)
+ */
+export function canWrite(scope: RequestScope): boolean {
+  return scope.homeAccessRole !== 'viewer';
 }

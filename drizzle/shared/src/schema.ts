@@ -625,6 +625,7 @@ export const issues = pgTable('issues', {
   homeId: integer('home_id').references(() => homes.id, { onDelete: 'set null' }),
   entityType: varchar('entity_type', { length: 30 }).notNull().$type<'inventory_item' | 'location' | 'home' | 'product' | 'sku'>(),
   entityId: integer('entity_id').notNull(),
+  itemQty: integer('item_qty').default(1).notNull(),
   status: issueStatusEnum('status').default('open').notNull(),
   urgency: issueUrgencyEnum('urgency').default('normal').notNull(),
   issueType: issueTypeEnum('issue_type').default('operational').notNull(),

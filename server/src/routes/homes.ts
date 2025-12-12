@@ -4,6 +4,8 @@ import { homes, eq, and, ilike } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
+import { authenticateToken } from '../auth/index.js';
+import { requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 
 const router = Router();
 
@@ -142,7 +144,7 @@ router.post('/', async (req, res) => {
  * PUT /api/homes/:id
  * Update home (requires auth)
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { 
@@ -199,7 +201,7 @@ router.put('/:id', async (req, res) => {
  * DELETE /api/homes/:id
  * Delete home (requires auth)
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 

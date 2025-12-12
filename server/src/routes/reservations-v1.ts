@@ -3,7 +3,7 @@ import { withTenantScope } from '../db/index.js';
 import { reservations, eq, and } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 
 const router = Router();
@@ -415,7 +415,7 @@ router.get('/status/:status', optionalAuth, async (req, res) => {
  * POST /api/reservations-v1
  * Create a new reservation (requires auth)
  */
-router.post('/', authenticateToken, autoInjectMiddleware('reservations'), async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('reservations', { requireWrite: true }), async (req, res) => {
   try {
     const scope = getScopeFromRequest(req as any);
     const payload = buildInsertPayload(req.body || {});
@@ -449,7 +449,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('reservations'), async 
  * PUT /api/reservations-v1/:id
  * Update an existing reservation (requires auth)
  */
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const reservationId = Number(req.params.id);
     if (!Number.isFinite(reservationId)) {
@@ -494,7 +494,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
  * DELETE /api/reservations-v1/:id
  * Delete a reservation (requires auth)
  */
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const reservationId = Number(req.params.id);
     if (!Number.isFinite(reservationId)) {

@@ -7,7 +7,7 @@ import { locations, eq, asc, desc, and, ilike } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
 const router = Router();
@@ -57,7 +57,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 // POST /api/locations
-router.post('/', authenticateToken, autoInjectMiddleware('locations'), async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('locations', { requireWrite: true }), async (req, res) => {
   try {
   const { homeId, name, slug, parentId, locationTypeId, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
     if (!name) return res.status(400).json({ error: 'name is required' });
@@ -102,7 +102,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('locations'), async (re
 });
 
 // PUT /api/locations/:id
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
   const { name, slug, parentId, locationType, locationTypeId, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
@@ -149,7 +149,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/locations/:id
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const scope = await getRequestScope(req as any);

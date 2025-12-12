@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { bookingNotes, bookingReservations, eq, desc } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../../auth/index.js';
+import { requireWriteMiddleware } from '../../utils/auto-inject-middleware.js';
 import { getRequestScope } from '../../utils/scope.js';
 import type { RequestScope } from '../../utils/scope.js';
 import { withTenantScope } from '../../db/index.js';
@@ -188,7 +189,7 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const id = requireNumber(req.params.id, 'id');
@@ -227,7 +228,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const id = requireNumber(req.params.id, 'id');

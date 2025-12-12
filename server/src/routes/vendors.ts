@@ -3,7 +3,8 @@ import { db, withTenantScope } from '../db/index.js';
 import { vendors, eq, and, ilike } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
+import { authenticateToken } from '../auth/index.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
 const router = Router();
@@ -84,7 +85,7 @@ router.get('/:id', async (req, res) => {
  * POST /api/vendors
  * Create new vendor (requires auth)
  */
-router.post('/', autoInjectMiddleware('vendors'), async (req, res) => {
+router.post('/', autoInjectMiddleware('vendors', { requireWrite: true }), async (req, res) => {
   try {
     let { name, slug, websiteUrl, paymentTerms, isActive, customerId } = req.body || {};
 
@@ -136,7 +137,7 @@ router.post('/', autoInjectMiddleware('vendors'), async (req, res) => {
  * PUT /api/vendors/:id
  * Update vendor (requires auth)
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, slug, websiteUrl, paymentTerms, isActive } = req.body || {};
@@ -199,7 +200,7 @@ router.put('/:id', async (req, res) => {
  * DELETE /api/vendors/:id
  * Delete vendor (requires auth)
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 

@@ -9,7 +9,7 @@ import { products, eq, ilike, or, asc, desc, and, ne, sql } from '@postgress/sha
 import { productComponents } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 import { parsePagination } from './shared/validation.js';
@@ -167,7 +167,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
  * POST /api/products
  * Create new product (requires auth)
  */
-router.post('/', authenticateToken, autoInjectMiddleware('products'), async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('products', { requireWrite: true }), async (req, res) => {
   try {
     const { name, homeId, slug, categoryId, notes, isVisible, isActive, kind, tags, checkCadence } = req.body || {};
 
@@ -229,7 +229,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('products'), async (req
  * Create a product and its components in a single transaction
  * Body: { product: { name, homeId, categoryId?, notes?, isComposite? }, components?: [{ componentProductId, quantity, isRequired?, sortOrder? }] }
  */
-router.post('/composite', authenticateToken, autoInjectMiddleware('products'), async (req, res) => {
+router.post('/composite', authenticateToken, autoInjectMiddleware('products', { requireWrite: true }), async (req, res) => {
   try {
     const { product: productInput, components = [], homeId } = req.body || {};
     if (!productInput?.name || !String(productInput.name).trim()) {
@@ -321,7 +321,7 @@ router.post('/composite', authenticateToken, autoInjectMiddleware('products'), a
  * PUT /api/products/:id
  * Update product (requires auth)
  */
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, slug, categoryId, notes, isVisible, isActive, kind, tags, checkCadence } = req.body || {};
@@ -429,7 +429,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
  * DELETE /api/products/:id
  * Delete product (requires auth)
  */
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -492,7 +492,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
  * Update product and replace its components in a single transaction
  * Body: { product?: { name?, categoryId?, notes?, isVisible?, isActive? }, components?: [{ componentProductId, quantity, isRequired?, sortOrder? }] }
  */
-router.put('/:id/composite', authenticateToken, async (req, res) => {
+router.put('/:id/composite', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { product: productInput = {}, components = [] } = req.body || {};

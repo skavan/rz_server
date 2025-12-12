@@ -3,7 +3,8 @@ import { db, withTenantScope } from '../db/index.js';
 import { categories, eq, and, like, isNull, desc, or, ilike } from '@postgress/shared';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
+import { authenticateToken } from '../auth/index.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
 const router = Router();
@@ -97,7 +98,7 @@ router.get('/:id', async (req, res) => {
  * POST /api/categories
  * Create new category (requires auth)
  */
-router.post('/', autoInjectMiddleware('categories'), async (req, res) => {
+router.post('/', autoInjectMiddleware('categories', { requireWrite: true }), async (req, res) => {
   try {
     let { name, slug, description, parentId, isActive, customerId } = req.body || {};
 
@@ -152,7 +153,7 @@ router.post('/', autoInjectMiddleware('categories'), async (req, res) => {
  * PUT /api/categories/:id
  * Update category (requires auth)
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, slug, description, parentId, isActive } = req.body || {};
@@ -218,7 +219,7 @@ router.put('/:id', async (req, res) => {
  * DELETE /api/categories/:id
  * Delete category (requires auth)
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 

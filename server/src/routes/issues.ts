@@ -17,7 +17,7 @@ import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { withTenantScope } from '../db/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import type { RequestScope } from '../utils/scope.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 import {
   ValidationError,
@@ -460,7 +460,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
   }
 });
 
-router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('issues', { requireWrite: true }), async (req, res) => {
   try {
     const scope = getScopeFromRequest(req as any);
     const body = req.body ?? {};
@@ -498,6 +498,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
 
     const explicitHomeId = parseOptionalInteger(body.homeId, 'homeId');
     const tags = parseTagIds(body.tags);
+    const itemQty = parseOptionalInteger(body.itemQty ?? body.item_qty, 'itemQty') ?? 1;
     const replacePriceInput = parseOptionalDecimal(
       body.replacePrice ?? body.replace_price,
       'replacePrice'
@@ -564,6 +565,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
             recommendedAction,
             hasVisibleDamage,
             damageAssessment,
+            itemQty,
             assignedToUserId: assignedTo ?? null,
             reportedByUserId: reportedBy ?? null,
             dueAt: dueAt ?? null,
@@ -601,7 +603,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('issues'), async (req, 
   }
 });
 
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const scope = await getRequestScope(req as any);
@@ -653,6 +655,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const repairPrice = hasRepairPriceField
       ? parseOptionalDecimal(body.repairPrice ?? body.repair_price, 'repairPrice')
       : undefined;
+    const hasItemQtyField =
+      Object.prototype.hasOwnProperty.call(body, 'itemQty') ||
+      Object.prototype.hasOwnProperty.call(body, 'item_qty');
+    const itemQty = hasItemQtyField
+      ? parseOptionalInteger(body.itemQty ?? body.item_qty, 'itemQty')
+      : undefined;
 
     const updatedRows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
@@ -700,6 +708,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         }
         if (replacePrice !== undefined) updateData.replacePrice = replacePrice;
         if (repairPrice !== undefined) updateData.repairPrice = repairPrice;
+        if (itemQty !== undefined) updateData.itemQty = itemQty;
 
         if (Object.keys(updateData).length === 1) {
           return existingRows; // Nothing to update beyond updatedAt fallback
@@ -744,7 +753,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const id = parseInt(req.params.id, 10);

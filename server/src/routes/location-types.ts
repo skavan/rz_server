@@ -3,7 +3,7 @@ import { withTenantScope } from '../db/index.js';
 import { locationTypes, eq, asc, desc, and, ilike } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 
@@ -76,7 +76,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 // POST /api/location-types
-router.post('/', authenticateToken, autoInjectMiddleware('locationTypes'), async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('locationTypes', { requireWrite: true }), async (req, res) => {
   try {
     const { name, slug, isActive, customerId, icon } = req.body || {};
     if (!name || !String(name).trim()) {
@@ -122,7 +122,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('locationTypes'), async
 });
 
 // PUT /api/location-types/:id
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, slug, isActive, icon } = req.body || {};
@@ -177,7 +177,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/location-types/:id
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const deleted = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {

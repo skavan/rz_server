@@ -10,7 +10,7 @@ import { skus, eq, ilike, or, asc, desc, and, ne } from '@postgress/shared';
 import { skuComponents } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
-import { getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
 import { parsePagination, parseOptionalDecimal } from './shared/validation.js';
@@ -329,7 +329,7 @@ router.post('/composite', authenticateToken, async (req, res) => {
  * PUT /api/skus/:id
  * Update SKU (requires auth)
  */
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
   const { id } = req.params;
   const { name, slug, productId, vendorId, brandId, vendorSku, purchaseUrl, price, estRepairPrice, isPurchasable, currency, lifespanYears, notes, status, kind, tags } = req.body || {};
@@ -464,7 +464,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
  * DELETE /api/skus/:id
  * Delete SKU (requires auth)
  */
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -527,7 +527,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
  * Update SKU and replace its components in a single transaction
  * Body: { sku?: { name?, productId?, ... }, components?: [{ componentSkuId, quantity, isRequired?, sortOrder?, costAllocation? }] }
  */
-router.put('/:id/composite', authenticateToken, async (req, res) => {
+router.put('/:id/composite', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { sku: skuInput = {}, components = [] } = req.body || {};

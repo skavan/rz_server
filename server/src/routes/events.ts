@@ -46,6 +46,7 @@ router.get('/stream', async (req, res) => {
       scope = {
         customerId: qCustomer && Number.isFinite(qCustomer) ? qCustomer : scope.customerId,
         homeIds: qHomes && qHomes.length ? qHomes : scope.homeIds,
+        homeAccessRole: scope.homeAccessRole,
       };
     }
   }

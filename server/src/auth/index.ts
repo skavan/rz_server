@@ -135,3 +135,16 @@ export function optionalAuth(req: AuthRequest, res: Response, next: NextFunction
 
   next();
 }
+
+/**
+ * Middleware to require write access (non-viewer role).
+ * Must be used after authenticateToken and after scope has been set on the request.
+ * Checks (req as any).scope.homeAccessRole - if 'viewer', returns 403.
+ */
+export function requireWriteAccess(req: Request, res: Response, next: NextFunction) {
+  const scope = (req as any).scope;
+  if (scope?.homeAccessRole === 'viewer') {
+    return res.status(403).json({ error: 'Read-only access. Write operations not permitted.' });
+  }
+  next();
+}

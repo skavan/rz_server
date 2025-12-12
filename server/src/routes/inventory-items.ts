@@ -23,7 +23,7 @@ import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import type { RequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
-import { autoInjectMiddleware, getScopeFromRequest } from '../utils/auto-inject-middleware.js';
+import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { parsePagination } from './shared/validation.js';
 
 const router = Router();
@@ -369,7 +369,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
  * POST /api/inventory-items
  * Create new inventory item (requires auth)
  */
-router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems', { requireWrite: true }), async (req, res) => {
   try {
     const {
       skuId,
@@ -459,7 +459,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems'), asyn
  * PUT /api/inventory-items/:id
  * Update inventory item (requires auth)
  */
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -599,7 +599,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
  * DELETE /api/inventory-items/:id
  * Delete inventory item (requires auth)
  */
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const itemId = parseInt(id, 10);
@@ -737,7 +737,7 @@ router.patch('/:id/adjust-quantity', authenticateToken, async (req, res) => {
   await handleInventoryQuantityAdjustment(req, res);
 });
 
-router.put('/:id/adjust-quantity', authenticateToken, async (req, res) => {
+router.put('/:id/adjust-quantity', authenticateToken, requireWriteMiddleware, async (req, res) => {
   await handleInventoryQuantityAdjustment(req, res);
 });
 
