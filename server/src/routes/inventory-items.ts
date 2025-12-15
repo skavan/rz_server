@@ -395,6 +395,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems', { req
       tags,
       notes,
       markedGoodDate,
+      reinspectRequest,
+      photoRequest,
     } = req.body || {};
 
     if (!productId) {
@@ -436,6 +438,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('inventoryItems', { req
           tags: Array.isArray(tags) ? tags : null,
           notes: notes || null,
           markedGoodDate: normalizedMarkedGoodDate,
+          reinspectRequest: reinspectRequest !== undefined ? !!reinspectRequest : false,
+          photoRequest: photoRequest !== undefined ? !!photoRequest : false,
         })
         .returning();
     });
@@ -486,6 +490,8 @@ router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) =
       notes,
       isActive,
       markedGoodDate,
+      reinspectRequest,
+      photoRequest,
     } = req.body || {};
 
     const updateData: any = {
@@ -566,6 +572,12 @@ router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) =
       if (lastChecked === undefined) {
         updateData.lastChecked = normalizedMarkedGoodDate;
       }
+    }
+    if (reinspectRequest !== undefined) {
+      updateData.reinspectRequest = !!reinspectRequest;
+    }
+    if (photoRequest !== undefined) {
+      updateData.photoRequest = !!photoRequest;
     }
 
     const scope = await getRequestScope(req as any);

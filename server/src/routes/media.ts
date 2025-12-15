@@ -47,14 +47,20 @@ const upload = multer({
       'image/gif',
       'image/webp',
       'image/x-webp',
+      'image/avif',
+      'image/heic',
+      'image/heif',
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ];
     
+    console.log(`📁 Upload attempt: ${file.originalname}, mimetype: ${file.mimetype}`);
+    
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
+      console.warn(`❌ Rejected file type: ${file.mimetype} for ${file.originalname}`);
       cb(new Error(`File type ${file.mimetype} not allowed`));
     }
   },

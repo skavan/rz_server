@@ -462,6 +462,10 @@ export const inventoryItems = pgTable('inventory_items', {
   // Media assets
   hasMediaAssets: boolean('has_media_assets').default(false),
   
+  // Flags for follow-up actions
+  reinspectRequest: boolean('reinspect_request').default(false),
+  photoRequest: boolean('photo_request').default(false),
+  
   // Tagging and notes
   tags: integer('tags').array(),
   notes: text('notes'),
