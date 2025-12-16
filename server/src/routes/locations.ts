@@ -59,7 +59,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 // POST /api/locations
 router.post('/', authenticateToken, autoInjectMiddleware('locations', { requireWrite: true }), async (req, res) => {
   try {
-  const { homeId, name, slug, parentId, locationTypeId, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
+    const { homeId, name, slug, parentId, locationTypeId, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, reviewed, reviewedDate, notes } = req.body || {};
     if (!name) return res.status(400).json({ error: 'name is required' });
     const normalizedSlug = resolveSlug(slug, name);
 
@@ -80,6 +80,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('locations', { requireW
           checkingCadence: checkingCadence || null,
           lastChecked: lastChecked ? new Date(lastChecked) : null,
           lastCleaned: lastCleaned ? new Date(lastCleaned) : null,
+          reviewed: reviewed !== undefined ? !!reviewed : false,
+          reviewedDate: reviewedDate ? new Date(reviewedDate) : null,
           notes: notes || null,
           tags: Array.isArray(tags) ? tags : null,
         })
@@ -105,7 +107,7 @@ router.post('/', authenticateToken, autoInjectMiddleware('locations', { requireW
 router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-  const { name, slug, parentId, locationType, locationTypeId, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, notes } = req.body || {};
+    const { name, slug, parentId, locationType, locationTypeId, squareFootage, isActive, cleaningCadence, checkingCadence, tags, lastChecked, lastCleaned, reviewed, reviewedDate, notes } = req.body || {};
     const updateData: any = { updatedAt: new Date() };
     if (name !== undefined) {
       updateData.name = name;
@@ -123,9 +125,11 @@ router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) =
     if (cleaningCadence !== undefined) updateData.cleaningCadence = cleaningCadence || null;
     if (checkingCadence !== undefined) updateData.checkingCadence = checkingCadence || null;
     if (tags !== undefined) updateData.tags = Array.isArray(tags) ? tags : null;
-  if (lastChecked !== undefined) updateData.lastChecked = lastChecked ? new Date(lastChecked) : null;
-  if (lastCleaned !== undefined) updateData.lastCleaned = lastCleaned ? new Date(lastCleaned) : null;
-  if (notes !== undefined) updateData.notes = notes || null;
+    if (lastChecked !== undefined) updateData.lastChecked = lastChecked ? new Date(lastChecked) : null;
+    if (lastCleaned !== undefined) updateData.lastCleaned = lastCleaned ? new Date(lastCleaned) : null;
+    if (reviewed !== undefined) updateData.reviewed = !!reviewed;
+    if (reviewedDate !== undefined) updateData.reviewedDate = reviewedDate ? new Date(reviewedDate) : null;
+    if (notes !== undefined) updateData.notes = notes || null;
 
     const scope = await getRequestScope(req as any);
     const rows = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {

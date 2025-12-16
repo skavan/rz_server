@@ -407,6 +407,8 @@ export const locations = pgTable('locations', {
   lastChecked: timestamp('last_checked', { withTimezone: true }),
   cleaningCadence: jsonb('cleaning_cadence'),
   checkingCadence: jsonb('checking_cadence'),
+  reviewed: boolean('reviewed').notNull().default(false),
+  reviewedDate: date('reviewed_date'),
   tags: integer('tags').array(),
   notes: text('notes'),
   hasMediaAssets: boolean('has_media_assets').default(false),

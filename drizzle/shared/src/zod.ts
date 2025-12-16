@@ -277,9 +277,10 @@ export const relationArrayField = <T extends z.ZodTypeAny>(itemSchema: T) =>
  */
 export const locationsValidationSchema = createValidationSchema(
   locations,
-  refineDateFields('lastCleaned', 'lastChecked', 'createdAt', 'updatedAt')
+  refineDateFields('lastCleaned', 'lastChecked', 'reviewedDate', 'createdAt', 'updatedAt')
 ).extend({
   slug: slugInputSchema,
+  reviewed: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
   isActive: z.boolean().default(true),
 });
 
