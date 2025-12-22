@@ -9,6 +9,7 @@ import { optionalAuth } from "../auth/index.js";
 import { transformRows } from "../utils/field-transformer.js";
 import { getRequestScope } from "../utils/scope.js";
 import { getTablePolicy } from "../utils/policy-registry.js";
+import { ENV_DEFAULT_LIMIT } from "./shared/validation.js";
 
 const router = Router();
 
@@ -100,7 +101,7 @@ router.get(":tableName", optionalAuth, async (req, res) => {
 							SELECT * FROM users
 							WHERE customer_id = ${scope.customerId}
 							ORDER BY id
-							LIMIT 1000
+							LIMIT ${sql.raw(String(ENV_DEFAULT_LIMIT))}
 						`);
 					}
 					return scopedDb.execute(sql`
@@ -114,7 +115,7 @@ router.get(":tableName", optionalAuth, async (req, res) => {
 							  AND uha.home_id = ANY(${homesArray!})
 						  )
 						ORDER BY u.id
-						LIMIT 1000
+						LIMIT ${sql.raw(String(ENV_DEFAULT_LIMIT))}
 					`);
 				}
 			);
@@ -146,7 +147,7 @@ router.get(":tableName", optionalAuth, async (req, res) => {
 				return scopedDb.execute(sql`
 					SELECT * FROM ${sql.identifier(tableName)}
 					${whereClause}
-					LIMIT 1000
+					LIMIT ${sql.raw(String(ENV_DEFAULT_LIMIT))}
 				`);
 			});
 

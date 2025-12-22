@@ -8,6 +8,7 @@ import { sql } from "@postgress/shared";
 import { optionalAuth } from "../auth/index.js";
 import { getRequestScope } from "../utils/scope.js";
 import { getTablePolicy } from "../utils/policy-registry.js";
+import { ENV_DEFAULT_LIMIT } from "./shared/validation.js";
 
 const router = Router();
 
@@ -96,7 +97,7 @@ router.get("/:tableName", optionalAuth, async (req, res) => {
 		const results = await db.execute(sql`
       SELECT * FROM ${sql.identifier(tableName)}
       ${whereClause}
-      LIMIT 1000
+      LIMIT ${sql.raw(String(ENV_DEFAULT_LIMIT))}
     `);
 
 		// Return raw data with original snake_case field names

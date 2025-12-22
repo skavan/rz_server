@@ -179,8 +179,8 @@ export function ensureHomeAccess(scope: RequestScope, homeId: number): void {
   }
 }
 
-const ENV_DEFAULT_LIMIT = Number(process.env.DEFAULT_PAGE_LIMIT) || 1000;
-const ENV_MAX_LIMIT = Number(process.env.MAX_PAGE_LIMIT) || 2000;
+export const ENV_DEFAULT_LIMIT = Number(process.env.DEFAULT_PAGE_LIMIT) || 5000;
+export const ENV_MAX_LIMIT = Number(process.env.MAX_PAGE_LIMIT) || 10000;
 
 export function parsePagination(
   limitValue: unknown,
