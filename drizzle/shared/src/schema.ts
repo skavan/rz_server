@@ -277,7 +277,7 @@ export const locationTypes = pgTable('location_types', {
 // ============================================
 // Tag enums for classification and scoping
 export const tagTypeEnum = pgEnum('tag_type', ['placeholder']); // Reserved for future use
-export const tagScopeEnum = pgEnum('tag_scope', ['product', 'sku', 'inventory_item', 'location', 'home', 'all']);
+export const tagScopeEnum = pgEnum('tag_scope', ['product', 'sku', 'inventory_item', 'location', 'home', 'issue', 'all']);
 
 export const issueStatusEnum = pgEnum('issue_status', ['open', 'in_progress', 'resolved', 'dismissed']);
 export const issueUrgencyEnum = pgEnum('issue_urgency', ['normal', 'high']);

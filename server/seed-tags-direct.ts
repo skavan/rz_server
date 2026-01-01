@@ -9,7 +9,7 @@ interface TagDefinition {
   name: string;
   slug: string;
   description: string;
-  tagScope: 'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'all';
+  tagScope: 'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'all';
   categorySlug?: string; // null means applies to all categories
   color?: string;
 }
