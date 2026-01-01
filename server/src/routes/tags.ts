@@ -28,6 +28,9 @@ router.get('/', async (req, res) => {
     const results = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
       const whereConditions = [];
 
+      // Always scope by customer to avoid leaking other tenants' tags
+      whereConditions.push(eq(tags.customerId, scope.customerId));
+
       if (is_active !== undefined) {
         whereConditions.push(eq(tags.isActive, is_active === 'true'));
       } else if (include_inactive !== 'true') {
@@ -81,7 +84,7 @@ router.get('/:id', async (req, res) => {
       return scopedDb
         .select()
         .from(tags)
-        .where(eq(tags.id, Number(id)))
+        .where(and(eq(tags.id, Number(id)), eq(tags.customerId, scope.customerId)))
         .limit(1);
     });
 
