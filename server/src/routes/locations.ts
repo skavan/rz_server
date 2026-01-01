@@ -63,6 +63,13 @@ router.post('/', authenticateToken, autoInjectMiddleware('locations', { requireW
     if (!name) return res.status(400).json({ error: 'name is required' });
     const normalizedSlug = resolveSlug(slug, name);
 
+    const reviewedBool = reviewed !== undefined ? !!reviewed : false;
+    const reviewedDateValue = reviewedDate
+      ? new Date(reviewedDate)
+      : reviewedBool
+        ? new Date()
+        : null;
+
     // homeId is now guaranteed by middleware
     const scope = getScopeFromRequest(req as any);
     const createdRows = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
@@ -80,8 +87,8 @@ router.post('/', authenticateToken, autoInjectMiddleware('locations', { requireW
           checkingCadence: checkingCadence || null,
           lastChecked: lastChecked ? new Date(lastChecked) : null,
           lastCleaned: lastCleaned ? new Date(lastCleaned) : null,
-          reviewed: reviewed !== undefined ? !!reviewed : false,
-          reviewedDate: reviewedDate ? new Date(reviewedDate) : null,
+          reviewed: reviewedBool,
+          reviewedDate: reviewedDateValue,
           notes: notes || null,
           tags: Array.isArray(tags) ? tags : null,
         })
@@ -127,8 +134,17 @@ router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) =
     if (tags !== undefined) updateData.tags = Array.isArray(tags) ? tags : null;
     if (lastChecked !== undefined) updateData.lastChecked = lastChecked ? new Date(lastChecked) : null;
     if (lastCleaned !== undefined) updateData.lastCleaned = lastCleaned ? new Date(lastCleaned) : null;
-    if (reviewed !== undefined) updateData.reviewed = !!reviewed;
-    if (reviewedDate !== undefined) updateData.reviewedDate = reviewedDate ? new Date(reviewedDate) : null;
+    if (reviewed !== undefined) {
+      const reviewedBool = !!reviewed;
+      updateData.reviewed = reviewedBool;
+      if (reviewedBool) {
+        updateData.reviewedDate = reviewedDate ? new Date(reviewedDate) : new Date();
+      } else {
+        updateData.reviewedDate = null;
+      }
+    } else if (reviewedDate !== undefined) {
+      updateData.reviewedDate = reviewedDate ? new Date(reviewedDate) : null;
+    }
     if (notes !== undefined) updateData.notes = notes || null;
 
     const scope = await getRequestScope(req as any);
