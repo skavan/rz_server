@@ -12,6 +12,7 @@ import {
   asc,
   desc,
   isNull,
+  inArray,
 } from '@postgress/shared';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { withTenantScope } from '../db/index.js';
@@ -418,6 +419,211 @@ router.get('/', optionalAuth, async (req, res) => {
       return res.status(error.status).json({ error: error.message });
     }
     console.error('Issues GET error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.patch('/batch', authenticateToken, requireWriteMiddleware, async (req, res) => {
+  const scope = await getRequestScope(req as any);
+  const body = req.body ?? {};
+  const updatesInput = body.updates;
+
+  if (!Array.isArray(updatesInput) || updatesInput.length === 0) {
+    return res.status(400).json({ error: 'updates must be a non-empty array' });
+  }
+
+  const failed: Array<{ id: number | null; errors: string[] }> = [];
+  const validUpdates: Array<{ id: number; patch: Record<string, any> }> = [];
+
+  for (let i = 0; i < updatesInput.length; i++) {
+    const raw = updatesInput[i] ?? {};
+    const id = Number(raw.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      failed.push({ id: Number.isFinite(id) ? id : null, errors: ['id must be a positive integer'] });
+      continue;
+    }
+
+    try {
+      const patch: Record<string, any> = {};
+
+      if (raw.status !== undefined) patch.status = coerceStatus(raw.status, 'status');
+      if (raw.urgency !== undefined) patch.urgency = coerceUrgency(raw.urgency, 'urgency');
+      if (raw.issueType !== undefined) patch.issueType = coerceIssueType(raw.issueType, 'issueType');
+      if (raw.recommendedAction !== undefined) {
+        patch.recommendedAction = coerceRecommendedAction(raw.recommendedAction, 'recommendedAction');
+      }
+      if (raw.description !== undefined) patch.description = parseOptionalString(raw.description);
+      if (raw.resolutionNote !== undefined) patch.resolutionNote = parseOptionalString(raw.resolutionNote);
+      if (raw.assignedToUserId !== undefined) {
+        patch.assignedToUserId = parseOptionalInteger(raw.assignedToUserId, 'assignedToUserId');
+      }
+      if (raw.reportedByUserId !== undefined) {
+        patch.reportedByUserId = parseOptionalInteger(raw.reportedByUserId, 'reportedByUserId');
+      }
+      if (raw.dueAt !== undefined) patch.dueAt = parseOptionalDate(raw.dueAt, 'dueAt');
+      if (raw.resolvedAt !== undefined) patch.resolvedAt = parseOptionalDate(raw.resolvedAt, 'resolvedAt');
+      if (raw.resolvedByUserId !== undefined) {
+        patch.resolvedByUserId = parseOptionalInteger(raw.resolvedByUserId, 'resolvedByUserId');
+      }
+      if (raw.tags !== undefined) patch.tags = parseTagIds(raw.tags);
+
+      const rawVisibleDamageUpdate =
+        raw.hasVisibleDamage ?? raw.visibleDamage ?? raw.has_visible_damage ?? raw.visible_damage;
+      if (rawVisibleDamageUpdate !== undefined) {
+        const parsed = parseOptionalBoolean(rawVisibleDamageUpdate, 'hasVisibleDamage');
+        if (parsed === null) {
+          throw new ValidationError('hasVisibleDamage must be a boolean');
+        }
+        patch.hasVisibleDamage = parsed;
+      }
+
+      if (raw.damageAssessment !== undefined || raw.damage_assessment !== undefined) {
+        patch.damageAssessment = coerceDamageAssessment(
+          raw.damageAssessment ?? raw.damage_assessment,
+          'damageAssessment'
+        );
+      }
+
+      const hasReplacePriceField =
+        Object.prototype.hasOwnProperty.call(raw, 'replacePrice') ||
+        Object.prototype.hasOwnProperty.call(raw, 'replace_price');
+      if (hasReplacePriceField) {
+        patch.replacePrice = parseOptionalDecimal(raw.replacePrice ?? raw.replace_price, 'replacePrice');
+      }
+
+      const hasRepairPriceField =
+        Object.prototype.hasOwnProperty.call(raw, 'repairPrice') ||
+        Object.prototype.hasOwnProperty.call(raw, 'repair_price');
+      if (hasRepairPriceField) {
+        patch.repairPrice = parseOptionalDecimal(raw.repairPrice ?? raw.repair_price, 'repairPrice');
+      }
+
+      const hasItemQtyField =
+        Object.prototype.hasOwnProperty.call(raw, 'itemQty') ||
+        Object.prototype.hasOwnProperty.call(raw, 'item_qty');
+      if (hasItemQtyField) {
+        patch.itemQty = parseOptionalInteger(raw.itemQty ?? raw.item_qty, 'itemQty');
+      }
+
+      if (Object.keys(patch).length === 0) {
+        throw new ValidationError('patch is empty');
+      }
+
+      validUpdates.push({ id, patch });
+    } catch (err: any) {
+      if (err instanceof ValidationError) {
+        failed.push({ id, errors: [err.message] });
+      } else {
+        failed.push({ id, errors: ['Unexpected validation error'] });
+      }
+    }
+  }
+
+  if (validUpdates.length === 0) {
+    return res.status(400).json({ error: 'No valid updates to process', failed });
+  }
+
+  const updatedIds: number[] = [];
+  const skipped: Array<{ id: number; reason: string }> = [];
+
+  const now = new Date();
+
+  try {
+    await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
+      const ids = validUpdates.map((u) => u.id);
+      const predicates: any[] = [eq(issues.customerId, scope.customerId), inArray(issues.id, ids), isNull(issues.deletedAt)];
+      if (scope.homeIds && scope.homeIds.length > 0) {
+        predicates.push(inArray(issues.homeId, scope.homeIds));
+      }
+
+      const existingRows = await scopedDb
+        .select()
+        .from(issues)
+        .where(and(...predicates));
+
+      const existingById = new Map<number, (typeof issues)['$inferSelect']>(
+        existingRows.map((row) => [row.id, row])
+      );
+
+      const updatedRowsForBroadcast: any[] = [];
+
+      for (const update of validUpdates) {
+        const current = existingById.get(update.id);
+        if (!current) {
+          skipped.push({ id: update.id, reason: 'not_found' });
+          continue;
+        }
+
+        const patch = { ...update.patch } as Record<string, any>;
+
+        if (patch.status !== undefined) {
+          if (patch.status === 'resolved' && patch.resolvedAt === undefined) {
+            patch.resolvedAt = new Date();
+          }
+          if (patch.status === 'resolved' && patch.resolvedByUserId === undefined) {
+            patch.resolvedByUserId = (req as any).user?.id ? Number((req as any).user.id) : null;
+          }
+          if (patch.status !== 'resolved' && patch.resolvedAt === undefined) {
+            patch.resolvedAt = null;
+            patch.resolvedByUserId = patch.resolvedByUserId !== undefined ? patch.resolvedByUserId : null;
+          }
+        }
+
+        patch.updatedAt = now;
+
+        const updatePredicates: any[] = [eq(issues.id, update.id), eq(issues.customerId, scope.customerId), isNull(issues.deletedAt)];
+        if (scope.homeIds && scope.homeIds.length > 0) {
+          updatePredicates.push(inArray(issues.homeId, scope.homeIds));
+        }
+
+        const rows = await scopedDb
+          .update(issues)
+          .set(patch)
+          .where(and(...updatePredicates))
+          .returning();
+
+        if (rows.length === 0) {
+          skipped.push({ id: update.id, reason: 'not_found' });
+          continue;
+        }
+
+        const updated = rows[0];
+        updatedIds.push(updated.id);
+        updatedRowsForBroadcast.push(updated);
+
+        if (updated.entityType === 'inventory_item') {
+          await touchInventoryItemLastChecked(scope, updated.entityId);
+        }
+      }
+
+      if (updatedRowsForBroadcast.length > 0) {
+        // Emit a single batch event so the client can pull fresh data after the batch completes.
+        eventBus.broadcast({
+          event: 'data_change:issues',
+          data: {
+            type: 'batch_update',
+            resource: 'issues',
+            resourceIds: updatedRowsForBroadcast.map((r) => r.id),
+            data: updatedRowsForBroadcast,
+            hint: 'pull',
+          },
+          meta: {
+            timestamp: Date.now(),
+            source: 'api',
+            audience: {
+              customerId: scope.customerId,
+              homeIds: scope.homeIds ?? [],
+            },
+          },
+        });
+      }
+    });
+
+    const responsePayload = { updated: updatedIds, skipped, failed };
+    console.log('Issues batch PATCH response:', JSON.stringify(responsePayload, null, 2));
+    res.json(responsePayload);
+  } catch (error: any) {
+    console.error('Issues batch PATCH error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
