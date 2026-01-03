@@ -542,7 +542,7 @@ router.patch('/batch', authenticateToken, requireWriteMiddleware, async (req, re
         .where(and(...predicates));
 
       const existingById = new Map<number, (typeof issues)['$inferSelect']>(
-        existingRows.map((row) => [row.id, row])
+        existingRows.map((row: (typeof issues)['$inferSelect']) => [row.id, row])
       );
 
       const updatedRowsForBroadcast: any[] = [];

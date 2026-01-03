@@ -293,6 +293,10 @@ export const shippingChargeTypeEnum = pgEnum('shipping_charge_type', ['percent',
 export const commentVisibilityEnum = pgEnum('comment_visibility', ['tenant', 'internal', 'external']);
 export const commentTypeEnum = pgEnum('comment_type', ['user', 'system', 'email_inbound', 'email_outbound', 'note']);
 
+export const todoStatusEnum = pgEnum('todo_status', ['todo', 'in_progress', 'complete']);
+export const todoPriorityEnum = pgEnum('todo_priority', ['low', 'high']);
+export const todoTypeEnum = pgEnum('todo_type', ['todo', 'conversation']);
+
 export const tags = pgTable('tags', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
@@ -544,7 +548,7 @@ export const mediaAssets = pgTable('media_assets', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
   homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }),
-  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'location_type' | 'comment'>(),
+  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'location_type' | 'comment' | 'todo'>(),
   entityId: integer('entity_id').notNull(),
   url: text('url').notNull(),
   title: varchar('title', { length: 255 }),
@@ -623,6 +627,67 @@ export const comments = pgTable('comments', {
   visibilityIdx: index('idx_comments_visibility').on(table.visibility),
   deletedIdx: index('idx_comments_deleted_at').on(table.deletedAt),
   createdIdx: index('idx_comments_created_at').on(table.createdAt),
+}));
+
+// ============================================
+// TODOS TABLE
+// ============================================
+export const todos = pgTable('todos', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }).notNull(),
+
+  title: varchar('title', { length: 255 }).notNull(),
+  body: text('body').default('').notNull(),
+
+  assignedToUserIds: integer('assigned_to_user_ids').array(),
+  dueAt: timestamp('due_at', { withTimezone: true }),
+
+  type: todoTypeEnum('type').default('todo').notNull(),
+  status: todoStatusEnum('status').default('todo').notNull(),
+  priority: todoPriorityEnum('priority').default('low').notNull(),
+
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  completedByUserId: integer('completed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+
+  tags: integer('tags').array(),
+
+  hasMediaAssets: boolean('has_media_assets').default(false),
+
+  linkedEntityType: varchar('linked_entity_type', { length: 50 }).$type<
+    | 'issue'
+    | 'inventory_item'
+    | 'inventory_action_request'
+    | 'inventory_purchase_order'
+    | 'inventory_purchase_order_item'
+    | 'home'
+    | 'location'
+    | 'product'
+    | 'sku'
+    | 'todo'
+    | 'booking_reservation'
+    | 'customer'
+    | 'user'
+  >(),
+  linkedEntityId: integer('linked_entity_id'),
+
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deletedByUserId: integer('deleted_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+
+  createdByUserId: integer('created_by_user_id').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerHomeIdx: index('idx_todos_customer_home').on(table.customerId, table.homeId),
+  assigneesIdx: index('idx_todos_assignees_gin').on(table.assignedToUserIds),
+  dueIdx: index('idx_todos_due_at').on(table.customerId, table.homeId, table.dueAt),
+  typeIdx: index('idx_todos_type').on(table.customerId, table.homeId, table.type),
+  statusIdx: index('idx_todos_status').on(table.customerId, table.homeId, table.status),
+  priorityIdx: index('idx_todos_priority').on(table.customerId, table.homeId, table.priority),
+  completedIdx: index('idx_todos_completed_at').on(table.customerId, table.homeId, table.completedAt),
+  tagsIdx: index('idx_todos_tags_gin').on(table.tags),
+  linkedEntityIdx: index('idx_todos_linked_entity').on(table.customerId, table.homeId, table.linkedEntityType, table.linkedEntityId),
+  deletedIdx: index('idx_todos_deleted_at').on(table.customerId, table.homeId, table.deletedAt),
 }));
 
 export const issues = pgTable('issues', {

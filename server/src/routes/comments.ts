@@ -13,6 +13,7 @@ import {
   bookingReservations,
   customers,
   users,
+  todos,
   eq,
   and,
   asc,
@@ -77,9 +78,6 @@ function coerceEntityType(value: unknown): CommentEntityType {
   const normalized = value.trim() as CommentEntityType;
   if (!COMMENT_ENTITY_SET.has(normalized)) {
     throw new ValidationError(`entityType must be one of ${COMMENT_ENTITY_VALUES.join(', ')}`);
-  }
-  if (normalized === 'todo') {
-    throw new ValidationError('entityType "todo" is not available yet');
   }
   return normalized;
 }
@@ -316,6 +314,17 @@ async function assertEntityContext(
         ensureHomeAccess(scope, homeId);
         return { homeId };
       }
+      case 'todo': {
+        const rows = await scopedDb
+          .select({ homeId: todos.homeId })
+          .from(todos)
+          .where(and(eq(todos.customerId, scope.customerId), eq(todos.id, entityId), isNull(todos.deletedAt)))
+          .limit(1);
+        if (!rows.length) throw new ValidationError('Todo not found', 404);
+        const homeId = rows[0].homeId ?? null;
+        if (homeId != null) ensureHomeAccess(scope, homeId);
+        return { homeId };
+      }
       case 'booking_reservation': {
         const rows = await scopedDb
           .select({ homeId: bookingReservations.homeId })
@@ -505,7 +514,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
   }
 });
 
-router.post('/', authenticateToken, autoInjectMiddleware('comments', { requireWrite: true }), async (req, res) => {
+router.post('/', authenticateToken, autoInjectMiddleware('comments'), async (req, res) => {
   try {
     const scope = getScopeFromRequest(req as any);
     const user = (req as any)?.user;
@@ -514,6 +523,10 @@ router.post('/', authenticateToken, autoInjectMiddleware('comments', { requireWr
     }
 
     const entityType = coerceEntityType(req.body.entityType ?? req.body.entity_type);
+    // Allow viewers to comment on todos (conversation/task threads). Keep other entity comments write-gated.
+    if (scope.homeAccessRole === 'viewer' && entityType !== 'todo') {
+      throw new ValidationError('Read-only access. Commenting not permitted for this entity.', 403);
+    }
     const entityId = parseOptionalInteger(req.body.entityId ?? req.body.entity_id, 'entityId');
     if (entityId == null) {
       throw new ValidationError('entityId is required');

@@ -51,7 +51,7 @@ router.get("/", optionalAuth, async (req, res) => {
  * GET /api/table/:tableName - Query any table using raw SQL + field transformation
  * Always returns camelCase field names regardless of database schema
  */
-router.get(":tableName", optionalAuth, async (req, res) => {
+router.get("/:tableName", optionalAuth, async (req, res) => {
 	try {
 		const enforce = process.env.ENFORCE_AUTH === 'true' || process.env.NODE_ENV === 'production';
 		if (enforce && !(req as any).user) {
@@ -64,7 +64,7 @@ router.get(":tableName", optionalAuth, async (req, res) => {
 			return res.status(400).json({ error: "Invalid table name" });
 		}
 
-	// First verify the table exists in the database (no tenant data here)
+		// First verify the table exists in the database (no tenant data here)
 	const tableExists = await db.execute(sql`
       SELECT table_name 
       FROM information_schema.tables 
@@ -79,6 +79,103 @@ router.get(":tableName", optionalAuth, async (req, res) => {
 
 		const scope = await getRequestScope(req);
 		const requesterRole = String((req as any)?.user?.role || '').toLowerCase();
+
+		if (tableName === 'todos') {
+			const status = (req.query.status ?? req.query.status_filter) as string | undefined;
+			const type = (req.query.type ?? req.query.todoType) as string | undefined;
+			const priority = (req.query.priority ?? req.query.todoPriority) as string | undefined;
+			const assignedToUserId = req.query.assignedToUserId ?? req.query.assigned_to_user_id;
+			const linkedEntityType = (req.query.linkedEntityType ?? req.query.linked_entity_type) as string | undefined;
+			const linkedEntityId = req.query.linkedEntityId ?? req.query.linked_entity_id;
+			const dueBefore = req.query.dueBefore ?? req.query.due_before;
+			const dueAfter = req.query.dueAfter ?? req.query.due_after;
+			const tagId = req.query.tagId ?? req.query.tag_id;
+			const q = (req.query.q ?? req.query.search) as string | undefined;
+
+			const filters: any[] = [];
+			filters.push(sql`customer_id = ${scope.customerId}`);
+			filters.push(sql`deleted_at IS NULL`);
+			if (Array.isArray(scope.homeIds) && scope.homeIds.length > 0) {
+				const homesArray = sql.raw(
+					`ARRAY[${scope.homeIds.map((n) => Number(n)).filter((n) => Number.isFinite(n)).join(',')}]`
+				);
+				filters.push(sql`home_id = ANY(${homesArray})`);
+			}
+
+			if (type && typeof type === 'string') {
+				if (['todo', 'conversation'].includes(type)) {
+					filters.push(sql`type = ${type}`);
+				}
+			}
+
+			if (priority && typeof priority === 'string') {
+				if (['low', 'high'].includes(priority)) {
+					filters.push(sql`priority = ${priority}`);
+				}
+			}
+
+			if (status && typeof status === 'string') {
+				if (['todo', 'in_progress', 'complete'].includes(status)) {
+					filters.push(sql`status = ${status}`);
+				} else if (status === 'open') {
+					// Back-compat alias: open means not complete
+					filters.push(sql`status <> 'complete'::todo_status`);
+				} else if (status === 'completed') {
+					// Back-compat alias
+					filters.push(sql`status = 'complete'::todo_status`);
+				}
+			}
+
+			if (assignedToUserId !== undefined) {
+				const parsed = Number(assignedToUserId);
+				if (Number.isFinite(parsed)) {
+					filters.push(sql`assigned_to_user_ids @> ARRAY[${Math.trunc(parsed)}]::int[]`);
+				}
+			}
+
+			if (linkedEntityType && typeof linkedEntityType === 'string' && linkedEntityType.trim()) {
+				filters.push(sql`linked_entity_type = ${linkedEntityType.trim()}`);
+			}
+			if (linkedEntityId !== undefined) {
+				const parsed = Number(linkedEntityId);
+				if (Number.isFinite(parsed)) {
+					filters.push(sql`linked_entity_id = ${Math.trunc(parsed)}`);
+				}
+			}
+
+			if (dueBefore) {
+				filters.push(sql`due_at <= ${String(dueBefore)}`);
+			}
+			if (dueAfter) {
+				filters.push(sql`due_at >= ${String(dueAfter)}`);
+			}
+
+			if (tagId !== undefined) {
+				const parsed = Number(tagId);
+				if (Number.isFinite(parsed)) {
+					filters.push(sql`tags @> ARRAY[${Math.trunc(parsed)}]::int[]`);
+				}
+			}
+
+			if (q && typeof q === 'string' && q.trim()) {
+				const pattern = `%${q.trim()}%`;
+				filters.push(sql`(title ILIKE ${pattern} OR body ILIKE ${pattern})`);
+			}
+
+			const whereClause = filters.length ? sql`WHERE ${sql.join(filters, sql` AND `)}` : sql``;
+
+			const results = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb) => {
+				return scopedDb.execute(sql`
+					SELECT * FROM todos
+					${whereClause}
+					ORDER BY id DESC
+					LIMIT ${sql.raw(String(ENV_DEFAULT_LIMIT))}
+				`);
+			});
+
+			const transformed = transformRows(results.rows, tableName);
+			return res.json({ table: tableName, data: transformed, count: transformed.length });
+		}
 
 		if (tableName === 'users') {
 			const normalizedHomes = (scope.homeIds || [])

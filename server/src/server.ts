@@ -38,6 +38,7 @@ import mediaRoutes from './routes/media.js';
 import issuesRoutes from './routes/issues.js';
 import inventoryActionRequestsRoutes from './routes/inventory-action-requests.js';
 import commentsRoutes from './routes/comments.js';
+import todosRoutes from './routes/todos.js';
 import tableFallbackRoutes from './routes/table-fallback.js';
 // import { startDevSkuTestEvents } from './utils/dev-test-sse.js';
 
@@ -187,6 +188,7 @@ mountApiRoute('/api/media', mediaRoutes);            // Media upload/management
 mountApiRoute('/api/issues', issuesRoutes);
 mountApiRoute('/api/inventory-action-requests', inventoryActionRequestsRoutes);
 mountApiRoute('/api/comments', commentsRoutes);
+mountApiRoute('/api/todos', todosRoutes);
 app.use('/api', tableFallbackRoutes);
 
 // Root endpoint

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems, comments } from "./schema.js";
+import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems, comments, todos } from "./schema.js";
 import { cadenceConfigSchema } from "./types/json-fields.js";
 import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
@@ -483,6 +483,62 @@ export const tagsValidationSchema = createValidationSchema(
   isActive: z.boolean().default(true),
   isSystem: z.boolean().default(false),
   locked: z.boolean().default(false),
+});
+
+/**
+ * Todos validation schema - matches table name 'todos'
+ * Markdown body is stored as a string.
+ */
+export const todosValidationSchema = createValidationSchema(
+  todos,
+  refineDateFields('createdAt', 'updatedAt', 'dueAt', 'completedAt', 'deletedAt')
+).extend({
+  status: z.enum(['todo', 'in_progress', 'complete']).default('todo'),
+  priority: z.enum(['low', 'high']).default('low'),
+  type: z.enum(['todo', 'conversation']).default('todo'),
+
+  hasMediaAssets: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
+
+  assignedToUserIds: z
+    .array(z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]))
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return value;
+      if (value === null) return null;
+      const nums = value.map((item) => (typeof item === 'string' ? Number(item) : item));
+      return Array.from(new Set(nums.map((n) => Math.trunc(n)).filter((n) => Number.isFinite(n)))).sort((a, b) => a - b);
+    }),
+
+  tags: z
+    .array(z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]))
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return value;
+      if (value === null) return null;
+      return value.map((item) => (typeof item === 'string' ? Number(item) : item));
+    }),
+
+  linkedEntityType: z
+    .enum([
+      'issue',
+      'inventory_item',
+      'inventory_action_request',
+      'inventory_purchase_order',
+      'inventory_purchase_order_item',
+      'home',
+      'location',
+      'product',
+      'sku',
+      'todo',
+      'booking_reservation',
+      'customer',
+      'user',
+    ])
+    .nullable()
+    .optional(),
+  linkedEntityId: z.preprocess(toOptionalInt, z.number().int().positive().optional()).nullable().optional(),
 });
 
 /**

@@ -10,9 +10,11 @@ import {
   homes,
   issues,
   comments,
+  todos,
   eq,
   and,
   inArray,
+  isNull,
   desc,
 } from '@postgress/shared';
 import type { RequestScope } from '../utils/scope.js';
@@ -75,6 +77,7 @@ const ENTITY_TABLES = {
   issue: issues,
   location_type: locationTypes,
   comment: comments,
+  todo: todos,
 };
 
 type EntityType = keyof typeof ENTITY_TABLES;
@@ -155,6 +158,20 @@ async function verifyEntityAccess(
   entityType: string,
   entityId: number
 ): Promise<boolean> {
+  if (entityType === 'todo') {
+    const rows = await withTenantScope(
+      { customerId: scope.customerId, homeIds: scope.homeIds },
+      async (scopedDb) => {
+        return scopedDb
+          .select({ id: todos.id })
+          .from(todos)
+          .where(and(eq(todos.customerId, scope.customerId), eq(todos.id, entityId), isNull(todos.deletedAt)))
+          .limit(1);
+      }
+    );
+    return rows.length > 0;
+  }
+
   const table = ENTITY_TABLES[entityType as EntityType];
   if (!table) {
     throw new ValidationError(`Invalid entity type: ${entityType}`, 400);
@@ -257,6 +274,14 @@ async function resolveHomeIdForEntity(
           .select({ homeId: issues.homeId })
           .from(issues)
           .where(eq(issues.id, entityId))
+          .limit(1);
+        return rows[0]?.homeId ?? null;
+      }
+      case 'todo': {
+        const rows = await scopedDb
+          .select({ homeId: todos.homeId })
+          .from(todos)
+          .where(and(eq(todos.customerId, scope.customerId), eq(todos.id, entityId), isNull(todos.deletedAt)))
           .limit(1);
         return rows[0]?.homeId ?? null;
       }
