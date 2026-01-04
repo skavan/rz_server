@@ -855,6 +855,17 @@ router.post(
           }
 
           const inserted = (await scopedDb.insert(inventoryActionRequests).values(data).returning()) as InventoryActionRequestRow[];
+          
+          // Update the linked issue with action_request_id and requires_purchase
+          await scopedDb
+            .update(issues)
+            .set({
+              actionRequestId: inserted[0].id,
+              requiresPurchase: true,
+              updatedAt: new Date(),
+            })
+            .where(eq(issues.id, issueId));
+
           return inserted[0];
         }
       );
@@ -1030,6 +1041,19 @@ router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res
           .delete(inventoryActionRequests)
           .where(and(eq(inventoryActionRequests.customerId, scope.customerId), eq(inventoryActionRequests.id, id)))
           .returning()) as InventoryActionRequestRow[];
+
+        // Clear the action_request_id and requires_purchase on the linked issue
+        if (removed[0]?.issueId) {
+          await scopedDb
+            .update(issues)
+            .set({
+              actionRequestId: null,
+              requiresPurchase: false,
+              updatedAt: new Date(),
+            })
+            .where(eq(issues.id, removed[0].issueId));
+        }
+
         return removed[0] ?? null;
       }
     );
