@@ -301,6 +301,86 @@ async function resolveHomeIdForEntity(
   });
 }
 
+async function handleBulkTags(req: Request, res: Response) {
+  try {
+    const scope = await getRequestScope(req as any);
+    const { ids, tags } = req.body ?? {};
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids must be a non-empty array of media asset IDs' });
+    }
+    if (!Array.isArray(tags) || tags.length === 0) {
+      return res.status(400).json({ error: 'tags must be a non-empty array of tag IDs' });
+    }
+
+    const mediaIds = ids.map((id: any) => Number(id)).filter((n: number) => Number.isFinite(n));
+    const tagIds = tags.map((t: any) => Number(t)).filter((n: number) => Number.isFinite(n));
+
+    if (mediaIds.length === 0) {
+      return res.status(400).json({ error: 'No valid media asset IDs provided' });
+    }
+    if (tagIds.length === 0) {
+      return res.status(400).json({ error: 'No valid tag IDs provided' });
+    }
+
+    let updatedCount = 0;
+
+    await withTenantScope(
+      { customerId: scope.customerId, homeIds: scope.homeIds },
+      async (scopedDb) => {
+        const existingRows = await scopedDb
+          .select({ id: mediaAssets.id, tags: mediaAssets.tags })
+          .from(mediaAssets)
+          .where(
+            and(
+              eq(mediaAssets.customerId, scope.customerId),
+              inArray(mediaAssets.id, mediaIds),
+              eq(mediaAssets.isActive, true)
+            )
+          );
+
+        for (const row of existingRows) {
+          const existingTags: number[] = Array.isArray(row.tags) ? row.tags : [];
+          const mergedTags = Array.from(new Set([...existingTags, ...tagIds]));
+
+          await scopedDb
+            .update(mediaAssets)
+            .set({ tags: mergedTags, updatedAt: new Date() })
+            .where(eq(mediaAssets.id, row.id));
+
+          updatedCount++;
+        }
+      }
+    );
+
+    eventBus.broadcast({
+      event: 'data_change:media_assets',
+      data: { type: 'bulk_update', resource: 'media_assets', count: updatedCount },
+      meta: {
+        timestamp: Date.now(),
+        source: 'api',
+        audience: { customerId: scope.customerId, homeIds: scope.homeIds },
+      },
+    });
+
+    res.json({ success: true, count: updatedCount });
+  } catch (error: any) {
+    if (error instanceof ValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('Media bulk tags error:', error);
+    res.status(500).json({ error: 'Failed to update tags' });
+  }
+}
+
+router.post('/bulk/tags', authenticateToken, requireWriteMiddleware, async (req, res) => {
+  await handleBulkTags(req, res);
+});
+
+router.put('/bulk/tags', authenticateToken, requireWriteMiddleware, async (req, res) => {
+  await handleBulkTags(req, res);
+});
+
 router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
@@ -648,78 +728,6 @@ router.patch('/:id/primary', authenticateToken, async (req, res) => {
 
 router.put('/:id/primary', authenticateToken, requireWriteMiddleware, async (req, res) => {
   await handleSetPrimaryMedia(req, res);
-});
-
-router.post('/bulk/tags', authenticateToken, requireWriteMiddleware, async (req, res) => {
-  try {
-    const scope = await getRequestScope(req as any);
-    const { ids, tags } = req.body ?? {};
-
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: 'ids must be a non-empty array of media asset IDs' });
-    }
-    if (!Array.isArray(tags) || tags.length === 0) {
-      return res.status(400).json({ error: 'tags must be a non-empty array of tag IDs' });
-    }
-
-    const mediaIds = ids.map((id: any) => Number(id)).filter((n: number) => Number.isFinite(n));
-    const tagIds = tags.map((t: any) => Number(t)).filter((n: number) => Number.isFinite(n));
-
-    if (mediaIds.length === 0) {
-      return res.status(400).json({ error: 'No valid media asset IDs provided' });
-    }
-    if (tagIds.length === 0) {
-      return res.status(400).json({ error: 'No valid tag IDs provided' });
-    }
-
-    let updatedCount = 0;
-
-    await withTenantScope(
-      { customerId: scope.customerId, homeIds: scope.homeIds },
-      async (scopedDb) => {
-        const existingRows = await scopedDb
-          .select({ id: mediaAssets.id, tags: mediaAssets.tags })
-          .from(mediaAssets)
-          .where(
-            and(
-              eq(mediaAssets.customerId, scope.customerId),
-              inArray(mediaAssets.id, mediaIds),
-              eq(mediaAssets.isActive, true)
-            )
-          );
-
-        for (const row of existingRows) {
-          const existingTags: number[] = Array.isArray(row.tags) ? row.tags : [];
-          const mergedTags = Array.from(new Set([...existingTags, ...tagIds]));
-
-          await scopedDb
-            .update(mediaAssets)
-            .set({ tags: mergedTags, updatedAt: new Date() })
-            .where(eq(mediaAssets.id, row.id));
-
-          updatedCount++;
-        }
-      }
-    );
-
-    eventBus.broadcast({
-      event: 'data_change:media_assets',
-      data: { type: 'bulk_update', resource: 'media_assets', count: updatedCount },
-      meta: {
-        timestamp: Date.now(),
-        source: 'api',
-        audience: { customerId: scope.customerId, homeIds: scope.homeIds },
-      },
-    });
-
-    res.json({ success: true, count: updatedCount });
-  } catch (error: any) {
-    if (error instanceof ValidationError) {
-      return res.status(error.status).json({ error: error.message });
-    }
-    console.error('Media bulk tags error:', error);
-    res.status(500).json({ error: 'Failed to update tags' });
-  }
 });
 
 export default router;
