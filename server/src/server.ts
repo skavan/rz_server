@@ -37,6 +37,7 @@ import financeCommissionsRoutes from './routes/finance/commissions.js';
 import mediaRoutes from './routes/media.js';
 import issuesRoutes from './routes/issues.js';
 import inventoryActionRequestsRoutes from './routes/inventory-action-requests.js';
+import inventoryPurchaseOrdersRoutes from './routes/inventory-purchase-orders.js';
 import commentsRoutes from './routes/comments.js';
 import todosRoutes from './routes/todos.js';
 import tableFallbackRoutes from './routes/table-fallback.js';
@@ -187,6 +188,7 @@ mountApiRoute('/api/events', eventsRoutes);          // SSE events
 mountApiRoute('/api/media', mediaRoutes);            // Media upload/management
 mountApiRoute('/api/issues', issuesRoutes);
 mountApiRoute('/api/inventory-action-requests', inventoryActionRequestsRoutes);
+mountApiRoute('/api/inventory-purchase-orders', inventoryPurchaseOrdersRoutes);
 mountApiRoute('/api/comments', commentsRoutes);
 mountApiRoute('/api/todos', todosRoutes);
 app.use('/api', tableFallbackRoutes);
