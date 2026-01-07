@@ -379,6 +379,7 @@ export const skus = pgTable('skus', {
   tags: integer('tags').array(),
   notes: text('notes'),
   hasMediaAssets: boolean('has_media_assets').default(false),
+  isImport: boolean('is_import').default(true),
   status: varchar('status', { length: 20 }).default('active').$type<'active' | 'discontinued' | 'unknown'>(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),

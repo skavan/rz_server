@@ -401,6 +401,7 @@ export const skusValidationSchema = createValidationSchema(
 ).extend({
   slug: slugInputSchema,
   hasMediaAssets: z.boolean().default(false),
+  isImport: z.preprocess(toOptionalBoolean, z.boolean().default(true)),
   kind: z.enum(['simple', 'bom']).default('simple'),
   status: z.enum(['active', 'discontinued', 'unknown']).default('active'),
   isPurchasable: z.boolean().default(true),

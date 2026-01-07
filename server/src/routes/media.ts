@@ -24,6 +24,8 @@ import { authenticateToken } from '../auth/index.js';
 import { requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { storage } from '../utils/storage.js';
 import { eventBus } from '../utils/event-bus.js';
+import { generateImageVariantsFromBuffer, isImageFile } from '../utils/image-variants.js';
+import * as path from 'path';
 import {
   ValidationError,
   requireNumber,
@@ -109,10 +111,22 @@ const normalizeTagArray = (value: unknown): number[] | null | undefined => {
   return tags;
 };
 
+const VALID_VARIANTS = new Set(['original', 'print', 'web', 'thumb']);
+const VARIANT_SUFFIXES: Record<string, string> = {
+  print: '-print',
+  web: '-web',
+  thumb: '-thumb',
+};
+
 router.get('/serve/:id', authenticateToken, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
     const mediaId = requireNumber(req.params.id, 'id');
+    const variant = parseOptionalString(req.query.variant);
+
+    if (variant && !VALID_VARIANTS.has(variant)) {
+      return res.status(400).json({ error: `Invalid variant. Must be one of: ${Array.from(VALID_VARIANTS).join(', ')}` });
+    }
 
     const rows = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
@@ -136,13 +150,43 @@ router.get('/serve/:id', authenticateToken, async (req, res) => {
     }
 
     const media = rows[0];
-    const filePath = storage.getAbsolutePath(media.url);
-    const exists = await storage.exists(media.url);
+    let filePath = storage.getAbsolutePath(media.url);
 
-    if (!exists) {
+    // Default to 'web' variant for images, unless 'original' is explicitly requested
+    const effectiveVariant = variant ?? (isImageFile(media.mimeType) ? 'web' : null);
+
+    // If variant requested (and not 'original'), try to serve variant file
+    if (effectiveVariant && effectiveVariant !== 'original' && isImageFile(media.mimeType)) {
+      const suffix = VARIANT_SUFFIXES[effectiveVariant];
+      const ext = path.extname(media.url);
+      const base = media.url.slice(0, -ext.length);
+      const variantUrl = `${base}${suffix}.jpg`;
+      const variantPath = storage.getAbsolutePath(variantUrl);
+
+      if (await storage.exists(variantUrl)) {
+        filePath = variantPath;
+      }
+      // If variant doesn't exist, fall back to original
+    }
+
+    if (!(await storage.exists(media.url)) && filePath === storage.getAbsolutePath(media.url)) {
       return res.status(404).json({ error: 'File not found on disk' });
     }
 
+    // Determine content type and filename - variants are always JPEG
+    const isServingVariant = effectiveVariant && effectiveVariant !== 'original' && filePath !== storage.getAbsolutePath(media.url);
+    const contentType = isServingVariant ? 'image/jpeg' : media.mimeType;
+    
+    // Build filename for Content-Disposition
+    const originalExt = path.extname(media.url);
+    const originalBase = path.basename(media.url, originalExt);
+    const filename = isServingVariant 
+      ? `${originalBase}-${effectiveVariant}.jpg`
+      : path.basename(media.url);
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    
     res.sendFile(filePath);
   } catch (error: any) {
     if (error instanceof ValidationError) {
@@ -456,6 +500,23 @@ router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), 
     const created = rows[0];
 
     await updateEntityMediaFlag(scope.customerId, scope.homeIds, entityType, entityId, true);
+
+    // Generate image variants for images
+    if (isImageFile(savedFile.mimeType) && req.file?.buffer) {
+      const basePath = storage.getEntityDir(scope.customerId, entityType, entityId);
+      try {
+        const variantResult = await generateImageVariantsFromBuffer(
+          req.file.buffer,
+          basePath,
+          savedFile.filename
+        );
+        if (variantResult.errors.length > 0) {
+          console.warn('Image variant generation warnings:', variantResult.errors);
+        }
+      } catch (variantErr: any) {
+        console.error('Failed to generate image variants:', variantErr.message);
+      }
+    }
 
     eventBus.broadcast({
       event: 'data_change:media_assets',
