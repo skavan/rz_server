@@ -3,6 +3,7 @@ import {
   inventoryActionRequests,
   inventoryItems,
   inventoryPurchaseOrders,
+  inventoryPurchaseOrderItems,
   issues,
   eq,
   ne,
@@ -1033,7 +1034,16 @@ router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res
           return null;
         }
 
-        if (existing[0].currentPurchaseOrderId != null) {
+        const linkedLineItem = await scopedDb
+          .select({ id: inventoryPurchaseOrderItems.id })
+          .from(inventoryPurchaseOrderItems)
+          .where(and(
+            eq(inventoryPurchaseOrderItems.customerId, scope.customerId),
+            eq(inventoryPurchaseOrderItems.actionRequestId, id)
+          ))
+          .limit(1);
+
+        if (linkedLineItem.length > 0) {
           throw new ValidationError('Requests linked to a purchase order cannot be deleted', 409);
         }
 

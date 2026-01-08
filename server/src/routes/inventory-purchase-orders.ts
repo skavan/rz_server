@@ -27,7 +27,7 @@ import {
 
 const router = Router();
 
-const PO_STATUS_VALUES = ['draft', 'submitted', 'acknowledged', 'partial', 'fulfilled', 'closed', 'canceled'] as const;
+const PO_STATUS_VALUES = ['draft', 'pending_vendor', 'ordered', 'receiving', 'closed', 'canceled'] as const;
 type POStatus = (typeof PO_STATUS_VALUES)[number];
 const PO_STATUS_SET = new Set<POStatus>(PO_STATUS_VALUES);
 
@@ -304,6 +304,15 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
 
         let finalItems: any[] = [];
         if (Array.isArray(lineItems)) {
+          const existingItems = await scopedDb
+            .select({ actionRequestId: inventoryPurchaseOrderItems.actionRequestId })
+            .from(inventoryPurchaseOrderItems)
+            .where(eq(inventoryPurchaseOrderItems.purchaseOrderId, id));
+
+          const previousActionRequestIds = existingItems
+            .map((item) => item.actionRequestId)
+            .filter((arId): arId is number => arId != null);
+
           await scopedDb
             .delete(inventoryPurchaseOrderItems)
             .where(eq(inventoryPurchaseOrderItems.purchaseOrderId, id));
@@ -327,9 +336,11 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
               .values(itemRows)
               .returning();
 
-            const actionRequestIds = finalItems
-              .map(i => i.actionRequestId)
-              .filter((arId): arId is number => arId != null);
+            const actionRequestIds = Array.from(new Set(
+              finalItems
+                .map((item) => item.actionRequestId)
+                .filter((arId): arId is number => arId != null)
+            ));
 
             if (actionRequestIds.length > 0) {
               await scopedDb
@@ -338,6 +349,27 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
                 .where(and(
                   eq(inventoryActionRequests.customerId, scope.customerId),
                   inArray(inventoryActionRequests.id, actionRequestIds)
+                ));
+            }
+          }
+
+          if (previousActionRequestIds.length > 0) {
+            const currentActionRequestIdSet = new Set(
+              finalItems
+                .map((item) => item.actionRequestId)
+                .filter((arId): arId is number => arId != null)
+            );
+
+            const removedActionRequestIds = Array.from(new Set(previousActionRequestIds))
+              .filter((arId) => !currentActionRequestIdSet.has(arId));
+
+            if (removedActionRequestIds.length > 0) {
+              await scopedDb
+                .update(inventoryActionRequests)
+                .set({ currentPurchaseOrderId: null, updatedAt: new Date() })
+                .where(and(
+                  eq(inventoryActionRequests.customerId, scope.customerId),
+                  inArray(inventoryActionRequests.id, removedActionRequestIds)
                 ));
             }
           }
