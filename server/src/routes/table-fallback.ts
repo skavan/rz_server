@@ -88,11 +88,14 @@ router.get('/:tableName', optionalAuth, async (req, res, next) => {
     const scope = await getRequestScope(req as any);
     const policy = await getTablePolicy(normalized);
     const hasHomes = Array.isArray(scope.homeIds) && scope.homeIds.length > 0;
+    const allowNullHomeId = normalized === 'media_assets';
 
     let whereClause = sql``;
     if (policy.hasCustomerId && policy.hasHomeId && hasHomes) {
       const homesArray = sql.raw(`ARRAY[${scope.homeIds!.map((n) => Number(n)).filter((n) => Number.isFinite(n)).join(',')}]`);
-      whereClause = sql`WHERE customer_id = ${scope.customerId} AND home_id = ANY(${homesArray})`;
+      whereClause = allowNullHomeId
+        ? sql`WHERE customer_id = ${scope.customerId} AND (home_id IS NULL OR home_id = ANY(${homesArray}))`
+        : sql`WHERE customer_id = ${scope.customerId} AND home_id = ANY(${homesArray})`;
     } else if (policy.hasCustomerId) {
       whereClause = sql`WHERE customer_id = ${scope.customerId}`;
     } else if (policy.hasHomeId && hasHomes) {

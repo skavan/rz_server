@@ -19,6 +19,8 @@ export type DataSourceKey =
   | "inventory_action_requests"
   | "inventory_purchase_orders"
   | "inventory_purchase_order_items"
+  | "inventory_purchase_order_shipments"
+  | "inventory_purchase_order_shipment_items"
   | "comments"
   | string; // extensible
 
@@ -40,6 +42,8 @@ export type CoreTableData = {
   inventory_action_requests?: any[];
   inventory_purchase_orders?: any[];
   inventory_purchase_order_items?: any[];
+  inventory_purchase_order_shipments?: any[];
+  inventory_purchase_order_shipment_items?: any[];
   comments?: any[];
   [key: string]: any[] | undefined;
 };

@@ -289,6 +289,13 @@ export const inventoryActionTypeEnum = pgEnum('inventory_action_type', ['replace
 export const inventoryActionProcurementStatusEnum = pgEnum('inventory_action_procurement_status', ['pending', 'in_review', 'ready_for_order', 'queued_for_po', 'ordered', 'fulfilled', 'canceled']);
 export const inventoryActionRepairStatusEnum = pgEnum('inventory_action_repair_status', ['not_applicable', 'pending', 'awaiting_vendor', 'in_service', 'completed', 'canceled']);
 export const purchaseOrderStatusEnum = pgEnum('inventory_purchase_order_status', ['draft', 'pending_vendor', 'ordered', 'receiving', 'closed', 'canceled']);
+export const purchaseOrderShipmentStatusEnum = pgEnum('inventory_purchase_order_shipment_status', [
+  'label_created',
+  'in_transit',
+  'delivered',
+  'exception',
+  'canceled',
+]);
 export const shippingChargeTypeEnum = pgEnum('shipping_charge_type', ['percent', 'fixed']);
 export const commentVisibilityEnum = pgEnum('comment_visibility', ['tenant', 'internal', 'external']);
 export const commentTypeEnum = pgEnum('comment_type', ['user', 'system', 'email_inbound', 'email_outbound', 'note']);
@@ -549,7 +556,20 @@ export const mediaAssets = pgTable('media_assets', {
   id: serial('id').primaryKey(),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }),
   homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }),
-  entityType: varchar('entity_type', { length: 20 }).notNull().$type<'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'location_type' | 'comment' | 'todo'>(),
+  entityType: varchar('entity_type', { length: 50 })
+    .notNull()
+    .$type<
+      | 'product'
+      | 'sku'
+      | 'inventory_item'
+      | 'location'
+      | 'home'
+      | 'issue'
+      | 'location_type'
+      | 'comment'
+      | 'todo'
+      | 'inventory_purchase_order'
+    >(),
   entityId: integer('entity_id').notNull(),
   url: text('url').notNull(),
   title: varchar('title', { length: 255 }),
@@ -757,6 +777,7 @@ export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
   currency: varchar('currency', { length: 10 }).default('USD').notNull(),
   notes: text('notes'),
   metadata: jsonb('metadata'),
+  hasMediaAssets: boolean('has_media_assets').default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
@@ -846,6 +867,50 @@ export const inventoryPurchaseOrderItems = pgTable('inventory_purchase_order_ite
   purchaseOrderIdx: index('idx_purchase_order_items_po').on(table.purchaseOrderId),
   actionRequestIdx: index('idx_purchase_order_items_action_request').on(table.actionRequestId),
   skuIdx: index('idx_purchase_order_items_sku').on(table.skuId),
+}));
+
+// ============================================
+// INVENTORY PURCHASE ORDER SHIPMENTS TABLE
+// ============================================
+export const inventoryPurchaseOrderShipments = pgTable('inventory_purchase_order_shipments', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  purchaseOrderId: integer('purchase_order_id').references(() => inventoryPurchaseOrders.id, { onDelete: 'cascade' }).notNull(),
+  carrier: varchar('carrier', { length: 100 }),
+  trackingNumber: varchar('tracking_number', { length: 128 }).notNull(),
+  status: purchaseOrderShipmentStatusEnum('status').default('label_created').notNull(),
+  shippedAt: timestamp('shipped_at', { withTimezone: true }),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  etaDate: date('eta_date'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerIdx: index('idx_po_shipments_customer').on(table.customerId),
+  purchaseOrderIdx: index('idx_po_shipments_po').on(table.purchaseOrderId),
+  statusIdx: index('idx_po_shipments_status').on(table.status),
+  trackingIdx: index('idx_po_shipments_tracking').on(table.purchaseOrderId, table.trackingNumber),
+  uniquePoTracking: unique('inventory_po_shipments_po_tracking_unique').on(table.purchaseOrderId, table.trackingNumber),
+}));
+
+// ============================================
+// INVENTORY PURCHASE ORDER SHIPMENT ITEMS TABLE
+// ============================================
+export const inventoryPurchaseOrderShipmentItems = pgTable('inventory_purchase_order_shipment_items', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  shipmentId: integer('shipment_id').references(() => inventoryPurchaseOrderShipments.id, { onDelete: 'cascade' }).notNull(),
+  purchaseOrderItemId: integer('purchase_order_item_id').references(() => inventoryPurchaseOrderItems.id, { onDelete: 'cascade' }).notNull(),
+  quantity: integer('quantity').default(1).notNull(),
+  receivedQuantity: integer('received_quantity').default(0).notNull(),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerIdx: index('idx_po_shipment_items_customer').on(table.customerId),
+  shipmentIdx: index('idx_po_shipment_items_shipment').on(table.shipmentId),
+  purchaseOrderItemIdx: index('idx_po_shipment_items_po_item').on(table.purchaseOrderItemId),
+  uniqueShipmentItem: unique('inventory_po_shipment_items_unique').on(table.shipmentId, table.purchaseOrderItemId),
 }));
 
 // ============================================
@@ -1171,6 +1236,10 @@ export type InventoryActionRequest = typeof inventoryActionRequests.$inferSelect
 export type NewInventoryActionRequest = typeof inventoryActionRequests.$inferInsert;
 export type InventoryPurchaseOrderItem = typeof inventoryPurchaseOrderItems.$inferSelect;
 export type NewInventoryPurchaseOrderItem = typeof inventoryPurchaseOrderItems.$inferInsert;
+export type InventoryPurchaseOrderShipment = typeof inventoryPurchaseOrderShipments.$inferSelect;
+export type NewInventoryPurchaseOrderShipment = typeof inventoryPurchaseOrderShipments.$inferInsert;
+export type InventoryPurchaseOrderShipmentItem = typeof inventoryPurchaseOrderShipmentItems.$inferSelect;
+export type NewInventoryPurchaseOrderShipmentItem = typeof inventoryPurchaseOrderShipmentItems.$inferInsert;
 
 // API-friendly types (camelCase) - for client consumption
 export type CustomerAPI = {

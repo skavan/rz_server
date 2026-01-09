@@ -80,12 +80,15 @@ router.get("/:tableName", optionalAuth, async (req, res) => {
 		// Build scoped WHERE clause (server-authoritative)
 		const scope = await getRequestScope(req);
 		const policy = await getTablePolicy(tableName);
+		const allowNullHomeId = tableName === 'media_assets';
 
 		let whereClause = sql``;
 		const hasHomes = Array.isArray(scope.homeIds) && scope.homeIds.length > 0;
 		if (policy.hasCustomerId && policy.hasHomeId && hasHomes) {
 			const homesArray = sql.raw(`ARRAY[${scope.homeIds!.map((n) => Number(n)).filter((n) => Number.isFinite(n)).join(',')}]`);
-			whereClause = sql`WHERE customer_id = ${scope.customerId} AND home_id = ANY(${homesArray})`;
+			whereClause = allowNullHomeId
+				? sql`WHERE customer_id = ${scope.customerId} AND (home_id IS NULL OR home_id = ANY(${homesArray}))`
+				: sql`WHERE customer_id = ${scope.customerId} AND home_id = ANY(${homesArray})`;
 		} else if (policy.hasCustomerId) {
 			whereClause = sql`WHERE customer_id = ${scope.customerId}`;
 		} else if (policy.hasHomeId && hasHomes) {

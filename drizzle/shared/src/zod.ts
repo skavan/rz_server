@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems, comments, todos } from "./schema.js";
+import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems, inventoryPurchaseOrderShipments, inventoryPurchaseOrderShipmentItems, comments, todos } from "./schema.js";
 import { cadenceConfigSchema } from "./types/json-fields.js";
 import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
@@ -616,6 +616,7 @@ export const inventoryPurchaseOrdersValidationSchema = createValidationSchema(
   totalAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().default(0)),
   shippingAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().default(0)),
   taxAmount: z.preprocess(toOptionalNumber, z.number().nonnegative().default(0)),
+  hasMediaAssets: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
   currency: z.string().default('USD'),
 });
 
@@ -660,6 +661,27 @@ export const inventoryPurchaseOrderItemsValidationSchema = createValidationSchem
   receivedQuantity: z.preprocess(toOptionalInt, z.number().int().min(0).default(0)),
   unitPriceSnapshot: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
   extendedPrice: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+});
+
+export const inventoryPurchaseOrderShipmentsValidationSchema = createValidationSchema(
+  inventoryPurchaseOrderShipments,
+  refineDateFields('shippedAt', 'deliveredAt', 'createdAt', 'updatedAt')
+).extend({
+  status: z
+    .enum(['label_created', 'in_transit', 'delivered', 'exception', 'canceled'])
+    .default('label_created'),
+  carrier: z.preprocess(toNullableString, z.string().max(100).nullable().optional()),
+  trackingNumber: z.preprocess(toNullableString, z.string().min(1).max(128)),
+  metadata: z.preprocess(toJsonRecord, z.record(z.any())).nullable().optional(),
+});
+
+export const inventoryPurchaseOrderShipmentItemsValidationSchema = createValidationSchema(
+  inventoryPurchaseOrderShipmentItems,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  quantity: z.preprocess(toOptionalInt, z.number().int().positive().default(1)),
+  receivedQuantity: z.preprocess(toOptionalInt, z.number().int().min(0).default(0)),
+  metadata: z.preprocess(toJsonRecord, z.record(z.any())).nullable().optional(),
 });
 
 /**

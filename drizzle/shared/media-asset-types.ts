@@ -12,7 +12,7 @@ export type MediaAsset = {
   id: number;
   customerId: number | null;
   homeId: number | null;
-  entityType: 'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'comment';
+  entityType: 'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'location_type' | 'comment' | 'todo' | 'inventory_purchase_order';
   entityId: number;
   url: string;
   title: string | null;
@@ -36,7 +36,7 @@ export type NewMediaAsset = {
   id?: number;
   customerId?: number | null;
   homeId?: number | null;
-  entityType: 'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'comment';
+  entityType: 'product' | 'sku' | 'inventory_item' | 'location' | 'home' | 'issue' | 'location_type' | 'comment' | 'todo' | 'inventory_purchase_order';
   entityId: number;
   url: string;
   title?: string | null;

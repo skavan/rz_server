@@ -5,6 +5,7 @@ import {
   products,
   skus,
   inventoryItems,
+  inventoryPurchaseOrders,
   locations,
   locationTypes,
   homes,
@@ -41,7 +42,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 25 * 1024 * 1024, // 25MB
   },
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = [
@@ -57,6 +58,9 @@ const upload = multer({
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
     ];
     
     console.log(`📁 Upload attempt: ${file.originalname}, mimetype: ${file.mimetype}`);
@@ -74,6 +78,7 @@ const ENTITY_TABLES = {
   product: products,
   sku: skus,
   inventory_item: inventoryItems,
+  inventory_purchase_order: inventoryPurchaseOrders,
   location: locations,
   home: homes,
   issue: issues,
@@ -118,6 +123,57 @@ const VARIANT_SUFFIXES: Record<string, string> = {
   thumb: '-thumb',
 };
 
+const DOCUMENT_ICON_CONFIG = {
+  pdf: { label: 'PDF', color: '#D64545', ariaLabel: 'PDF document' },
+  word: { label: 'DOC', color: '#2B579A', ariaLabel: 'Word document' },
+  spreadsheet: { label: 'XLS', color: '#217346', ariaLabel: 'Spreadsheet document' },
+  generic: { label: 'DOC', color: '#6B7280', ariaLabel: 'Document' },
+};
+
+type DocumentIconType = keyof typeof DOCUMENT_ICON_CONFIG;
+
+const resolveDocumentIconType = (mimeType?: string | null): DocumentIconType => {
+  const normalized = (mimeType ?? '').toLowerCase();
+  if (normalized === 'application/pdf') return 'pdf';
+  if (
+    normalized === 'application/msword' ||
+    normalized === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ) {
+    return 'word';
+  }
+  if (
+    normalized === 'application/vnd.ms-excel' ||
+    normalized === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    normalized === 'text/csv'
+  ) {
+    return 'spreadsheet';
+  }
+  return 'generic';
+};
+
+const buildDocumentIconSvg = (mimeType?: string | null): string => {
+  const type = resolveDocumentIconType(mimeType);
+  const { label, color, ariaLabel } = DOCUMENT_ICON_CONFIG[type];
+
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="',
+    ariaLabel,
+    '">',
+    '<rect x="32" y="16" width="192" height="224" rx="16" fill="#FFFFFF" stroke="',
+    color,
+    '" stroke-width="12"/>',
+    '<path d="M160 16h64v64z" fill="',
+    color,
+    '"/>',
+    '<text x="128" y="172" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" font-weight="700" fill="',
+    color,
+    '">',
+    label,
+    '</text>',
+    '</svg>',
+  ].join('');
+};
+
 router.get('/serve/:id', authenticateToken, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
@@ -150,13 +206,23 @@ router.get('/serve/:id', authenticateToken, async (req, res) => {
     }
 
     const media = rows[0];
-    let filePath = storage.getAbsolutePath(media.url);
+    const isImage = isImageFile(media.mimeType);
 
     // Default to 'web' variant for images, unless 'original' is explicitly requested
-    const effectiveVariant = variant ?? (isImageFile(media.mimeType) ? 'web' : null);
+    const effectiveVariant = variant ?? (isImage ? 'web' : null);
+
+    if (!isImage && effectiveVariant && effectiveVariant !== 'original') {
+      const iconSvg = buildDocumentIconSvg(media.mimeType);
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Content-Disposition', `inline; filename="document-${effectiveVariant}.svg"`);
+      res.send(iconSvg);
+      return;
+    }
+
+    let filePath = storage.getAbsolutePath(media.url);
 
     // If variant requested (and not 'original'), try to serve variant file
-    if (effectiveVariant && effectiveVariant !== 'original' && isImageFile(media.mimeType)) {
+    if (effectiveVariant && effectiveVariant !== 'original' && isImage) {
       const suffix = VARIANT_SUFFIXES[effectiveVariant];
       const ext = path.extname(media.url);
       const base = media.url.slice(0, -ext.length);
@@ -313,6 +379,8 @@ async function resolveHomeIdForEntity(
       }
       case 'home':
         return entityId;
+      case 'inventory_purchase_order':
+        return null;
       case 'issue': {
         const rows = await scopedDb
           .select({ homeId: issues.homeId })
@@ -467,7 +535,7 @@ router.post('/:entityType/:entityId', authenticateToken, upload.single('file'), 
       homeId = await resolveHomeIdForEntity(scope, entityType, entityId);
     }
 
-    if (homeId === null && entityType !== 'comment') {
+    if (homeId === null && entityType !== 'comment' && entityType !== 'inventory_purchase_order') {
       return res.status(400).json({ error: 'Unable to resolve home for this media asset' });
     }
 

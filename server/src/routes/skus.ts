@@ -13,7 +13,7 @@ import { getRequestScope } from '../utils/scope.js';
 import { getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';
-import { parsePagination, parseOptionalDecimal } from './shared/validation.js';
+import { parsePagination, parseOptionalBoolean, parseOptionalDecimal } from './shared/validation.js';
 
 const router = Router();
 
@@ -183,6 +183,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const { name, slug, productId, vendorId, brandId, vendorSku, purchaseUrl, price, estRepairPrice, isPurchasable, currency, lifespanYears, notes, status, kind, tags } = req.body || {};
+    const isImportValue = parseOptionalBoolean(req.body?.isImport ?? req.body?.is_import, 'isImport');
 
     if (!name) {
       return res.status(400).json({ error: 'SKU name is required' });
@@ -213,6 +214,7 @@ router.post('/', authenticateToken, async (req, res) => {
           lifespanYears: lifespanYears ? parseInt(lifespanYears) : null,
           notes: notes || null,
           status: status || 'active',
+          ...(isImportValue !== undefined ? { isImport: isImportValue } : {}),
           ...(kind !== undefined ? { kind } : {}),
           ...(Array.isArray(tags) ? { tags } : {}),
         })
@@ -251,6 +253,7 @@ router.post('/composite', authenticateToken, async (req, res) => {
     const created = await withTenantScope({ customerId: scope.customerId, homeIds: scope.homeIds }, async (scopedDb, client) => {
       // Create SKU first
   const slug = await generateUniqueSlug(scopedDb, skuInput?.slug, skuInput.name, scope.customerId);
+      const isImportValue = parseOptionalBoolean(skuInput?.isImport ?? skuInput?.is_import, 'isImport');
       const estRepairPriceValue = parseOptionalDecimal(
         skuInput?.estRepairPrice ?? skuInput?.est_repair_price,
         'estRepairPrice'
@@ -273,6 +276,7 @@ router.post('/composite', authenticateToken, async (req, res) => {
           lifespanYears: skuInput.lifespanYears ? parseInt(skuInput.lifespanYears) : null,
           notes: skuInput.notes || null,
           status: skuInput.status || 'active',
+          ...(isImportValue !== undefined ? { isImport: isImportValue } : {}),
           ...(skuInput.kind !== undefined
             ? { kind: skuInput.kind }
             : { kind: Array.isArray(components) && components.length > 0 ? 'bom' : 'simple' } as any),
@@ -333,6 +337,7 @@ router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) =
   try {
   const { id } = req.params;
   const { name, slug, productId, vendorId, brandId, vendorSku, purchaseUrl, price, estRepairPrice, isPurchasable, currency, lifespanYears, notes, status, kind, tags } = req.body || {};
+  const isImportValue = parseOptionalBoolean(req.body?.isImport ?? req.body?.is_import, 'isImport');
 
     const updateData: any = {
       updatedAt: new Date()
@@ -391,6 +396,9 @@ router.put('/:id', authenticateToken, requireWriteMiddleware, async (req, res) =
     }
     if (tags !== undefined) {
       (updateData as any).tags = Array.isArray(tags) ? tags : null;
+    }
+    if (isImportValue !== undefined) {
+      updateData.isImport = isImportValue;
     }
 
     const scope = await getRequestScope(req as any);
@@ -538,6 +546,7 @@ router.put('/:id/composite', authenticateToken, requireWriteMiddleware, async (r
       // Update SKU if fields provided
       if (skuInput && Object.keys(skuInput).length > 0) {
         const updateData: any = { updatedAt: new Date() };
+        const isImportValue = parseOptionalBoolean(skuInput?.isImport ?? skuInput?.is_import, 'isImport');
         let fallbackName = typeof skuInput.name === 'string' && skuInput.name.trim().length > 0 ? skuInput.name : undefined;
 
         if ((skuInput.slug !== undefined || fallbackName === undefined) && (skuInput.slug !== undefined || skuInput.name !== undefined)) {
@@ -611,6 +620,9 @@ router.put('/:id/composite', authenticateToken, requireWriteMiddleware, async (r
         }
         if (skuInput.tags !== undefined) {
           (updateData as any).tags = Array.isArray(skuInput.tags) ? skuInput.tags : null;
+        }
+        if (isImportValue !== undefined) {
+          updateData.isImport = isImportValue;
         }
 
         await scopedDb.update(skus).set(updateData).where(eq(skus.id, skuId)).returning();
