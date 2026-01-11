@@ -246,7 +246,8 @@ router.post('/', authenticateToken, async (req, res) => {
  */
 router.post('/composite', authenticateToken, async (req, res) => {
   try {
-    const { sku: skuInput, components = [] } = req.body || {};
+    const { sku: skuInput, components: componentsRaw, bomItems } = req.body || {};
+    const components = componentsRaw ?? bomItems ?? [];
     if (!skuInput?.name) return res.status(400).json({ error: 'SKU name is required' });
 
     const scope = await getRequestScope(req as any);
@@ -538,7 +539,8 @@ router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res
 router.put('/:id/composite', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { sku: skuInput = {}, components = [] } = req.body || {};
+    const { sku: skuInput = {}, components: componentsRaw, bomItems } = req.body || {};
+    const components = componentsRaw ?? bomItems ?? [];
 
     const scope = await getRequestScope(req as any);
     const skuId = parseInt(id);
