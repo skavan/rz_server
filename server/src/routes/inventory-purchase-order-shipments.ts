@@ -190,21 +190,22 @@ router.get('/:id', optionalAuth, async (req, res) => {
 router.post('/composite', authenticateToken, requireWriteMiddleware, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
-    const { shipment, items = [] } = req.body || {};
+    const { shipment, inventory_purchase_order_shipment: shipmentAlias, items = [] } = req.body || {};
+    const shipmentInput = shipment ?? shipmentAlias;
 
-    if (!shipment) {
+    if (!shipmentInput) {
       return res.status(400).json({ error: 'shipment is required' });
     }
 
     const purchaseOrderId = parseRequiredPositiveInt(
-      shipment.purchaseOrderId ?? shipment.purchase_order_id,
+      shipmentInput.purchaseOrderId ?? shipmentInput.purchase_order_id,
       'purchaseOrderId'
     );
     const trackingNumber = requireString(
-      shipment.trackingNumber ?? shipment.tracking_number,
+      shipmentInput.trackingNumber ?? shipmentInput.tracking_number,
       'trackingNumber'
     );
-    const status = coerceStatus(shipment.status);
+    const status = coerceStatus(shipmentInput.status);
 
     const result = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
@@ -227,13 +228,13 @@ router.post('/composite', authenticateToken, requireWriteMiddleware, async (req,
           .values({
             customerId: scope.customerId,
             purchaseOrderId,
-            carrier: parseOptionalString(shipment.carrier) ?? null,
+            carrier: parseOptionalString(shipmentInput.carrier) ?? null,
             trackingNumber,
             status,
-            shippedAt: parseOptionalDate(shipment.shippedAt ?? shipment.shipped_at, 'shippedAt'),
-            deliveredAt: parseOptionalDate(shipment.deliveredAt ?? shipment.delivered_at, 'deliveredAt'),
-            etaDate: parseOptionalDate(shipment.etaDate ?? shipment.eta_date, 'etaDate'),
-            metadata: parseOptionalJson(shipment.metadata, 'metadata') ?? null,
+            shippedAt: parseOptionalDate(shipmentInput.shippedAt ?? shipmentInput.shipped_at, 'shippedAt'),
+            deliveredAt: parseOptionalDate(shipmentInput.deliveredAt ?? shipmentInput.delivered_at, 'deliveredAt'),
+            etaDate: parseOptionalDate(shipmentInput.etaDate ?? shipmentInput.eta_date, 'etaDate'),
+            metadata: parseOptionalJson(shipmentInput.metadata, 'metadata') ?? null,
           })
           .returning();
 
@@ -302,7 +303,8 @@ router.put('/:id/composite', authenticateToken, requireWriteMiddleware, async (r
   try {
     const scope = await getRequestScope(req as any);
     const shipmentId = parseRequiredPositiveInt(req.params.id, 'id');
-    const { shipment = {}, items } = req.body || {};
+    const { shipment, inventory_purchase_order_shipment: shipmentAlias, items } = req.body || {};
+    const shipmentInput = shipment ?? shipmentAlias ?? {};
 
     const result = await withTenantScope(
       { customerId: scope.customerId, homeIds: scope.homeIds },
@@ -320,35 +322,38 @@ router.put('/:id/composite', authenticateToken, requireWriteMiddleware, async (r
           throw new ValidationError('Shipment not found', 404);
         }
 
-        if (shipment.purchaseOrderId !== undefined || shipment.purchase_order_id !== undefined) {
+        // Ignore purchaseOrderId if it matches existing (client may send full object)
+        // Only error if trying to actually change it
+        const incomingPoId = shipmentInput.purchaseOrderId ?? shipmentInput.purchase_order_id;
+        if (incomingPoId !== undefined && Number(incomingPoId) !== existing.purchaseOrderId) {
           throw new ValidationError('purchaseOrderId cannot be changed');
         }
 
         const updates: Record<string, any> = { updatedAt: new Date() };
 
-        if (shipment.trackingNumber !== undefined || shipment.tracking_number !== undefined) {
+        if (shipmentInput.trackingNumber !== undefined || shipmentInput.tracking_number !== undefined) {
           updates.trackingNumber = requireString(
-            shipment.trackingNumber ?? shipment.tracking_number,
+            shipmentInput.trackingNumber ?? shipmentInput.tracking_number,
             'trackingNumber'
           );
         }
-        if (shipment.carrier !== undefined) {
-          updates.carrier = parseOptionalString(shipment.carrier) ?? null;
+        if (shipmentInput.carrier !== undefined) {
+          updates.carrier = parseOptionalString(shipmentInput.carrier) ?? null;
         }
-        if (shipment.status !== undefined) {
-          updates.status = coerceStatus(shipment.status);
+        if (shipmentInput.status !== undefined) {
+          updates.status = coerceStatus(shipmentInput.status);
         }
-        if (shipment.shippedAt !== undefined || shipment.shipped_at !== undefined) {
-          updates.shippedAt = parseOptionalDate(shipment.shippedAt ?? shipment.shipped_at, 'shippedAt');
+        if (shipmentInput.shippedAt !== undefined || shipmentInput.shipped_at !== undefined) {
+          updates.shippedAt = parseOptionalDate(shipmentInput.shippedAt ?? shipmentInput.shipped_at, 'shippedAt');
         }
-        if (shipment.deliveredAt !== undefined || shipment.delivered_at !== undefined) {
-          updates.deliveredAt = parseOptionalDate(shipment.deliveredAt ?? shipment.delivered_at, 'deliveredAt');
+        if (shipmentInput.deliveredAt !== undefined || shipmentInput.delivered_at !== undefined) {
+          updates.deliveredAt = parseOptionalDate(shipmentInput.deliveredAt ?? shipmentInput.delivered_at, 'deliveredAt');
         }
-        if (shipment.etaDate !== undefined || shipment.eta_date !== undefined) {
-          updates.etaDate = parseOptionalDate(shipment.etaDate ?? shipment.eta_date, 'etaDate');
+        if (shipmentInput.etaDate !== undefined || shipmentInput.eta_date !== undefined) {
+          updates.etaDate = parseOptionalDate(shipmentInput.etaDate ?? shipmentInput.eta_date, 'etaDate');
         }
-        if (shipment.metadata !== undefined) {
-          updates.metadata = parseOptionalJson(shipment.metadata, 'metadata') ?? null;
+        if (shipmentInput.metadata !== undefined) {
+          updates.metadata = parseOptionalJson(shipmentInput.metadata, 'metadata') ?? null;
         }
 
         const [updatedShipment] = await scopedDb

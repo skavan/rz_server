@@ -281,6 +281,13 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
         const updates: Record<string, any> = { updatedAt: new Date() };
 
         if (poInput) {
+          if (poInput.purchaseNumber !== undefined || poInput.purchase_number !== undefined) {
+            const purchaseNumber = parseOptionalString(poInput.purchaseNumber ?? poInput.purchase_number);
+            if (!purchaseNumber) {
+              throw new ValidationError('purchaseNumber cannot be blank');
+            }
+            updates.purchaseNumber = purchaseNumber;
+          }
           if (poInput.vendorId !== undefined) updates.vendorId = parseOptionalInteger(poInput.vendorId, 'vendorId');
           if (poInput.status !== undefined) updates.status = coerceStatus(poInput.status);
           if (poInput.assignedToUserId !== undefined) updates.assignedToUserId = parseOptionalInteger(poInput.assignedToUserId, 'assignedToUserId');
