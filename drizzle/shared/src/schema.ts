@@ -854,6 +854,8 @@ export const inventoryPurchaseOrderItems = pgTable('inventory_purchase_order_ite
   purchaseOrderId: integer('purchase_order_id').references(() => inventoryPurchaseOrders.id, { onDelete: 'cascade' }).notNull(),
   actionRequestId: integer('action_request_id').references(() => inventoryActionRequests.id, { onDelete: 'set null' }),
   skuId: integer('sku_id').references(() => skus.id, { onDelete: 'set null' }),
+  parentSkuId: integer('parent_sku_id').references(() => skus.id, { onDelete: 'set null' }),
+  locationIds: integer('location_ids').array(),
   description: text('description'),
   orderedQuantity: integer('ordered_quantity').default(1).notNull(),
   receivedQuantity: integer('received_quantity').default(0).notNull(),
@@ -867,6 +869,7 @@ export const inventoryPurchaseOrderItems = pgTable('inventory_purchase_order_ite
   purchaseOrderIdx: index('idx_purchase_order_items_po').on(table.purchaseOrderId),
   actionRequestIdx: index('idx_purchase_order_items_action_request').on(table.actionRequestId),
   skuIdx: index('idx_purchase_order_items_sku').on(table.skuId),
+  parentSkuIdx: index('idx_purchase_order_items_parent_sku').on(table.parentSkuId),
 }));
 
 // ============================================

@@ -661,6 +661,16 @@ export const inventoryPurchaseOrderItemsValidationSchema = createValidationSchem
   receivedQuantity: z.preprocess(toOptionalInt, z.number().int().min(0).default(0)),
   unitPriceSnapshot: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
   extendedPrice: z.preprocess(toOptionalNumber, z.number().nonnegative().optional()),
+  parentSkuId: z.preprocess(toOptionalInt, z.number().int().positive().optional()).nullable().optional(),
+  locationIds: z
+    .array(z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]))
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return value;
+      if (value === null) return null;
+      return value.map((item) => (typeof item === 'string' ? Number(item) : item));
+    }),
 });
 
 export const inventoryPurchaseOrderShipmentsValidationSchema = createValidationSchema(
