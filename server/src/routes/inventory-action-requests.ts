@@ -25,6 +25,7 @@ import {
   ensureHomeAccess,
   parseOptionalBoolean,
   parseOptionalDate,
+  parseOptionalDateOnly,
   parseOptionalDecimal,
   parseOptionalInteger,
   parseOptionalJson,
@@ -184,6 +185,14 @@ const buildDecimal = (raw: unknown, field: string): string | null | undefined =>
 const buildDate = (raw: unknown, field: string): Date | null | undefined => {
   const parsed = parseOptionalDate(raw, field);
   return parsed ?? null;
+};
+
+/**
+ * For DATE-only columns (no time component), extract YYYY-MM-DD from UTC.
+ * Prevents timezone shift when storing date-only values.
+ */
+const buildDateOnly = (raw: unknown, field: string): string | null | undefined => {
+  return parseOptionalDateOnly(raw, field) ?? null;
 };
 
 const setNullableInteger = (
@@ -698,7 +707,7 @@ const applyWritableFields = (
   );
 
   assignIfDefined(data, 'decisionMadeAt', buildDate(pickValue(body, 'decisionMadeAt', 'decision_made_at'), 'decisionMadeAt'));
-  assignIfDefined(data, 'etaDate', buildDate(pickValue(body, 'etaDate', 'eta_date'), 'etaDate'));
+  assignIfDefined(data, 'etaDate', buildDateOnly(pickValue(body, 'etaDate', 'eta_date'), 'etaDate'));
   assignIfDefined(
     data,
     'queuedForPoAt',

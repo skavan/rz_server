@@ -20,11 +20,13 @@ import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { eventBus } from '../utils/event-bus.js';
+import { normalizeDateOnlyFields, normalizeDateOnlyFieldsArray } from '../utils/field-transformer.js';
 import {
   ValidationError,
   parseOptionalInteger,
   parseOptionalString,
   parseOptionalDate,
+  parseOptionalDateOnly,
   parseOptionalJson,
   parsePagination,
   requireString,
@@ -125,7 +127,7 @@ router.get('/', optionalAuth, async (req, res) => {
       }
     );
 
-    res.json({ data: rows, meta: { count: rows.length, limit, offset } });
+    res.json({ data: normalizeDateOnlyFieldsArray(rows), meta: { count: rows.length, limit, offset } });
   } catch (error: any) {
     if (error instanceof ValidationError) {
       return res.status(error.status).json({ error: error.message });
@@ -172,7 +174,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Shipment not found' });
     }
 
-    res.json({ data: result });
+    res.json({ data: normalizeDateOnlyFields(result) });
   } catch (error: any) {
     if (error instanceof ValidationError) {
       return res.status(error.status).json({ error: error.message });
@@ -233,7 +235,7 @@ router.post('/composite', authenticateToken, requireWriteMiddleware, async (req,
             status,
             shippedAt: parseOptionalDate(shipmentInput.shippedAt ?? shipmentInput.shipped_at, 'shippedAt'),
             deliveredAt: parseOptionalDate(shipmentInput.deliveredAt ?? shipmentInput.delivered_at, 'deliveredAt'),
-            etaDate: parseOptionalDate(shipmentInput.etaDate ?? shipmentInput.eta_date, 'etaDate'),
+            etaDate: parseOptionalDateOnly(shipmentInput.etaDate ?? shipmentInput.eta_date, 'etaDate'),
             metadata: parseOptionalJson(shipmentInput.metadata, 'metadata') ?? null,
           })
           .returning();
@@ -285,7 +287,7 @@ router.post('/composite', authenticateToken, requireWriteMiddleware, async (req,
       meta: { timestamp: Date.now(), source: 'api', audience: { customerId: scope.customerId } },
     });
 
-    res.status(201).json({ data: result });
+    res.status(201).json({ data: normalizeDateOnlyFields(result) });
   } catch (error: any) {
     if (error instanceof ValidationError) {
       return res.status(error.status).json({ error: error.message });
@@ -350,7 +352,7 @@ router.put('/:id/composite', authenticateToken, requireWriteMiddleware, async (r
           updates.deliveredAt = parseOptionalDate(shipmentInput.deliveredAt ?? shipmentInput.delivered_at, 'deliveredAt');
         }
         if (shipmentInput.etaDate !== undefined || shipmentInput.eta_date !== undefined) {
-          updates.etaDate = parseOptionalDate(shipmentInput.etaDate ?? shipmentInput.eta_date, 'etaDate');
+          updates.etaDate = parseOptionalDateOnly(shipmentInput.etaDate ?? shipmentInput.eta_date, 'etaDate');
         }
         if (shipmentInput.metadata !== undefined) {
           updates.metadata = parseOptionalJson(shipmentInput.metadata, 'metadata') ?? null;
@@ -420,7 +422,7 @@ router.put('/:id/composite', authenticateToken, requireWriteMiddleware, async (r
       meta: { timestamp: Date.now(), source: 'api', audience: { customerId: scope.customerId } },
     });
 
-    res.json({ data: result });
+    res.json({ data: normalizeDateOnlyFields(result) });
   } catch (error: any) {
     if (error instanceof ValidationError) {
       return res.status(error.status).json({ error: error.message });
@@ -470,7 +472,7 @@ router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res
       meta: { timestamp: Date.now(), source: 'api', audience: { customerId: scope.customerId } },
     });
 
-    res.json({ data: deleted });
+    res.json({ data: normalizeDateOnlyFields(deleted) });
   } catch (error: any) {
     if (error instanceof ValidationError) {
       return res.status(error.status).json({ error: error.message });
@@ -717,7 +719,7 @@ router.post('/bulk-import', authenticateToken, requireWriteMiddleware, async (re
     }
 
     res.status(201).json({ 
-      data: result, 
+      data: normalizeDateOnlyFieldsArray(result), 
       meta: { 
         shipmentsProcessed: result.length,
         totalItems: result.reduce((sum: number, s: any) => sum + (s.items?.length || 0), 0)
@@ -729,6 +731,133 @@ router.post('/bulk-import', authenticateToken, requireWriteMiddleware, async (re
     }
     console.error('Shipment bulk import error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/inventory-purchase-order-shipments/bulk-update
+ * 
+ * Bulk update multiple shipments with the same field values.
+ * Only updates fields that are explicitly provided (not null/undefined).
+ * 
+ * Input:
+ * {
+ *   "_selectedShipmentIds": [1, 2, 3],
+ *   "shippedAt": "2026-01-11T10:00:00.000Z",  // or undefined to skip
+ *   "etaDate": null,                          // null = skip (preserve existing)
+ *   "deliveredAt": null,
+ *   "status": "in_transit"
+ * }
+ * 
+ * Behavior:
+ * - Only fields with non-null, non-undefined values are updated
+ * - null means "don't update this field" (preserve existing value)
+ */
+router.post('/bulk-update', authenticateToken, requireWriteMiddleware, async (req, res) => {
+  try {
+    const scope = await getRequestScope(req as any);
+    const { _selectedShipmentIds, ...updates } = req.body || {};
+
+    if (!Array.isArray(_selectedShipmentIds) || _selectedShipmentIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'No shipments selected' });
+    }
+
+    // Parse and validate shipment IDs
+    const shipmentIds = _selectedShipmentIds
+      .map(id => typeof id === 'number' ? id : parseInt(id, 10))
+      .filter(id => Number.isFinite(id) && id > 0);
+
+    if (shipmentIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid shipment IDs provided' });
+    }
+
+    // Build update object with only non-null, non-undefined fields
+    const fieldsToUpdate: Record<string, any> = {};
+
+    if (updates.status !== null && updates.status !== undefined) {
+      fieldsToUpdate.status = coerceStatus(updates.status);
+    }
+    if (updates.carrier !== null && updates.carrier !== undefined) {
+      fieldsToUpdate.carrier = parseOptionalString(updates.carrier) ?? null;
+    }
+    if (updates.shippedAt !== null && updates.shippedAt !== undefined) {
+      fieldsToUpdate.shippedAt = parseOptionalDate(updates.shippedAt, 'shippedAt');
+    }
+    if (updates.deliveredAt !== null && updates.deliveredAt !== undefined) {
+      fieldsToUpdate.deliveredAt = parseOptionalDate(updates.deliveredAt, 'deliveredAt');
+    }
+    if (updates.etaDate !== null && updates.etaDate !== undefined) {
+      fieldsToUpdate.etaDate = parseOptionalDateOnly(updates.etaDate, 'etaDate');
+    }
+    if (updates.metadata !== null && updates.metadata !== undefined) {
+      fieldsToUpdate.metadata = parseOptionalJson(updates.metadata, 'metadata') ?? null;
+    }
+
+    if (Object.keys(fieldsToUpdate).length === 0) {
+      return res.json({ success: true, updated: 0, message: 'No fields to update' });
+    }
+
+    // Always set updatedAt
+    fieldsToUpdate.updatedAt = new Date();
+
+    console.log('📦 SHIPMENT BULK UPDATE - ids:', shipmentIds, 'fields:', fieldsToUpdate);
+
+    const result = await withTenantScope(
+      { customerId: scope.customerId, homeIds: scope.homeIds },
+      async (scopedDb) => {
+        // Verify all shipments belong to customer
+        const existingShipments = await scopedDb
+          .select({ id: inventoryPurchaseOrderShipments.id })
+          .from(inventoryPurchaseOrderShipments)
+          .where(and(
+            eq(inventoryPurchaseOrderShipments.customerId, scope.customerId),
+            inArray(inventoryPurchaseOrderShipments.id, shipmentIds)
+          ));
+
+        const validIds = existingShipments.map(s => s.id);
+        if (validIds.length === 0) {
+          throw new ValidationError('No valid shipments found for update', 404);
+        }
+
+        // Perform bulk update
+        const updated = await scopedDb
+          .update(inventoryPurchaseOrderShipments)
+          .set(fieldsToUpdate)
+          .where(and(
+            eq(inventoryPurchaseOrderShipments.customerId, scope.customerId),
+            inArray(inventoryPurchaseOrderShipments.id, validIds)
+          ))
+          .returning();
+
+        return updated;
+      }
+    );
+
+    // Broadcast changes for each updated shipment
+    for (const shipment of result) {
+      eventBus.broadcast({
+        event: 'data_change:inventory_purchase_order_shipments',
+        data: { 
+          type: 'update', 
+          resource: 'inventory_purchase_order_shipments', 
+          resourceId: shipment.id, 
+          data: shipment 
+        },
+        meta: { timestamp: Date.now(), source: 'api', audience: { customerId: scope.customerId } },
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      updated: result.length,
+      data: normalizeDateOnlyFieldsArray(result)
+    });
+  } catch (error: any) {
+    if (error instanceof ValidationError) {
+      return res.status(error.status).json({ success: false, error: error.message });
+    }
+    console.error('Shipment bulk update error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

@@ -123,6 +123,33 @@ export function requireDate(value: unknown, field: string): Date {
   return parsed;
 }
 
+/**
+ * Parse a date value and return just the YYYY-MM-DD string in UTC.
+ * Use this for DATE-only columns (not TIMESTAMP) to avoid timezone shift issues.
+ * 
+ * Example: "2026-01-12T12:00:00.000Z" → "2026-01-12"
+ * 
+ * The midday UTC convention ensures no day-shift regardless of server timezone.
+ */
+export function parseOptionalDateOnly(value: unknown, field: string): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  
+  // If already a YYYY-MM-DD string, return as-is
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+  }
+  
+  const parsed = parseOptionalDate(value, field);
+  if (!parsed) return null;
+  
+  // Extract YYYY-MM-DD from UTC representation
+  return parsed.toISOString().split('T')[0];
+}
+
 export function parseOptionalJson(value: unknown, field: string): any {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;

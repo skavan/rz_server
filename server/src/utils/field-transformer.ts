@@ -212,3 +212,52 @@ export function logTableMapping(tableName: string): void {
   const mapping = getTableFieldMapping(tableName);
   console.log(`Field mapping for table '${tableName}':`, mapping);
 }
+
+/**
+ * Known DATE-only fields (not TIMESTAMPTZ).
+ * These need to be normalized to midday UTC on response to prevent timezone shift.
+ */
+const DATE_ONLY_FIELDS = new Set([
+  'etaDate',
+  'eta_date',
+  'purchaseDate',
+  'purchase_date',
+  'warrantyExpires',
+  'warranty_expires',
+  'expectedReplacement',
+  'expected_replacement',
+  'reviewedDate',
+  'reviewed_date',
+]);
+
+/**
+ * Normalize DATE-only fields to midday UTC for consistent client rendering.
+ * Converts "2026-01-12" to "2026-01-12T12:00:00.000Z"
+ * 
+ * Use on response data before sending to client.
+ */
+export function normalizeDateOnlyFields<T extends Record<string, any>>(row: T): T {
+  const result = { ...row };
+  for (const key of Object.keys(result)) {
+    if (DATE_ONLY_FIELDS.has(key) && result[key] != null) {
+      const value = result[key];
+      // If it's a string like "2026-01-12" (no time component)
+      if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        result[key] = `${value}T12:00:00.000Z`;
+      }
+      // If it's a Date object, extract date and add midday UTC
+      else if (value instanceof Date) {
+        const dateStr = value.toISOString().split('T')[0];
+        result[key] = `${dateStr}T12:00:00.000Z`;
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Normalize DATE-only fields for an array of rows.
+ */
+export function normalizeDateOnlyFieldsArray<T extends Record<string, any>>(rows: T[]): T[] {
+  return rows.map(normalizeDateOnlyFields);
+}
