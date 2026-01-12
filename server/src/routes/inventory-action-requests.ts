@@ -1090,4 +1090,174 @@ router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res
   }
 });
 
+/**
+ * POST /api/inventory-action-requests/bulk
+ * Create multiple action requests in a single transaction
+ * Body: {
+ *   items: [{ issueId, skuId?, inventoryItemId?, requestedQuantity?, ... }],
+ *   defaults?: { actionType?, procurementStatus?, replacementSkuId?, preferredVendorId?, ... }
+ * }
+ * Response: { data: { created: number, skipped: number, ids: number[], errors: string[] } }
+ */
+router.post('/bulk', authenticateToken, async (req, res) => {
+  try {
+    const scope = await getRequestScope(req as any);
+    const { items = [], defaults = {} } = req.body ?? {};
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'items array is required and must not be empty' });
+    }
+
+    const authUserId = Number((req as any)?.user?.id) || null;
+
+    const result = await withTenantScope(
+      { customerId: scope.customerId, homeIds: scope.homeIds },
+      async (scopedDb) => {
+        const createdIds: number[] = [];
+        const errors: string[] = [];
+        let skipped = 0;
+
+        for (let idx = 0; idx < items.length; idx++) {
+          const item = items[idx];
+          try {
+            const issueId = parseOptionalInteger(pickValue(item, 'issueId', 'issue_id'), 'issueId');
+            if (!issueId) {
+              errors.push(`Item ${idx}: issueId is required`);
+              skipped++;
+              continue;
+            }
+
+            const issueRows = await scopedDb
+              .select({ id: issues.id, homeId: issues.homeId, entityType: issues.entityType, entityId: issues.entityId })
+              .from(issues)
+              .where(and(eq(issues.customerId, scope.customerId), eq(issues.id, issueId)))
+              .limit(1);
+
+            if (issueRows.length === 0) {
+              errors.push(`Item ${idx}: Issue ${issueId} not found`);
+              skipped++;
+              continue;
+            }
+
+            const issueRow = issueRows[0];
+
+            let inventoryItemId = parseOptionalInteger(pickValue(item, 'inventoryItemId', 'inventory_item_id'), 'inventoryItemId');
+            if (inventoryItemId == null && issueRow.entityType === 'inventory_item') {
+              inventoryItemId = issueRow.entityId;
+            }
+
+            if (inventoryItemId != null) {
+              const alreadyExists = await hasBlockingInventoryRequest(scopedDb, {
+                customerId: scope.customerId,
+                inventoryItemId,
+              });
+              if (alreadyExists) {
+                errors.push(`Item ${idx}: Inventory item ${inventoryItemId} already has an active request`);
+                skipped++;
+                continue;
+              }
+            }
+
+            const actionType = parseEnumValue(
+              pickValue(item, 'actionType', 'action_type') ?? pickValue(defaults, 'actionType', 'action_type'),
+              'actionType',
+              ACTION_TYPE_VALUES,
+              { defaultValue: 'replace' }
+            ) as ActionType;
+
+            const procurementStatus = parseEnumValue(
+              pickValue(item, 'procurementStatus', 'procurement_status') ?? pickValue(defaults, 'procurementStatus', 'procurement_status'),
+              'procurementStatus',
+              PROCUREMENT_STATUS_VALUES,
+              { defaultValue: 'pending' }
+            ) as ProcurementStatus;
+
+            const data: Record<string, any> = {
+              customerId: scope.customerId,
+              issueId,
+              homeId: issueRow.homeId ?? parseOptionalInteger(pickValue(item, 'homeId', 'home_id'), 'homeId'),
+              inventoryItemId: inventoryItemId ?? null,
+              actionType,
+              procurementStatus,
+              repairStatus: 'not_applicable' as RepairStatus,
+              requestedQuantity: parseOptionalInteger(pickValue(item, 'requestedQuantity', 'requested_quantity', 'itemQty', 'item_qty'), 'requestedQuantity') ?? 1,
+              createdByUserId: authUserId,
+              updatedAt: new Date(),
+              lastWorkflowTouchedAt: new Date(),
+            };
+
+            const currentSkuId = parseOptionalInteger(
+              pickValue(item, 'currentSkuId', 'current_sku_id', 'skuId', 'sku_id'),
+              'currentSkuId'
+            );
+            if (currentSkuId !== undefined) data.currentSkuId = currentSkuId;
+
+            const replacementSkuId = parseOptionalInteger(
+              pickValue(item, 'replacementSkuId', 'replacement_sku_id') ?? pickValue(defaults, 'replacementSkuId', 'replacement_sku_id'),
+              'replacementSkuId'
+            );
+            if (replacementSkuId !== undefined) data.replacementSkuId = replacementSkuId;
+
+            const preferredVendorId = parseOptionalInteger(
+              pickValue(item, 'preferredVendorId', 'preferred_vendor_id') ?? pickValue(defaults, 'preferredVendorId', 'preferred_vendor_id'),
+              'preferredVendorId'
+            );
+            if (preferredVendorId !== undefined) data.preferredVendorId = preferredVendorId;
+
+            const productId = parseOptionalInteger(pickValue(item, 'productId', 'product_id'), 'productId');
+            if (productId !== undefined) data.productId = productId;
+
+            const locationId = parseOptionalInteger(pickValue(item, 'locationId', 'location_id'), 'locationId');
+            if (locationId !== undefined) data.locationId = locationId;
+
+            const fieldNotes = parseOptionalString(pickValue(item, 'fieldNotes', 'field_notes'));
+            if (fieldNotes !== undefined) data.fieldNotes = fieldNotes;
+
+            const internalNotes = parseOptionalString(pickValue(item, 'internalNotes', 'internal_notes'));
+            if (internalNotes !== undefined) data.internalNotes = internalNotes;
+
+            const unitPriceEstimate = parseOptionalDecimal(
+              pickValue(item, 'unitPriceEstimate', 'unit_price_estimate') ?? pickValue(defaults, 'unitPriceEstimate', 'unit_price_estimate'),
+              'unitPriceEstimate'
+            );
+            if (unitPriceEstimate !== undefined) data.unitPriceEstimate = unitPriceEstimate;
+
+            const inserted = (await scopedDb.insert(inventoryActionRequests).values(data).returning()) as InventoryActionRequestRow[];
+
+            await scopedDb
+              .update(issues)
+              .set({
+                actionRequestId: inserted[0].id,
+                requiresPurchase: true,
+                updatedAt: new Date(),
+              })
+              .where(eq(issues.id, issueId));
+
+            createdIds.push(inserted[0].id);
+
+            eventBus.broadcast({
+              event: 'data_change:inventory_action_requests',
+              data: { type: 'create', resource: 'inventory_action_requests', resourceId: inserted[0].id, data: inserted[0] },
+              meta: { timestamp: Date.now(), source: 'api', audience: { customerId: scope.customerId } },
+            });
+          } catch (itemError: any) {
+            errors.push(`Item ${idx}: ${itemError.message || 'Unknown error'}`);
+            skipped++;
+          }
+        }
+
+        return { created: createdIds.length, skipped, ids: createdIds, errors: errors.length > 0 ? errors : undefined };
+      }
+    );
+
+    res.status(201).json({ data: result });
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('inventory-action-requests bulk POST error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
