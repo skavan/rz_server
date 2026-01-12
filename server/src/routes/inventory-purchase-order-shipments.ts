@@ -480,4 +480,256 @@ router.delete('/:id', authenticateToken, requireWriteMiddleware, async (req, res
   }
 });
 
+/**
+ * POST /api/inventory-purchase-order-shipments/bulk-import
+ * 
+ * Accepts line-item-centric data (as received from vendor reports) and transforms
+ * to shipment-centric structure. Merges items by tracking number.
+ * 
+ * Input:
+ * {
+ *   purchaseOrderId: number,
+ *   lineItems: [
+ *     {
+ *       purchaseOrderItemId: number,
+ *       shipments: [
+ *         {
+ *           shipmentId?: number,        // existing shipment ID (null = find by tracking or create)
+ *           carrier: string,
+ *           trackingNumber: string,
+ *           quantity: number,
+ *           status?: string,
+ *           shippedAt?: string
+ *         }
+ *       ]
+ *     }
+ *   ]
+ * }
+ * 
+ * Behavior:
+ * - Groups all items by trackingNumber
+ * - For each unique tracking: finds existing shipment by (purchaseOrderId, trackingNumber) or creates new
+ * - Replaces all shipment_items for affected shipments
+ */
+router.post('/bulk-import', authenticateToken, requireWriteMiddleware, async (req, res) => {
+  try {
+    const scope = await getRequestScope(req as any);
+    const { purchaseOrderId, lineItems } = req.body || {};
+
+    if (!purchaseOrderId) {
+      throw new ValidationError('purchaseOrderId is required');
+    }
+    const poId = parseRequiredPositiveInt(purchaseOrderId, 'purchaseOrderId');
+
+    if (!Array.isArray(lineItems) || lineItems.length === 0) {
+      throw new ValidationError('lineItems array is required and must not be empty');
+    }
+
+    console.log('📦 SHIPMENT BULK IMPORT - poId:', poId, 'lineItems:', JSON.stringify(lineItems, null, 2));
+
+    const result = await withTenantScope(
+      { customerId: scope.customerId, homeIds: scope.homeIds },
+      async (scopedDb) => {
+        // Verify PO exists and belongs to customer
+        const [po] = await scopedDb
+          .select({ id: inventoryPurchaseOrders.id })
+          .from(inventoryPurchaseOrders)
+          .where(and(
+            eq(inventoryPurchaseOrders.customerId, scope.customerId),
+            eq(inventoryPurchaseOrders.id, poId)
+          ))
+          .limit(1);
+
+        if (!po) {
+          throw new ValidationError('Purchase order not found', 404);
+        }
+
+        // Validate all purchaseOrderItemIds exist and belong to this PO
+        const poItemIds = Array.from(new Set(
+          lineItems.map((li: any) => parseRequiredPositiveInt(li.purchaseOrderItemId, 'purchaseOrderItemId'))
+        ));
+
+        const validPoItems = await scopedDb
+          .select({ id: inventoryPurchaseOrderItems.id })
+          .from(inventoryPurchaseOrderItems)
+          .where(and(
+            eq(inventoryPurchaseOrderItems.customerId, scope.customerId),
+            eq(inventoryPurchaseOrderItems.purchaseOrderId, poId),
+            inArray(inventoryPurchaseOrderItems.id, poItemIds)
+          ));
+
+        const validPoItemIds = new Set(validPoItems.map(i => i.id));
+        for (const id of poItemIds) {
+          if (!validPoItemIds.has(id)) {
+            throw new ValidationError(`purchaseOrderItemId ${id} not found or does not belong to this PO`);
+          }
+        }
+
+        // Step 1: Transform line-item-centric to shipment-centric (merge by trackingNumber)
+        const shipmentMap = new Map<string, {
+          shipmentId: number | null;
+          carrier: string | null;
+          trackingNumber: string;
+          status: ShipmentStatus;
+          shippedAt: Date | null;
+          items: Array<{ purchaseOrderItemId: number; quantity: number }>;
+        }>();
+
+        for (const lineItem of lineItems) {
+          const poItemId = parseRequiredPositiveInt(lineItem.purchaseOrderItemId, 'purchaseOrderItemId');
+          const shipments = lineItem.shipments ?? [];
+
+          for (const s of shipments) {
+            const trackingNumber = requireString(s.trackingNumber ?? s.tracking_number, 'trackingNumber');
+            const key = trackingNumber.toUpperCase().trim();
+
+            if (!shipmentMap.has(key)) {
+              shipmentMap.set(key, {
+                shipmentId: parseOptionalInteger(s.shipmentId ?? s.shipment_id, 'shipmentId') ?? null,
+                carrier: parseOptionalString(s.carrier) ?? null,
+                trackingNumber: trackingNumber.trim(),
+                status: coerceStatus(s.status),
+                shippedAt: parseOptionalDate(s.shippedAt ?? s.shipped_at, 'shippedAt') ?? null,
+                items: []
+              });
+            }
+
+            const existing = shipmentMap.get(key)!;
+            // Update shipment-level fields if provided (last one wins, or could merge)
+            if (s.carrier) existing.carrier = parseOptionalString(s.carrier) ?? existing.carrier;
+            if (s.status) existing.status = coerceStatus(s.status);
+            if (s.shippedAt || s.shipped_at) {
+              existing.shippedAt = parseOptionalDate(s.shippedAt ?? s.shipped_at, 'shippedAt') ?? existing.shippedAt;
+            }
+
+            existing.items.push({
+              purchaseOrderItemId: poItemId,
+              quantity: parseQuantity(s.quantity, 'quantity', 1)
+            });
+          }
+        }
+
+        // Step 2: For each unique tracking, upsert shipment and replace items
+        const processedShipments: any[] = [];
+
+        for (const [, shipmentData] of shipmentMap) {
+          let shipmentId = shipmentData.shipmentId;
+
+          // Try to find existing shipment by tracking number if no ID provided
+          if (!shipmentId) {
+            const [existingShipment] = await scopedDb
+              .select({ id: inventoryPurchaseOrderShipments.id })
+              .from(inventoryPurchaseOrderShipments)
+              .where(and(
+                eq(inventoryPurchaseOrderShipments.customerId, scope.customerId),
+                eq(inventoryPurchaseOrderShipments.purchaseOrderId, poId),
+                eq(inventoryPurchaseOrderShipments.trackingNumber, shipmentData.trackingNumber)
+              ))
+              .limit(1);
+
+            if (existingShipment) {
+              shipmentId = existingShipment.id;
+            }
+          }
+
+          let shipment: any;
+
+          if (shipmentId) {
+            // Update existing shipment
+            const [updated] = await scopedDb
+              .update(inventoryPurchaseOrderShipments)
+              .set({
+                carrier: shipmentData.carrier,
+                status: shipmentData.status,
+                shippedAt: shipmentData.shippedAt,
+                updatedAt: new Date()
+              })
+              .where(and(
+                eq(inventoryPurchaseOrderShipments.id, shipmentId),
+                eq(inventoryPurchaseOrderShipments.customerId, scope.customerId)
+              ))
+              .returning();
+
+            shipment = updated;
+
+            // Delete existing items for this shipment (will replace)
+            await scopedDb
+              .delete(inventoryPurchaseOrderShipmentItems)
+              .where(eq(inventoryPurchaseOrderShipmentItems.shipmentId, shipmentId));
+          } else {
+            // Create new shipment
+            const [created] = await scopedDb
+              .insert(inventoryPurchaseOrderShipments)
+              .values({
+                customerId: scope.customerId,
+                purchaseOrderId: poId,
+                carrier: shipmentData.carrier,
+                trackingNumber: shipmentData.trackingNumber,
+                status: shipmentData.status,
+                shippedAt: shipmentData.shippedAt
+              })
+              .returning();
+
+            shipment = created;
+            shipmentId = created.id;
+          }
+
+          // Insert shipment items
+          if (shipmentData.items.length > 0) {
+            const itemRows = shipmentData.items.map((item, idx) => ({
+              customerId: scope.customerId,
+              shipmentId: shipmentId!,
+              purchaseOrderItemId: item.purchaseOrderItemId,
+              quantity: item.quantity,
+              receivedQuantity: 0,
+              sortOrder: idx
+            }));
+
+            const insertedItems = await scopedDb
+              .insert(inventoryPurchaseOrderShipmentItems)
+              .values(itemRows)
+              .returning();
+
+            shipment.items = insertedItems;
+          } else {
+            shipment.items = [];
+          }
+
+          processedShipments.push(shipment);
+        }
+
+        return processedShipments;
+      }
+    );
+
+    // Broadcast changes
+    for (const shipment of result) {
+      eventBus.broadcast({
+        event: 'data_change:inventory_purchase_order_shipments',
+        data: { 
+          type: shipment.createdAt === shipment.updatedAt ? 'create' : 'update', 
+          resource: 'inventory_purchase_order_shipments', 
+          resourceId: shipment.id, 
+          data: shipment 
+        },
+        meta: { timestamp: Date.now(), source: 'api', audience: { customerId: scope.customerId } },
+      });
+    }
+
+    res.status(201).json({ 
+      data: result, 
+      meta: { 
+        shipmentsProcessed: result.length,
+        totalItems: result.reduce((sum: number, s: any) => sum + (s.items?.length || 0), 0)
+      } 
+    });
+  } catch (error: any) {
+    if (error instanceof ValidationError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('Shipment bulk import error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

@@ -1,0 +1,59 @@
+[
+	{
+		"id": 2,
+		"customer_id": 1,
+		"purchase_order_id": 9,
+		"carrier": "FedEx",
+		"tracking_number": "397548238579",
+		"status": "in_transit",
+		"shipped_at": null,
+		"delivered_at": null,
+		"eta_date": null,
+		"metadata": null,
+		"created_at": "2026-01-10 14:43:16.196246-05",
+		"updated_at": "2026-01-10 16:24:56.809-05",
+		"lineItems": [
+			{
+				"id": 5,
+				"customer_id": 1,
+				"shipment_id": 2,
+				"purchase_order_item_id": 85,
+				"quantity": 6,
+				"received_quantity": 0,
+				"metadata": null,
+				"created_at": "2026-01-10 14:43:16.196246-05",
+				"updated_at": "2026-01-10 14:43:16.196246-05"
+			},
+			{
+				"customer_id": 1,
+				"shipment_id": 2,
+				"purchase_order_item_id": 89,
+				"quantity": 3,
+				"received_quantity": 0,
+				"metadata": null,
+				"created_at": "2026-01-10 14:43:16.196246-05",
+				"updated_at": "2026-01-10 14:43:16.196246-05"
+			},
+			{
+				"customer_id": 1,
+				"shipment_id": 2,
+				"purchase_order_item_id": 86,
+				"quantity": 3,
+				"received_quantity": 0,
+				"metadata": null,
+				"created_at": "2026-01-10 14:43:16.196246-05",
+				"updated_at": "2026-01-10 14:43:16.196246-05"
+			},
+			{
+				"customer_id": 1,
+				"shipment_id": 2,
+				"purchase_order_item_id": 84,
+				"quantity": 3,
+				"received_quantity": 0,
+				"metadata": null,
+				"created_at": "2026-01-10 14:43:16.196246-05",
+				"updated_at": "2026-01-10 14:43:16.196246-05"
+			}
+		]
+	}
+]

@@ -313,8 +313,9 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
 
         let finalItems: any[] = [];
         if (Array.isArray(lineItems)) {
+          // Fetch existing items with full data
           const existingItems = await scopedDb
-            .select({ actionRequestId: inventoryPurchaseOrderItems.actionRequestId })
+            .select()
             .from(inventoryPurchaseOrderItems)
             .where(eq(inventoryPurchaseOrderItems.purchaseOrderId, id));
 
@@ -322,55 +323,95 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
             .map((item) => item.actionRequestId)
             .filter((arId): arId is number => arId != null);
 
-          await scopedDb
-            .delete(inventoryPurchaseOrderItems)
-            .where(eq(inventoryPurchaseOrderItems.purchaseOrderId, id));
+          const existingItemIds = new Set(existingItems.map(i => i.id));
 
-          if (lineItems.length > 0) {
-            const itemRows = lineItems.map((item: any) => ({
+          // Separate items into updates (have id) and inserts (no id)
+          const incomingItemIds = new Set<number>();
+          const itemsToUpdate: any[] = [];
+          const itemsToInsert: any[] = [];
+
+          for (const item of lineItems) {
+            const itemId = parseOptionalInteger(item.id, 'id');
+            const itemData = {
               customerId: scope.customerId,
               purchaseOrderId: id,
               actionRequestId: parseOptionalInteger(item.actionRequestId, 'actionRequestId'),
               skuId: parseOptionalInteger(item.skuId, 'skuId'),
               parentSkuId: parseOptionalInteger(item.parentSkuId, 'parentSkuId'),
-              locationIds: Array.isArray(item.locationIds) ? item.locationIds.map((id: any) => parseInt(id)) : null,
+              locationIds: Array.isArray(item.locationIds) ? item.locationIds.map((lid: any) => parseInt(lid)) : null,
               description: parseOptionalString(item.description),
               orderedQuantity: item.orderedQuantity ? parseInt(item.orderedQuantity) : 1,
               receivedQuantity: item.receivedQuantity ? parseInt(item.receivedQuantity) : 0,
               unitPriceSnapshot: parseOptionalDecimal(item.unitPriceSnapshot, 'unitPriceSnapshot'),
               extendedPrice: parseOptionalDecimal(item.extendedPrice, 'extendedPrice'),
               metadata: item.metadata ?? null,
-            }));
+              updatedAt: new Date(),
+            };
 
-            finalItems = await scopedDb
-              .insert(inventoryPurchaseOrderItems)
-              .values(itemRows)
-              .returning();
-
-            const actionRequestIds = Array.from(new Set(
-              finalItems
-                .map((item) => item.actionRequestId)
-                .filter((arId): arId is number => arId != null)
-            ));
-
-            if (actionRequestIds.length > 0) {
-              await scopedDb
-                .update(inventoryActionRequests)
-                .set({ currentPurchaseOrderId: id, updatedAt: new Date() })
-                .where(and(
-                  eq(inventoryActionRequests.customerId, scope.customerId),
-                  inArray(inventoryActionRequests.id, actionRequestIds)
-                ));
+            if (itemId && existingItemIds.has(itemId)) {
+              incomingItemIds.add(itemId);
+              itemsToUpdate.push({ id: itemId, ...itemData });
+            } else {
+              itemsToInsert.push(itemData);
             }
           }
 
-          if (previousActionRequestIds.length > 0) {
-            const currentActionRequestIdSet = new Set(
-              finalItems
-                .map((item) => item.actionRequestId)
-                .filter((arId): arId is number => arId != null)
-            );
+          // Delete items that are no longer in the payload
+          const itemIdsToDelete = [...existingItemIds].filter(eid => !incomingItemIds.has(eid));
+          if (itemIdsToDelete.length > 0) {
+            await scopedDb
+              .delete(inventoryPurchaseOrderItems)
+              .where(and(
+                eq(inventoryPurchaseOrderItems.purchaseOrderId, id),
+                inArray(inventoryPurchaseOrderItems.id, itemIdsToDelete)
+              ));
+          }
 
+          // Update existing items
+          for (const item of itemsToUpdate) {
+            const { id: itemId, ...updateFields } = item;
+            await scopedDb
+              .update(inventoryPurchaseOrderItems)
+              .set(updateFields)
+              .where(eq(inventoryPurchaseOrderItems.id, itemId));
+          }
+
+          // Insert new items
+          let insertedItems: any[] = [];
+          if (itemsToInsert.length > 0) {
+            insertedItems = await scopedDb
+              .insert(inventoryPurchaseOrderItems)
+              .values(itemsToInsert)
+              .returning();
+          }
+
+          // Fetch all final items
+          finalItems = await scopedDb
+            .select()
+            .from(inventoryPurchaseOrderItems)
+            .where(eq(inventoryPurchaseOrderItems.purchaseOrderId, id))
+            .orderBy(asc(inventoryPurchaseOrderItems.id));
+
+          // Update action requests
+          const currentActionRequestIds = Array.from(new Set(
+            finalItems
+              .map((item) => item.actionRequestId)
+              .filter((arId): arId is number => arId != null)
+          ));
+
+          if (currentActionRequestIds.length > 0) {
+            await scopedDb
+              .update(inventoryActionRequests)
+              .set({ currentPurchaseOrderId: id, updatedAt: new Date() })
+              .where(and(
+                eq(inventoryActionRequests.customerId, scope.customerId),
+                inArray(inventoryActionRequests.id, currentActionRequestIds)
+              ));
+          }
+
+          // Clear removed action requests
+          if (previousActionRequestIds.length > 0) {
+            const currentActionRequestIdSet = new Set(currentActionRequestIds);
             const removedActionRequestIds = Array.from(new Set(previousActionRequestIds))
               .filter((arId) => !currentActionRequestIdSet.has(arId));
 
