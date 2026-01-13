@@ -42,6 +42,7 @@ import inventoryPurchaseOrderShipmentsRoutes from './routes/inventory-purchase-o
 import commentsRoutes from './routes/comments.js';
 import todosRoutes from './routes/todos.js';
 import tableFallbackRoutes from './routes/table-fallback.js';
+import pdfRoutes from './routes/pdf.js';
 // import { startDevSkuTestEvents } from './utils/dev-test-sse.js';
 
 // Load environment variables
@@ -126,6 +127,10 @@ app.use(cors({
   },
   credentials: true
 }));
+// PDF routes need larger body limit (HTML can be 500KB-2MB+)
+app.use('/api/pdf', express.json({ limit: '10mb' }));
+
+// Default body parser for other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -193,6 +198,7 @@ mountApiRoute('/api/inventory-purchase-orders', inventoryPurchaseOrdersRoutes);
 mountApiRoute('/api/inventory-purchase-order-shipments', inventoryPurchaseOrderShipmentsRoutes);
 mountApiRoute('/api/comments', commentsRoutes);
 mountApiRoute('/api/todos', todosRoutes);
+mountApiRoute('/api/pdf', pdfRoutes);
 app.use('/api', tableFallbackRoutes);
 
 // Root endpoint
@@ -366,6 +372,15 @@ async function startServer() {
       console.warn('⚠️ Realtime setup failed; SSE will only receive route-emitted events:', e?.message || e);
     }
 
+    // Initialize PDF browser pool
+    try {
+      const { initBrowserPool } = await import('./pdf/index.js');
+      await initBrowserPool(2);
+      console.log('📄 PDF browser pool initialized');
+    } catch (e: any) {
+      console.warn('⚠️ PDF browser pool init failed; will lazy-init on first request:', e?.message || e);
+    }
+
     // Start server
     app.listen(PORT, () => {
       console.log(`🚀 Server V2 running on http://localhost:${PORT}`);
@@ -382,15 +397,20 @@ async function startServer() {
 }
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully');
+async function shutdown() {
+  console.log('🛑 Shutting down gracefully...');
+  try {
+    const { closeBrowserPool } = await import('./pdf/index.js');
+    await closeBrowserPool();
+    console.log('📄 PDF browser pool closed');
+  } catch (e) {
+    // ignore
+  }
   process.exit(0);
-});
+}
 
-process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received, shutting down gracefully');
-  process.exit(0);
-});
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 // Unhandled errors
 process.on('unhandledRejection', (reason, promise) => {
