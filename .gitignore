@@ -47,6 +47,7 @@ drizzle/shared/zod-examples/
 tmp/
 temp/
 *.tmp
+pdf-debug-chunks/
 
 # Coverage
 coverage/

@@ -223,11 +223,12 @@ export async function resolveImages(
   const maxImages = options.maxImages; // undefined = no limit
   const usePlaceholders = options.usePlaceholders ?? false;
 
+  // Track variant usage by actual file suffix
+  const variantCounts: Record<string, number> = { print: 0, web: 0, thumb: 0, original: 0 };
+
   // Find all images with data-media-id or matching URL pattern
   const allImages = $('img[data-media-id], img[src*="/api/media/serve/"]').toArray();
   const imagesToProcess = maxImages ? allImages.slice(0, maxImages) : allImages;
-  
-  console.log(`📷 Found ${allImages.length} images, processing ${imagesToProcess.length} (useFileUrls=${useFileUrls})`);
   
   if (maxImages && allImages.length > maxImages) {
     errors.push(`Preview limited to ${maxImages} images (${allImages.length} total)`);
@@ -254,8 +255,6 @@ export async function resolveImages(
 
     // Extract processing options from data attributes
     const variant = $img.attr('data-media-variant') || defaultVariant;
-    
-    console.log(`📷 Processing image mediaId=${mediaId}, variant=${variant}`);
     const fallback = ($img.attr('data-media-fallback') as 'placeholder' | 'hide' | 'error') || 'placeholder';
     const quality = $img.attr('data-media-quality') ? parseInt($img.attr('data-media-quality')!, 10) : undefined;
     const maxWidth = $img.attr('data-media-max-width') ? parseInt($img.attr('data-media-max-width')!, 10) : undefined;
@@ -271,6 +270,12 @@ export async function resolveImages(
 
       // Resolve the variant path
       const { path: filePath, isVariant } = await resolveVariantPath(asset.url, variant);
+
+      // Track by actual file suffix
+      if (filePath.includes('-print')) variantCounts.print++;
+      else if (filePath.includes('-web')) variantCounts.web++;
+      else if (filePath.includes('-thumb')) variantCounts.thumb++;
+      else variantCounts.original++;
 
       // Check if file exists
       if (!(await storage.exists(filePath))) {
@@ -288,7 +293,6 @@ export async function resolveImages(
         // Use file:// URL - Playwright can load these directly
         const absolutePath = storage.getAbsolutePath(filePath);
         const fileUrl = `file:///${absolutePath.replace(/\\/g, '/')}`;
-        console.log(`📷 Image ${mediaId}: ${fileUrl}`);
         $img.attr('src', fileUrl);
       } else {
         // Read and convert to base64 (can cause memory issues with many images)
@@ -330,6 +334,10 @@ export async function resolveImages(
       }
     }
   }
+
+  // Log variant summary
+  const total = variantCounts.print + variantCounts.web + variantCounts.thumb + variantCounts.original;
+  console.log(`📷 ${total} images: ${variantCounts.print} print, ${variantCounts.web} web, ${variantCounts.thumb} thumb, ${variantCounts.original} original`);
 
   return { errors };
 }

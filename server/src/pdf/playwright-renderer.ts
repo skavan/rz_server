@@ -139,11 +139,6 @@ export async function renderToPdf(
   const tempFile = path.join(tempDir, `pdf-render-${Date.now()}.html`);
   await fs.writeFile(tempFile, html, 'utf8');
   
-  // Debug: count file:// URLs in HTML
-  const fileUrlCount = (html.match(/file:\/\/\//g) || []).length;
-  console.log(`📄 Temp HTML file: ${tempFile}`);
-  console.log(`📄 File URLs in HTML: ${fileUrlCount}`);
-  
   try {
     context = await pooled.browser.newContext();
     const page = await context.newPage();
@@ -161,7 +156,6 @@ export async function renderToPdf(
     });
     
     // Wait for all images to load
-    console.log(`📄 Page loaded, waiting for images...`);
     await page.evaluate(async () => {
       const images = Array.from(document.querySelectorAll('img'));
       await Promise.all(
@@ -174,8 +168,6 @@ export async function renderToPdf(
         })
       );
     });
-    
-    console.log(`📄 All images loaded, generating PDF...`);
 
     const pdfBuffer = await page.pdf({
       width,

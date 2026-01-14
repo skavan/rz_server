@@ -64,14 +64,11 @@ export async function renderHtmlToPdf(
     bookmarks: { ...DEFAULT_PDF_OPTIONS.bookmarks, ...options?.bookmarks },
   };
   
-  console.log(`📄 Starting PDF generation: ${opts.filename}`);
-  
   // Parse HTML
   const $ = cheerio.load(html);
   
   // 1. Process flow control (page breaks, hide elements)
   processFlowControl($);
-  console.log(`  ✓ Flow control processed`);
   
   // 2. Resolve images (use file:// URLs for PDF render)
   const imageOpts = {
@@ -79,16 +76,14 @@ export async function renderHtmlToPdf(
     useFileUrls: true,  // Use file:// URLs for Playwright
     usePlaceholders: false,
   };
-  console.log(`  📷 Image options:`, imageOpts);
+  console.log(`🔍 Image options received:`, JSON.stringify(options?.images));
   const imageResult = await resolveImages($, context, imageOpts);
   if (imageResult.errors.length > 0) {
     console.warn(`  ⚠ Image errors (${imageResult.errors.length}):`, imageResult.errors.slice(0, 5));
   }
-  console.log(`  ✓ Images resolved`);
   
   // 3. Extract bookmarks
   const bookmarks = extractBookmarks($, opts.bookmarks);
-  console.log(`  ✓ Extracted ${countBookmarks(bookmarks)} bookmarks`);
   
   // 4. Add print-friendly CSS overrides (remove overflow:hidden that breaks pagination)
   $('head').append(`
@@ -106,7 +101,6 @@ export async function renderHtmlToPdf(
   
   // 5. Get processed HTML
   const processedHtml = $.html();
-  console.log(`  📄 HTML size: ${(processedHtml.length / 1024).toFixed(1)}KB`);
   
   // 6. Check for section markers and split if needed
   const sections = await splitIntoSections(processedHtml, true);
@@ -115,7 +109,6 @@ export async function renderHtmlToPdf(
   
   if (sections.length > 1) {
     // Render each section separately and merge
-    console.log(`  📑 Rendering ${sections.length} sections...`);
     const sectionPdfs: { name: string; buffer: Buffer }[] = [];
     
     // Debug: save chunks
@@ -127,7 +120,6 @@ export async function renderHtmlToPdf(
     try {
       const files = await fs.readdir(debugDir);
       await Promise.all(files.map(f => fs.unlink(path.join(debugDir, f)).catch(() => {})));
-      console.log(`  🧹 Cleaned ${files.length} old debug files`);
     } catch (e) { /* ignore cleanup errors */ }
     
     for (let i = 0; i < sections.length; i++) {
@@ -138,30 +130,24 @@ export async function renderHtmlToPdf(
       const htmlFilename = `chunk-${timestamp}-${i + 1}-${safeName}.html`;
       await fs.writeFile(path.join(debugDir, htmlFilename), section.html);
       
-      console.log(`    ⏳ Section ${i + 1}/${sections.length}: "${section.name}" (${(section.html.length / 1024).toFixed(1)}KB HTML)...`);
       const sectionPdf = await renderToPdf(section.html, opts);
       sectionPdfs.push({ name: section.name, buffer: sectionPdf });
-      console.log(`    ✓ Section ${i + 1} rendered (${(sectionPdf.length / 1024).toFixed(1)}KB PDF)`);
       
       // Save PDF chunk
       const pdfFilename = `chunk-${timestamp}-${i + 1}-${safeName}.pdf`;
       await fs.writeFile(path.join(debugDir, pdfFilename), sectionPdf);
     }
-    console.log(`  📂 Debug chunks saved to: ${debugDir}`);
     
     // Merge all section PDFs with bookmarks
-    console.log(`  📎 Merging ${sectionPdfs.length} PDFs with bookmarks...`);
     pdfBuffer = await mergePdfsWithBookmarks(sectionPdfs);
-    console.log(`  ✓ Merged PDF (${(pdfBuffer.length / 1024).toFixed(1)}KB)`);
+    console.log(`📄 PDF: ${sections.length} sections, ${(pdfBuffer.length / 1024 / 1024).toFixed(1)}MB`);
   } else {
     // Single section - render directly
-    console.log(`  ⏳ Rendering PDF...`);
     pdfBuffer = await renderToPdf(processedHtml, opts);
-    console.log(`  ✓ PDF rendered (${(pdfBuffer.length / 1024).toFixed(1)}KB)`);
+    console.log(`📄 PDF: ${(pdfBuffer.length / 1024 / 1024).toFixed(1)}MB`);
     
     // For single-section PDFs, inject bookmarks from data-pdf-bookmark annotations
     if (bookmarks.length > 0 && opts.bookmarks.enabled) {
-      console.log(`  📑 Injecting ${countBookmarks(bookmarks)} bookmarks from annotations...`);
       pdfBuffer = await injectBookmarks(pdfBuffer, bookmarks);
     }
   }
@@ -224,8 +210,6 @@ async function mergePdfsWithBookmarks(
   // Create PDF outlines (bookmarks) using pdf-lib low-level API
   if (bookmarkInfo.length > 0) {
     addOutlinesToPdf(mergedPdf, bookmarkInfo);
-    console.log(`  📑 Added ${bookmarkInfo.length} bookmarks:`, 
-      bookmarkInfo.map(b => b.name).join(', '));
   }
   
   const mergedBytes = await mergedPdf.save();
@@ -241,14 +225,11 @@ function addOutlinesToPdf(
   bookmarks: { name: string; pageIndex: number }[]
 ): void {
   if (bookmarks.length === 0) {
-    console.log('    📑 No bookmarks to add');
     return;
   }
   
   const context = doc.context;
   const pages = doc.getPages();
-  
-  console.log(`    📑 Creating ${bookmarks.length} outline entries for ${pages.length} pages...`);
   
   // Create refs for all outline items
   const outlinesDictRef = context.nextRef();
@@ -266,7 +247,6 @@ function addOutlinesToPdf(
     }
     
     const pageRef = page.ref;
-    console.log(`    📑 Bookmark ${i + 1}: "${bookmark.name}" -> page ${bookmark.pageIndex + 1} (ref: ${pageRef})`);
     
     const itemMap = new Map<PDFName, any>();
     itemMap.set(PDFName.of('Title'), PDFHexString.fromText(bookmark.name));
@@ -298,8 +278,6 @@ function addOutlinesToPdf(
   
   // Add outlines to catalog
   doc.catalog.set(PDFName.of('Outlines'), outlinesDictRef);
-  
-  console.log(`    ✅ Added ${successCount} bookmarks to PDF catalog`);
 }
 
 /**
