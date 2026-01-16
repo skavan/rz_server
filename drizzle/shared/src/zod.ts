@@ -612,10 +612,13 @@ export const inventoryPurchaseOrdersValidationSchema = createValidationSchema(
   inventoryPurchaseOrders,
   refineDateFields('submittedAt', 'acknowledgedAt', 'closedAt', 'createdAt', 'updatedAt')
 ).extend({
-  status: z.enum(['draft', 'pending_vendor', 'ordered', 'receiving', 'closed', 'canceled']).default('draft'),
+  status: z.enum(['draft', 'pending_vendor', 'ordered', 'receiving', 'complete', 'canceled']).default('draft'),
   totalAmount: z.preprocess(toOptionalNumber, z.number().default(0)),
   shippingAmount: z.preprocess(toOptionalNumber, z.number().default(0)),
   taxAmount: z.preprocess(toOptionalNumber, z.number().default(0)),
+  dutiesAmount: z.preprocess(toOptionalNumber, z.number().default(0)),
+  otherCharges: z.preprocess(toOptionalNumber, z.number().default(0)),
+  paymentMethod: z.preprocess(toNullableString, z.string().max(50).nullable().optional()),
   hasMediaAssets: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
   currency: z.string().default('USD'),
 });

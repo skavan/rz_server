@@ -1,0 +1,190 @@
+body {
+    color: #707070;
+    font-size: .85rem;
+}
+
+.general-info {
+    drop-shadow(0 3 6 #000);
+    box-shadow: 0px 3px 6px rgba(0,0,0,1);
+}
+
+.company-info {
+    padding-bottom: 1rem;
+}
+
+    .company-info address {
+        padding-top: 1rem;
+    }
+
+.trans-type {
+    margin-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+    .trans-type h1 {
+        font-size: 1.75rem;
+        color: #075FA7;
+    }
+
+    .trans-type h2 {
+        font-size: 1.75rem;
+        color: #2FCEF7;
+    }
+
+    .trans-type img.main_icon {
+        padding-right: 1.5rem;
+    }
+
+.trans-info {
+    background-color: rgba(251,251,251,0.9);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+    .trans-info .card {
+        margin-bottom: .25rem;
+    }
+
+.section-heading {
+    font-size: 1.25rem;
+    color: #075FA7;
+}
+
+.totals {
+    margin-bottom: 1rem;
+}
+
+.label {
+    color: #075FA7;
+}
+
+.data-label {
+    font-size: 0.75rem;
+    color: #075FA7;
+    margin-bottom: 0;
+}
+
+.last-tracking {
+    box-shadow: 0px 1px 3px rgba(0,0,0,0.16);
+}
+
+.entities {
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+    .entities .card {
+        margin-bottom: .25rem;
+    }
+
+.entity {
+    background-color: transparent;
+    border: none;
+}
+
+    .entity .card-body {
+        padding: 0;
+    }
+
+.items-info {
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+    .items-info .card {
+        margin-top: 16px;
+        box-shadow: 0px 1px 3px rgba(0,0,0,0.16);
+    }
+
+.accordion .card-header {
+    background-color: #fff;
+}
+
+.section-charges {
+    background-color: rgba(251,251,251,0.9);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.charges-money {
+    color: #075FA7;
+}
+
+.btn-primary {
+    background-color: #075FA7;
+    border-color: #075FA7;
+}
+
+.blue-highlight {
+    border-left: 4px solid #075FA7;
+}
+
+.logoclass {
+    width: 120px;
+    margin-top: 5px;
+}
+
+.nodisplay {
+    display: none;
+}
+
+@media print {
+
+    .nobreakprint {
+        page-break-inside: avoid;
+    }
+    /*h3, h5 {
+    font-size:16px !important;
+    }*/
+    body, h1, h2, h4, ol, ul, div {
+        width: auto !important;
+        float: none !important;
+        position: static !important;
+        overflow: visible !important;
+        font-size: 12px !important;
+    }
+
+    .chargesspecial {
+        width: 100% !important;
+    }
+
+    [class*="col-md"], [class*="col-sm"], [class*="col-xs"] {
+        float: none;
+    }
+
+    .container {
+        width: 100%;
+    }
+
+    .carrierprint, .headerprint {
+        width: 50% !important;
+    }
+
+    .alltrackingprint {
+        margin-top: 10px !important;
+        width: 100% !important;
+    }
+
+    .leftprint {
+        text-align: left !important;
+        float: left !important;
+    }
+}
+
+a {
+font-weight:300 !important;
+
+}
+h6.card-title a {
+font-weight: 500 !important;
+}
+.quotation .color_content {
+font-size: 12px !important;
+color: #707070 !important;
+}
+.smalllabel {
+font-size:12px !important;
+}
+.textcenter {
+text-align:center !important;
+}

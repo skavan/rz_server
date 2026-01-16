@@ -1,0 +1,227 @@
+formButton 
+{
+   background-color:    #6699cc;
+   padding:          2px 4px 3px 4px;
+   color:             #000000;
+   font-size:         8pt;
+   font-family:      tahoma;
+   height:            17px;
+   filter:          progid:DXImageTransform.Microsoft.Gradient(GradientType=0,
+             StartColorStr=#B4C5DF, EndColorStr=#91A9D0);
+   border-width:       0px;
+}
+
+TEXTAREA
+{
+   font-size:         8pt;
+   font-family:      tahoma;
+   width:            100%;
+   height:            100%;
+   border:            1px solid #7b9ebd;
+
+}
+
+.inputfields
+{
+   font-size:         8pt;
+   font-family:      tahoma;
+   width:            100%;
+   height:            19px;
+   border:            1px solid #7b9ebd;
+}
+
+INPUT.rad
+{
+   width:            15px;
+   border:            0px;
+   cursor:            hand;
+}
+
+
+TD.docname
+{
+	color:				#000000;
+	font-size:          10pt;
+	font-family:        Tahoma;
+	font-weight:		bold;
+	text-align:			center;
+	padding-left:		0px;
+	padding-bottom:		2px;
+	text-overflow:		ellipsis;
+	overflow:			hidden;	
+	background:			#ffffff;
+}
+
+TD.title
+{
+	color:				#000000;
+	font-size:          8pt;
+	font-family:        Tahoma;
+	font-weight:		bold;
+	text-align:			center;
+	padding-left:		0px;
+	padding-bottom:		2px;
+	text-overflow:		ellipsis;
+	overflow:			hidden;	
+}
+
+TD.sec
+{
+	color:				#000000;
+	font-weight:		bold;
+	text-align:			center;
+	padding-left:		0px;
+	padding-bottom:		2px;
+	text-overflow:		ellipsis;
+	overflow:			hidden;	
+	background:			#ffffff;
+}
+
+TD.total
+{
+	color:				#000000;
+	font-weight:		bold;
+	padding-left:		0px;
+	padding-bottom:		2px;
+	text-overflow:		ellipsis;
+	overflow:			hidden;	
+	background:			#ffffff;
+}
+
+TD 
+{
+   font-size:         11pt;
+   font-family:      tahoma;
+}
+
+TD.bar 
+{	
+	border-bottom:		1px solid #466094;
+}
+
+TD.barBootomRigth 
+{	
+	border-bottom:		1px solid #466094;
+	border-right:		1px solid #466094;
+}
+TD.barRigth 
+{	
+
+	border-right:		1px solid #466094;
+}
+
+
+TD.req 
+{
+	font-weight:		bold;
+	color:				#9F2409;
+	overflow:			hidden;
+	text-overflow:		ellipsis;		
+}
+
+TD.statusBar
+{
+	background-color:	#63769B;
+	color:				#ffffff;
+	padding-right:		13px;
+	height:				16px;
+	font-size:          8pt;
+	font-family:        Tahoma;
+	text-align:			right;
+}
+
+
+LABEL
+{
+   cursor:            hand;
+}
+
+TD.radioLabel 
+{
+   padding-left:      2px;
+   padding-right:      10px;
+}
+
+TABLE.layout
+{
+   width:            100%;
+   height:            100%;
+}
+TABLE
+{
+   cursor: default;   
+   border-bottom:		1px solid #466094;
+   border-left:			1px solid #466094;
+   border-right:		1px solid #466094;
+}
+
+DIV.tab
+{
+   width: 100%;
+   /*height: 100%;*/		/*There is a bug in Internet Explorer 7*/
+   background-color: #ffffff; 
+}
+BODY
+{
+	font-size: 11px;
+	margin:	0px;
+	border: 0px;
+	background-color: #ffffff;
+	cursor: default;
+}
+
+TD
+{
+   font-size: 11px;
+}
+
+TABLE.plain
+{
+  border:1px;
+}
+
+A
+{
+	color: #0000ff;
+	font-weight: bold;
+}
+
+SPAN.menu
+{
+   height: 100%;
+   padding: 2px;
+   padding-left: 5px;
+   padding-right: 5px;
+   border: 1px solid #7288AC;
+}
+
+TABLE.mnuBar
+{
+	color: #000000;
+	height: 22px;
+	width: 100%;
+	filter:	progid:DXImageTransform.Microsoft.Gradient(GradientType=0, StartColorStr=#DCDFE5, EndColorStr=#BDC2CB);
+}
+
+TD.mnuTitle
+{
+   font-size: 11px;
+   font-weight: bold;
+   letter-spacing: 1px;
+   cursor: default;
+   color: #000000;
+}
+
+TD.mnuRight
+{
+   width: 100%;
+   text-align: right;
+   padding-right: 5px;
+}
+A
+{
+	color: #0055aa;
+	font-weight: bold;
+	text-decoration: none;
+}
+

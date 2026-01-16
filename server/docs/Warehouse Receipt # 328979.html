@@ -1,0 +1,368 @@
+
+<!-- saved from url=(0103)https://transtrack.magaya.net/TransTracking?ID=15320&WH=d95681a9-2dc5-486d-af65-dc3df224ee8d&LG=en&XM=0 -->
+<html xmlns:date="http://www.magaya.com/dates-and-times" xmlns:lcjs="urn:cass-javascript"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="robots" content="noindex"><title>Warehouse Receipt&nbsp;#&nbsp;328979</title><link rel="stylesheet" type="text/css" href="./Warehouse Receipt # 328979_files/tracking_white.css"><link rel="stylesheet" type="text/css" href="./Warehouse Receipt # 328979_files/styles.css"><script src="./Warehouse Receipt # 328979_files/jquery.min.js.download" crossorigin="anonymous"></script><script type="text/javascript">
+          
+	
+		    	function dateToMDY(date, lang) {
+					var dd = date.getDate();
+					var mm = date.getMonth();
+					var yyyy = date.getFullYear();
+					if (dd < 10) {
+						dd = '0' + dd
+					}					
+					return getDateObject()[lang][mm] + '/' + dd + '/' + yyyy;
+				};
+				
+			   function formatAMPM(date) {
+					var hours = date.getHours();
+					var minutes = date.getMinutes();
+					var ampm = hours >= 12 ? 'PM' : 'AM';
+					hours = hours % 12;
+					hours = hours ? hours : 12; // the hour '0' should be '12'
+					minutes = minutes < 10 ? '0' + minutes : minutes;
+					var strTime = hours + ':' + minutes + ' ' + ampm;
+					return strTime;
+				};	
+				
+				function getDateObject(){
+					var dateen = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+				
+					var datees = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+					
+					var datept = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+					var datefr = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Aoû","Sep","Oct","Nov","Déc"];
+					
+					return {"en":dateen,"es":datees,"pt":datept,"fr":datefr};
+				}
+				
+				function dateToMDYshort(date, lang) {
+					var dd = date.getDate();
+					var mm = date.getMonth();
+					var yyyy = date.getFullYear();
+					if (dd < 10) {
+						dd = '0' + dd
+					}					
+					return mm + '/' + dd + '/' + yyyy;
+				};
+				
+				function convertAllDates()
+				{
+					var elems = document.getElementsByClassName('DateFormatted');
+					
+					for(var i=0;i<elems.length;i++ ){
+						if(elems[i].innerText.split("|").length == 2){
+							var lang = elems[i].innerText.split("|")[0];
+							var dateContent = new Date(elems[i].innerText.split("|")[1]);
+			                var date = new Date(dateContent.toUTCString());		
+							elems[i].innerText = dateToMDY(date, lang) + "  " + formatAMPM(date);
+						}		
+					}	
+					
+					
+				}
+					/* This script and many more are available free online at
+					The JavaScript Source :: http://javascript.internet.com
+					Created by: Ultimater, Mr J :: http://www.webdeveloper.com/forum/showthread.php?t=77389 */
+					function toggleMe(n){
+					
+					  var e=document.getElementById("para"+n);
+					  var b=document.getElementById("but"+n);
+					  if(!e)return true;
+					  if(e.style.display=="none" || e.style.display==""){
+						e.style.display="block";
+           // b.innerHTML = 'Close...';
+							b.src="https://stylesheet.magaya.net/Core/V1/Standard/images/new/icon_minus.gif";
+					  } else {
+						e.style.display="none";
+            // b.innerHTML = 'Expand...';
+							b.src="https://stylesheet.magaya.net/Core/V1/Standard/images/new/icon_plus.gif";
+					  }
+					  return true;
+					}				
+          
+          function toggleSerials(n){
+					  var e=document.getElementById("paraSerial"+n);
+					  var b=document.getElementById("butSerial"+n);
+					  if(!e)return true;
+					  if(e.style.display=="none"){
+						e.style.display="table-row";
+							b.src="https://stylesheet.magaya.net/Core/V1/Standard/images/new/icon_minus.gif";
+					  } else {
+						e.style.display="none";
+							b.src="https://stylesheet.magaya.net/Core/V1/Standard/images/new/icon_plus.gif";
+					  }
+					  return true;
+					}	
+				
+
+
+        </script><script type="text/javascript">
+          $(function () {
+          console.log('wh main');
+          var networkId = $('#networkId').attr('value');
+          if (networkId) {
+          var url = 'https://docs.magaya.net/api/logos/url/' + networkId;
+          console.log('URL: ' + url);
+          $.ajax({
+
+          url: url,
+          type: 'GET',
+          crossDomain: true,
+          success: function (data) {
+          if(data)
+          data = data.replace('http://', 'https://')
+          var img = $("<img>").attr('src', data)
+          .on('load', function () {
+          if (!this.complete || typeof this.naturalWidth == "undefined" || this.naturalWidth == 0) {
+          alert('broken image!');
+          } else {
+
+          $("#logo_placeholder").append(img);
+          $("#logo_placeholder > img").addClass('logoclass align-middle');
+
+          }
+          });
+          },
+          error: function () {
+
+          }
+          });
+          }
+          });
+
+          function printMe(){
+          if(window)
+          window.print();
+          }
+        </script><script language="Javascript">
+      
+      function displaySummaryData(elemId, data){
+            console.log('start displaySummaryData');
+            var dataElem = document.getElementById("itemDetails"+elemId);
+		    dataElem.style.display="block";
+            dataElem.innerHTML = data; 
+		    var buttonElem = document.getElementById("butItemDetails"+elemId);
+		    buttonElem.src="https://stylesheet.magaya.net/Core/V1/Standard/images/new/icon_minus.gif";
+            console.log('end displaySummaryData');
+			
+      }
+      
+      function isElementEmpty(elemId){
+		    var e = document.getElementById(elemId);
+		    if (!e)
+			    return false;
+		
+		    return (e.innerHTML === '');
+	    }
+      
+      function toggleDetailButton(n){
+   
+		    var dataElem = document.getElementById("itemDetails"+n);
+		    var buttonElem = document.getElementById("butItemDetails"+n);
+		    if(!dataElem) return true;
+		    
+        if (dataElem.style.display=="none"){
+			    dataElem.style.display="block";
+				  buttonElem.src="https://stylesheet.magaya.net/Core/V1/Standard/images/new/icon_minus.gif";
+		    } 
+        else {
+			    dataElem.style.display="none";
+				  buttonElem.src="https://stylesheet.magaya.net/Core/V1/Standard/images/icon_more.png";
+		    }
+		    return true;
+		  }
+       function toggleSerials(n){
+     
+					  var e=document.getElementById("paraSerial"+n);
+					  var b=document.getElementById("butSerial"+n);
+					  if(!e)return true;
+					  if(e.style.display=="none"){
+						e.style.display="table-row";
+							b.src="https://stylesheet.magaya.net/Core/V1/Standard/images/new/icon_minus.gif";
+					  } else {
+						e.style.display="none";
+							b.src="https://stylesheet.magaya.net/Core/V1/Standard/images/new/icon_plus.gif";
+					  }
+					  return true;
+					}
+          
+      function rebuildlink(){
+        var allow_view_related_trans = $('#allow_view_related_trans').attr('value');
+        var source = $('#source').attr('value');
+        console.log('allow_view_related_trans: ' + allow_view_related_trans + ' source: ' + source); 
+        if(source == 1 && allow_view_related_trans) //Livetrack and has permissions
+        {
+         
+           $("a[href='cargoreleaseurl'").each(function() {
+              changelink(this, 'CR');
+           });
+           $("a[href='purchaseorderurl'").each(function() {
+              changelink(this, 'PO');
+           });
+              $("a[href='pickupordereurl'").each(function() {
+              changelink(this, 'PK');
+           });
+           
+        }
+      
+      }
+      function changelink(obj, type){
+         var nw =  $('#networkId').attr('value');
+         var lan =  $('#lan').attr('value');
+         var guid = obj.getAttribute('attguid');
+         var newurl = 'https://transtrack.magaya.net/TransTracking?ID='+nw+'&'+type+'='+guid+'&LG='+lan+'&XM=0';
+         obj.setAttribute('href', newurl);
+      }
+      function setDetailButtonHandlers(){
+    
+        $('.butItemDetails').each(function(index){
+          $(this).unbind('click');
+          $(this).click(function(){
+          
+            var innetHTML = 'Could not load details.';
+            var summaryKey = $(this).attr('summaryKey');
+            var div_id = "itemDetails"+summaryKey;
+            var operationType = 'WH';
+            var operationGUID = $('#operationGUID').attr('guidValue');
+            var networkId = $('#networkId').attr('value');
+            
+           if (div_id){
+				     // var url = 'https://transtrack.magaya.net/TransTracking?ID='+networkId+'&'+operationType+'='+operationGUID+'|'+summaryKey+'&LG=en&XM=0&TYPE=SUMM';
+		    var url = 'https://transtrack.magaya.net/TransTracking?ID='+networkId+'&'+operationType+'='+operationGUID+'|'+summaryKey+'&LG=en&XM=0&TYPE=SUMM';
+				    //  var url = 'http://localhost/TransTracking/TransTracking.dll?ID='+networkId+'&'+operationType+'='+operationGUID+'|'+summaryKey+'&LG=en&XM=0&TYPE=SUMM';
+            //  var url  ='http://w7-ws-v:8080/TransTracking?ID='+networkId+'&'+operationType+'='+operationGUID+'|'+summaryKey+'&LG=en&XM=0&TYPE=SUMM';
+			console.log('Checking this url');
+			  console.log(url);
+				      $.ajax({
+					      url: url,
+					      type: 'GET',
+					      crossDomain: true,
+					      success: function(data) { 
+                            console.log('success');
+					        displaySummaryData(summaryKey, data);
+                            rebuildlink();
+					        setDetailButtonHandlers();
+					      },
+					      error: function(x,y) { 
+						   console.log('error');
+						   console.log(x);
+						   console.log(y);
+						   console.log('fin errores');
+					        displaySummaryData(summaryKey, innetHTML);
+					      }
+				      });
+			      }
+			      else{
+				      toggleDetailButton(summaryKey);
+			      }
+            
+          });
+        });
+      }
+          
+      $( document ).ready(function() {
+        $.support.cors = true;
+       
+        setDetailButtonHandlers();
+      });
+      
+    
+    
+    </script><style>
+          .magaya_design .title
+          {
+          font-size: 12px;
+
+          }
+          .strong
+          {
+          font-weight: 600;
+          }
+          .blue_light
+          {
+          color:#2FCEF7;
+          }
+          .blue
+          {
+          color:#075FA7;
+          }
+          table,  td
+          {
+          cellspacing: 0;
+          vertical-align:top;
+
+          border: 0 !important;
+          }
+          table.main_table
+          {
+          width:100%;
+          }
+          table.main_table
+          {
+          width:90%;
+          }
+          @media print {
+          table.main_table
+          {
+          width:100%;
+          }
+          }
+          table.item_table, td.item_table
+          {
+          box-shadow:0px 3px 6px  rgba(0, 0, 0, 0.16);
+          background-color:#FBFBFB;
+          margin:8px 0;
+          text-align:center;
+          }
+          table.item_table td
+          {
+          padding-top:5px;
+
+          }
+          table.item_table p
+          {
+          min-height: 6.5px;
+          }
+          .address_table p
+          {
+          margin:0;
+          }
+        </style></head><body class="magaya_design" onload="convertAllDates()" data-new-gr-c-s-check-loaded="14.1268.0" data-gr-ext-installed=""><div id="operationGUID" guidvalue="d95681a9-2dc5-486d-af65-dc3df224ee8d" style="display:none"></div><div id="networkId" value="15320" style="display:none"></div><div id="source" value="0" style="display:none"></div><div id="allow_view_related_trans" value="false" style="display:none"></div><div id="lan" value="en" style="display:none"></div><table style="width:100%"><tbody><tr><td style="padding-top:15px;"><table class="main_table" align="center"><tbody><tr><td><table style="width: 100%;"><tbody><tr><td style="width:50%;vertical-align:top"><table style="  width: 100%; float:left"><tbody><tr><td style="vertical-align:top; width: 68px;"><img src="./Warehouse Receipt # 328979_files/whr-icon.png" class="main_icon"></td><td style="vertical-align:top;  padding-left:10px; "><table><tbody><tr><td><p class="title blue strong">Warehouse Receipt</p></td><td><p class="title strong blue_light">328979</p></td></tr><tr><td><p class=" blue">Received On</p></td><td><div class="DateFormatted">Jan/12/2026  1:29 PM</div></td></tr><tr><td><p class=" blue"><span class="label font-weight-normal">Received By</span></p></td><td>Luke Gordon</td></tr><tr><td><p class=" blue">Status</p></td><td><img align="top" src="./Warehouse Receipt # 328979_files/in_process.gif" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt">&nbsp;In Process</td></tr><tr><td><p class=" blue">Tracking Number</p></td><td>493736926323</td></tr></tbody></table></td></tr></tbody></table></td><td style="width:50%;"><table style="width:100%;"><tbody><tr><td style="padding-right: 20px"><table style="width:100%; text-align:right" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt"><tbody><tr><td><p class="title strong">WPJA International Freight Systems Inc</p></td></tr><tr><td>Carter Gordon</td></tr><tr><td>8557 N.W. 72nd Street&nbsp;&nbsp;</td></tr><tr><td>Medley,&nbsp;FL&nbsp;33166&nbsp;UNITED STATES</td></tr><tr><td><span class="label">Email</span>:
+            WPINTL@WPINT.COM</td></tr><tr><td><span class="label"><span class="label">Fax</span>:
+
+            </span>:
+            305-456-7162</td></tr></tbody></table></td><td style="vertical-align:top; width:120px;" id="logo_placeholder"></td></tr></tbody></table></td></tr></tbody></table></td></tr><tr><td><table style="width: 100%;"><tbody><tr><td style="width: 25%"><p class="title blue" style="margin-bottom:4px;">Shipper Information</p><div class="address_table" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt"><p>Hunter Fan Company</p><p style="margin-top:0px;"></p><p>100 Nemeo Way</p><p>Byhalia,&nbsp;MS&nbsp;38611&nbsp;</p><p>UNITED STATES</p><p></p><p></p><p></p></div></td><td style="width: 25%"><p class="title blue" style="margin-bottom:4px;">Consignee Information</p><div class="address_table" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt"><p>Tryall Club Dragonfly Villa</p><p style="margin-top:0px;">Suresh &amp; Katie Kavan</p><p>Main StreetSandy Bay</p><p>Hanover,&nbsp;</p><p>JAMAICA</p><p><span class="label">Email</span>:
+          suresh.kavan@gmail.com</p><p></p><p></p></div></td><td style="width: 25%"><p class="title blue" style="margin-bottom:4px;">Carrier</p><p style="margin-bottom:4px; margin-top:0px">FEDEX EXPRESS GROUND</p><p class="blue" style="margin-bottom:4px;margin-top:0px">PRO Number</p><p style="margin-bottom:4px;margin-top:0px"></p><p class="blue" style="margin-bottom:4px;margin-top:0px">Driver's Name</p><p style="margin-bottom:4px;margin-top:0px"></p><p class="blue" style="margin-bottom:4px;margin-top:0px">Driver's License</p><p style="margin-bottom:4px;margin-top:0px"></p></td><td style="width: 25%"><p class="title blue" style="margin-bottom:4px;">Supplier</p><p style="margin-bottom:4px;margin-top:0px"></p><p class="blue" style="margin-bottom:4px;margin-top:0px">Invoice Number</p><p style="margin-bottom:4px;margin-top:0px"></p><p class="blue" style="margin-bottom:4px;margin-top:0px">P.O. Number</p><p style="margin-bottom:4px;margin-top:0px"></p></td></tr></tbody></table></td></tr><tr><td><table style="width:100%"><tbody><tr><td style="width:50%;vertical-align:top"></td><td style="width:10px;"></td><td class="item_table" style="width:50%; padding-left:20px;"><table><tbody><tr><td width="50%" colspan="2" align="left"><p class="title blue" style="text-align:left;">Notes</p></td></tr><tr><td width="50%" colspan="2" rowspan="1" valign="top" align="justify" style="padding-right:10px;"><br xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt"></td></tr></tbody></table></td></tr></tbody></table></td></tr><tr><td><p class="title blue" style="text-align:left;">Tracking Details</p></td></tr><tr><td><table style="width:100%" class="item_table"><tbody><tr><td width="2%"></td><td><table align="center" width="100%" cellspacing="3" style="border-top:  1px solid #466094;"><tbody><tr><td width="20%" class="blue">Date/Time</td><td width="20%" class="blue">Event</td><td width="20%" class="blue">Operation</td><td width="10%" class="blue">Location</td><td width="30%" class="blue">Details</td></tr><tr><td width="20%"><div class="DateFormatted">Jan/13/2026  6:46 PM</div></td><td width="20%">Arrived at warehouse</td><td width="20%">Warehouse Receipt&nbsp;:&nbsp;328979</td><td width="10%"></td><td width="30%"></td></tr><tr><td width="20%"><div class="DateFormatted">Jan/13/2026  1:45 PM</div></td><td width="20%">Booked</td><td width="20%">Shipment&nbsp;:&nbsp;H876-10-328961</td><td width="10%"></td><td width="30%">Booked</td></tr></tbody></table></td></tr></tbody></table></td></tr><tr><td><table style="width: 100%;"><tbody><tr><td><table align="center" width="100%" class="item_table"><tbody><tr><td></td></tr><tr><td colspan="5" style="text-align:left; border:1px solid red"></td></tr><tr><td width="1%"><span id="item9ff5fba9-8afa-43c0-95f1-1a83c1493d1c" summarykey="2117792102580.000.0001918429961"></span></td><td width="4%" align="center"><p class="blue">Pcs</p>4</td><td width="12%"><p class="blue">Package</p>Box</td><td width="17%"><p class="blue">Dimensions</p>29.00x14.00x10.00in</td><td width="43%" colspan="3"><p class="blue">Description</p><p>Fans </p></td><td width="10%"><p class="blue">Weight</p><p>100.00&nbsp;lb</p></td><td width="13%"><p class="blue">Volume</p><p>9.40&nbsp;ft3</p></td></tr><tr><td width="1%"></td><td width="4%" align="center"><p class="blue">St.</p><img align="top" src="./Warehouse Receipt # 328979_files/loaded.gif" alt="Loaded" title="Loaded" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt"></td><td width="12%"><p class="blue">Location</p>MBJ1</td><td width="17%"><p class="blue">Invoice Number</p></td><td width="43%" colspan="3"><p class="blue">Notes</p><p><a href="https://transtrack.magaya.net/TransTracking?ID=15320&amp;WH=d95681a9-2dc5-486d-af65-dc3df224ee8d&amp;LG=en&amp;XM=0" target="_blank" attguid="" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt">MBOL:&nbsp;876-10-0116261&nbsp;HBOL:&nbsp;H876-10-328961</a>&nbsp;9622041730000177915700493736926058
+9622041730000177915700493736926117
+9622041730000177915700493736926080
+9622041730000177915700493736926139
+</p></td><td width="10%"><p class="blue">Weight</p><p>45.36&nbsp;kg</p></td><td width="13%"><p class="blue">Vol. Weight</p><p>97.85&nbsp;vlb</p></td></tr><tr><td width="1%"></td><td width="4%" align="center"><p class="blue">Qty</p><p></p></td><td width="12%"><p class="blue">Expiration Date</p></td><td width="17%"><p class="blue">P.O. Number</p></td><td width="14%"><p class="blue">Part Number</p><p></p></td><td width="15%"><p class="blue">Model</p><p></p></td><td width="14%"><p class="blue">Serial Number</p><p></p></td><td width="23%" colspan="2"><p class="blue">Lot Number</p><p></p></td></tr></tbody></table><table align="center" width="100%" class="item_table"><tbody><tr><td></td></tr><tr><td colspan="5" style="text-align:left; border:1px solid red"></td></tr><tr><td width="1%"><span id="item3f53b54b-6cbb-4933-93af-92f9c6ed177d" summarykey="2117791602580.000.0001913586359"></span></td><td width="4%" align="center"><p class="blue">Pcs</p>4</td><td width="12%"><p class="blue">Package</p>Envelope</td><td width="17%"><p class="blue">Dimensions</p>9.00x6.00x2.00in</td><td width="43%" colspan="3"><p class="blue">Description</p><p>Wire kits </p></td><td width="10%"><p class="blue">Weight</p><p>4.00&nbsp;lb</p></td><td width="13%"><p class="blue">Volume</p><p>0.25&nbsp;ft3</p></td></tr><tr><td width="1%"></td><td width="4%" align="center"><p class="blue">St.</p><img align="top" src="./Warehouse Receipt # 328979_files/loaded.gif" alt="Loaded" title="Loaded" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt"></td><td width="12%"><p class="blue">Location</p>MBJ1</td><td width="17%"><p class="blue">Invoice Number</p></td><td width="43%" colspan="3"><p class="blue">Notes</p><p><a href="https://transtrack.magaya.net/TransTracking?ID=15320&amp;WH=d95681a9-2dc5-486d-af65-dc3df224ee8d&amp;LG=en&amp;XM=0" target="_blank" attguid="" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt">MBOL:&nbsp;876-10-0116261&nbsp;HBOL:&nbsp;H876-10-328961</a>&nbsp;9622041730000177915700493736926242
+9622041730000177915700493736926172
+9622041730000177915700493736926275
+9622041730000177915700493736926210
+</p></td><td width="10%"><p class="blue">Weight</p><p>1.81&nbsp;kg</p></td><td width="13%"><p class="blue">Vol. Weight</p><p>2.60&nbsp;vlb</p></td></tr><tr><td width="1%"></td><td width="4%" align="center"><p class="blue">Qty</p><p></p></td><td width="12%"><p class="blue">Expiration Date</p></td><td width="17%"><p class="blue">P.O. Number</p></td><td width="14%"><p class="blue">Part Number</p><p></p></td><td width="15%"><p class="blue">Model</p><p></p></td><td width="14%"><p class="blue">Serial Number</p><p></p></td><td width="23%" colspan="2"><p class="blue">Lot Number</p><p></p></td></tr></tbody></table><table align="center" width="100%" class="item_table"><tbody><tr><td></td></tr><tr><td colspan="5" style="text-align:left; border:1px solid red"></td></tr><tr><td width="1%"><span id="item262dc56a-df53-433f-8cbf-bbb057f20d44" summarykey="2117790802580.000.000-1370839513"></span></td><td width="4%" align="center"><p class="blue">Pcs</p>4</td><td width="12%"><p class="blue">Package</p>Box</td><td width="17%"><p class="blue">Dimensions</p>72.00x4.00x1.00in</td><td width="43%" colspan="3"><p class="blue">Description</p><p>DOwnrods</p></td><td width="10%"><p class="blue">Weight</p><p>20.00&nbsp;lb</p></td><td width="13%"><p class="blue">Volume</p><p>0.67&nbsp;ft3</p></td></tr><tr><td width="1%"></td><td width="4%" align="center"><p class="blue">St.</p><img align="top" src="./Warehouse Receipt # 328979_files/loaded.gif" alt="Loaded" title="Loaded" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt"></td><td width="12%"><p class="blue">Location</p>MBJ1</td><td width="17%"><p class="blue">Invoice Number</p></td><td width="43%" colspan="3"><p class="blue">Notes</p><p><a href="https://transtrack.magaya.net/TransTracking?ID=15320&amp;WH=d95681a9-2dc5-486d-af65-dc3df224ee8d&amp;LG=en&amp;XM=0" target="_blank" attguid="" xmlns:mag="http://www.magaya.com/XMLSchema/V1" xmlns:msxsl="urn:schemas-microsoft-com:xslt">MBOL:&nbsp;876-10-0116261&nbsp;HBOL:&nbsp;H876-10-328961</a>&nbsp;9622041730000177915700493736926301
+9622041730000177915700493736926345
+9622041730000177915700493736926334
+
+</p></td><td width="10%"><p class="blue">Weight</p><p>9.07&nbsp;kg</p></td><td width="13%"><p class="blue">Vol. Weight</p><p>6.97&nbsp;vlb</p></td></tr><tr><td width="1%"></td><td width="4%" align="center"><p class="blue">Qty</p><p></p></td><td width="12%"><p class="blue">Expiration Date</p></td><td width="17%"><p class="blue">P.O. Number</p></td><td width="14%"><p class="blue">Part Number</p><p></p></td><td width="15%"><p class="blue">Model</p><p></p></td><td width="14%"><p class="blue">Serial Number</p><p></p></td><td width="23%" colspan="2"><p class="blue">Lot Number</p><p></p></td></tr></tbody></table><table class="item_table" width="100%"><tbody><tr><td rowspan="2" style="border-right:1px solid #000; vertical-align:middle; text-align:right"><p class="title blue" style="padding-right:20px;">TOTAL</p></td><td width="13%"><p class="title blue" align="left"></p></td><td width="13%"><p class="title blue" align="left">Pieces</p></td><td width="10%"><p class="title blue" align="left">Weight</p></td><td width="13%" align="left"><p class="title blue">Volume</p></td></tr><tr><td width="13%"><p align="left">0</p></td><td width="13%" align="left">12</td><td width="10%" align="left">124.00&nbsp;lb&nbsp;&nbsp;&nbsp;56.25&nbsp;kg</td><td width="13%" align="left">10.32&nbsp;ft3&nbsp;&nbsp;&nbsp;107.43&nbsp;vlb</td></tr></tbody></table></td></tr></tbody></table></td></tr><tr><td><table align="center" width="100%" cellspacing="3"><tbody><tr></tr><tr><td width="100%" valign="top"></td></tr></tbody></table></td></tr></tbody></table></td></tr></tbody></table></body><grammarly-desktop-integration data-grammarly-shadow-root="true"><template shadowrootmode="open"><style>
+      div.grammarly-desktop-integration {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:none;
+        user-select:none;
+      }
+
+      div.grammarly-desktop-integration:before {
+        content: attr(data-content);
+      }
+    </style><div aria-label="grammarly-integration" role="group" tabindex="-1" class="grammarly-desktop-integration" data-content="{&quot;mode&quot;:&quot;limited&quot;,&quot;isActive&quot;:false,&quot;isUserDisabled&quot;:false}"></div></template></grammarly-desktop-integration></html>

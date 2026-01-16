@@ -288,7 +288,7 @@ export const issueResolutionEnum = pgEnum('issue_resolution_type', ['monitor', '
 export const inventoryActionTypeEnum = pgEnum('inventory_action_type', ['replace', 'repair', 'claim']);
 export const inventoryActionProcurementStatusEnum = pgEnum('inventory_action_procurement_status', ['pending', 'in_review', 'ready_for_order', 'queued_for_po', 'ordered', 'fulfilled', 'canceled']);
 export const inventoryActionRepairStatusEnum = pgEnum('inventory_action_repair_status', ['not_applicable', 'pending', 'awaiting_vendor', 'in_service', 'completed', 'canceled']);
-export const purchaseOrderStatusEnum = pgEnum('inventory_purchase_order_status', ['draft', 'pending_vendor', 'ordered', 'receiving', 'closed', 'canceled']);
+export const purchaseOrderStatusEnum = pgEnum('inventory_purchase_order_status', ['draft', 'pending_vendor', 'ordered', 'receiving', 'complete', 'canceled']);
 export const purchaseOrderShipmentStatusEnum = pgEnum('inventory_purchase_order_shipment_status', [
   'label_created',
   'in_transit',
@@ -774,7 +774,9 @@ export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
   shippingAmount: decimal('shipping_amount', { precision: 14, scale: 2 }).default('0').notNull(),
   taxAmount: decimal('tax_amount', { precision: 14, scale: 2 }).default('0').notNull(),
   dutiesAmount: decimal('duties_amount', { precision: 14, scale: 2 }).default('0').notNull(),
+  otherCharges: decimal('other_charges', { precision: 14, scale: 2 }).default('0').notNull(),
   currency: varchar('currency', { length: 10 }).default('USD').notNull(),
+  paymentMethod: varchar('payment_method', { length: 50 }),
   notes: text('notes'),
   metadata: jsonb('metadata'),
   hasMediaAssets: boolean('has_media_assets').default(false),

@@ -27,7 +27,7 @@ import {
 
 const router = Router();
 
-const PO_STATUS_VALUES = ['draft', 'pending_vendor', 'ordered', 'receiving', 'closed', 'canceled'] as const;
+const PO_STATUS_VALUES = ['draft', 'pending_vendor', 'ordered', 'receiving', 'complete', 'canceled'] as const;
 type POStatus = (typeof PO_STATUS_VALUES)[number];
 const PO_STATUS_SET = new Set<POStatus>(PO_STATUS_VALUES);
 
@@ -187,7 +187,9 @@ router.post('/composite', authenticateToken, async (req, res) => {
             shippingAmount: parseOptionalDecimal(poInput.shippingAmount, 'shippingAmount') ?? '0',
             taxAmount: parseOptionalDecimal(poInput.taxAmount, 'taxAmount') ?? '0',
             dutiesAmount: parseOptionalDecimal(poInput.dutiesAmount, 'dutiesAmount') ?? '0',
+            otherCharges: parseOptionalDecimal(poInput.otherCharges, 'otherCharges') ?? '0',
             currency: poInput.currency?.trim() || 'USD',
+            paymentMethod: parseOptionalString(poInput.paymentMethod),
             notes: parseOptionalString(poInput.notes),
             metadata: poInput.metadata ?? null,
             submittedAt: poInput.submittedAt ? new Date(poInput.submittedAt) : null,
@@ -297,7 +299,9 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
           if (poInput.shippingAmount !== undefined) updates.shippingAmount = parseOptionalDecimal(poInput.shippingAmount, 'shippingAmount') ?? '0';
           if (poInput.taxAmount !== undefined) updates.taxAmount = parseOptionalDecimal(poInput.taxAmount, 'taxAmount') ?? '0';
           if (poInput.dutiesAmount !== undefined) updates.dutiesAmount = parseOptionalDecimal(poInput.dutiesAmount, 'dutiesAmount') ?? '0';
+          if (poInput.otherCharges !== undefined) updates.otherCharges = parseOptionalDecimal(poInput.otherCharges, 'otherCharges') ?? '0';
           if (poInput.currency !== undefined) updates.currency = poInput.currency?.trim() || 'USD';
+          if (poInput.paymentMethod !== undefined) updates.paymentMethod = parseOptionalString(poInput.paymentMethod);
           if (poInput.notes !== undefined) updates.notes = parseOptionalString(poInput.notes);
           if (poInput.metadata !== undefined) updates.metadata = poInput.metadata;
           if (poInput.submittedAt !== undefined) updates.submittedAt = poInput.submittedAt ? new Date(poInput.submittedAt) : null;
@@ -320,10 +324,10 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
             .where(eq(inventoryPurchaseOrderItems.purchaseOrderId, id));
 
           const previousActionRequestIds = existingItems
-            .map((item) => item.actionRequestId)
-            .filter((arId): arId is number => arId != null);
+            .map((item: any) => item.actionRequestId)
+            .filter((arId: any): arId is number => arId != null);
 
-          const existingItemIds = new Set(existingItems.map(i => i.id));
+          const existingItemIds = new Set(existingItems.map((i: any) => i.id));
 
           // Separate items into updates (have id) and inserts (no id)
           const incomingItemIds = new Set<number>();
@@ -348,7 +352,7 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
               updatedAt: new Date(),
             };
 
-            if (itemId && existingItemIds.has(itemId)) {
+            if (itemId !== null && itemId !== undefined && existingItemIds.has(itemId)) {
               incomingItemIds.add(itemId);
               itemsToUpdate.push({ id: itemId, ...itemData });
             } else {
@@ -357,13 +361,13 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
           }
 
           // Delete items that are no longer in the payload
-          const itemIdsToDelete = [...existingItemIds].filter(eid => !incomingItemIds.has(eid));
+          const itemIdsToDelete = ([...existingItemIds] as number[]).filter((eid: number) => !incomingItemIds.has(eid));
           if (itemIdsToDelete.length > 0) {
             await scopedDb
               .delete(inventoryPurchaseOrderItems)
               .where(and(
                 eq(inventoryPurchaseOrderItems.purchaseOrderId, id),
-                inArray(inventoryPurchaseOrderItems.id, itemIdsToDelete)
+                inArray(inventoryPurchaseOrderItems.id, itemIdsToDelete as number[])
               ));
           }
 
@@ -373,7 +377,7 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
             await scopedDb
               .update(inventoryPurchaseOrderItems)
               .set(updateFields)
-              .where(eq(inventoryPurchaseOrderItems.id, itemId));
+              .where(eq(inventoryPurchaseOrderItems.id, itemId as number));
           }
 
           // Insert new items
@@ -405,15 +409,15 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
               .set({ currentPurchaseOrderId: id, updatedAt: new Date() })
               .where(and(
                 eq(inventoryActionRequests.customerId, scope.customerId),
-                inArray(inventoryActionRequests.id, currentActionRequestIds)
+                inArray(inventoryActionRequests.id, currentActionRequestIds as number[])
               ));
           }
 
           // Clear removed action requests
           if (previousActionRequestIds.length > 0) {
             const currentActionRequestIdSet = new Set(currentActionRequestIds);
-            const removedActionRequestIds = Array.from(new Set(previousActionRequestIds))
-              .filter((arId) => !currentActionRequestIdSet.has(arId));
+            const removedActionRequestIds = (Array.from(new Set(previousActionRequestIds)) as number[])
+              .filter((arId: number) => !currentActionRequestIdSet.has(arId));
 
             if (removedActionRequestIds.length > 0) {
               await scopedDb
@@ -421,7 +425,7 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
                 .set({ currentPurchaseOrderId: null, updatedAt: new Date() })
                 .where(and(
                   eq(inventoryActionRequests.customerId, scope.customerId),
-                  inArray(inventoryActionRequests.id, removedActionRequestIds)
+                  inArray(inventoryActionRequests.id, removedActionRequestIds as number[])
                 ));
             }
           }
