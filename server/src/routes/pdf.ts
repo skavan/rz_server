@@ -192,6 +192,84 @@ router.post('/preview', authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /api/pdf/render
+ * 
+ * Renders a PDF from a URL (fetches HTML from the URL and converts to PDF).
+ * 
+ * Query params:
+ *   url: string     - URL to fetch HTML from
+ *   filename?: string - Output filename (default: 'document')
+ *   format?: string   - Paper format: Letter, Legal, A4, A3
+ *   orientation?: string - portrait or landscape
+ * 
+ * Example: /api/pdf/render?url=https://example.com/report&filename=report
+ */
+router.get('/render', authenticateToken, async (req, res) => {
+  const startTime = Date.now();
+  const { url, filename, format, orientation } = req.query;
+  
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({
+      error: 'URL query parameter is required',
+      code: 'MISSING_URL',
+    });
+  }
+  
+  try {
+    const scope = await getRequestScope(req as any);
+    
+    // Fetch HTML from the URL
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(400).json({
+        error: `Failed to fetch URL: ${response.status} ${response.statusText}`,
+        code: 'FETCH_FAILED',
+      });
+    }
+    
+    const html = await response.text();
+    
+    // Generate PDF
+    const result = await renderHtmlToPdf(
+      html,
+      {
+        filename: (filename as string) || 'document',
+        format: (format as any) || 'Letter',
+        orientation: (orientation as any) || 'portrait',
+      },
+      {
+        customerId: scope.customerId,
+        homeIds: scope.homeIds,
+      }
+    );
+    
+    res.setHeader('Content-Type', result.mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${result.filename}"`);
+    res.setHeader('Content-Length', result.buffer.length);
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`📄 PDF from URL: ${result.filename} (${elapsed}ms, ${(result.buffer.length / 1024).toFixed(1)}KB)`);
+    
+    res.send(result.buffer);
+    
+  } catch (error: any) {
+    console.error('PDF render from URL error:', error);
+    
+    if (error instanceof PdfError) {
+      return res.status(error.status).json({
+        error: error.message,
+        code: error.code,
+      });
+    }
+    
+    res.status(500).json({
+      error: 'Failed to generate PDF from URL',
+      code: 'RENDER_FAILED',
+    });
+  }
+});
+
+/**
  * GET /api/pdf/health
  * 
  * Health check for PDF service

@@ -244,6 +244,7 @@ function buildUpdatePayload(body: any, scope: RequestScope) {
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const scope = await getRequestScope(req as any);
+    console.log('🔍 reservations scope:', { customerId: scope.customerId, homeIds: scope.homeIds });
     const { status, homeId, search, from, to } = req.query as Record<string, any>;
     const { limit, offset } = parsePagination(req.query.limit, req.query.offset);
 
