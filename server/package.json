@@ -41,6 +41,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.1.392",
     "pg": "^8.11.3",
     "playwright": "^1.57.0",
     "sharp": "^0.33.5"

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema as createValidationSchema } from "drizzle-zod";
-import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems, inventoryPurchaseOrderShipments, inventoryPurchaseOrderShipmentItems, comments, todos } from "./schema.js";
+import { locations, locationTypes, mediaAssets, inventoryItems, products, skus, categories, brands, vendors, shippers, contacts, homes, tags, customers, productComponents, skuComponents, reservations, issues, inventoryPurchaseOrders, inventoryActionRequests, inventoryPurchaseOrderItems, inventoryPurchaseOrderShipments, inventoryPurchaseOrderShipmentItems, comments, todos } from "./schema.js";
 import { cadenceConfigSchema } from "./types/json-fields.js";
 import { slugSchema, slugInputSchema } from "./utils/slug.js";
 
@@ -459,6 +459,59 @@ export const vendorsValidationSchema = createValidationSchema(
 });
 
 /**
+ * Contacts validation schema - matches table name 'contacts'
+ * Operational contacts for vendors, shippers, builders, etc.
+ * Defaults: isActive=true
+ */
+export const contactsValidationSchema = createValidationSchema(
+  contacts,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  firstName: z.preprocess(toNullableString, z.string().max(255).nullable().optional()),
+  lastName: z.preprocess(toNullableString, z.string().max(255).nullable().optional()),
+  phoneNumber: z.preprocess(toNullableString, z.string().max(50).nullable().optional()),
+  emailAddress: z.preprocess(toNullableString, z.string().max(255).nullable().optional()),
+  streetAddress: z.preprocess(toNullableString, z.string().max(255).nullable().optional()),
+  city: z.preprocess(toNullableString, z.string().max(100).nullable().optional()),
+  state: z.preprocess(toNullableString, z.string().max(100).nullable().optional()),
+  zipCode: z.preprocess(toNullableString, z.string().max(20).nullable().optional()),
+  country: z.preprocess(toNullableString, z.string().max(100).nullable().optional()),
+  notes: z.preprocess(toNullableString, z.string().nullable().optional()),
+  contactType: z.enum(['vendor', 'shipper', 'builder', 'service', 'agent', 'sales']).nullable().optional(),
+  isActive: z.boolean().default(true),
+});
+
+/**
+ * Shippers validation schema - matches table name 'shippers'
+ * Support table for shipping addresses with home scope
+ * Defaults: isActive=true
+ */
+export const shippersValidationSchema = createValidationSchema(
+  shippers,
+  refineDateFields('createdAt', 'updatedAt')
+).extend({
+  name: z.string().min(1, 'Name is required').max(255),
+  shipToName: z.preprocess(toNullableString, z.string().max(255).nullable().optional()),
+  street: z.preprocess(toNullableString, z.string().max(255).nullable().optional()),
+  city: z.preprocess(toNullableString, z.string().max(100).nullable().optional()),
+  state: z.preprocess(toNullableString, z.string().max(100).nullable().optional()),
+  zip: z.preprocess(toNullableString, z.string().max(20).nullable().optional()),
+  country: z.preprocess(toNullableString, z.string().max(100).nullable().optional()),
+  phone: z.preprocess(toNullableString, z.string().max(50).nullable().optional()),
+  contactIds: z
+    .array(z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]))
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === undefined) return value;
+      if (value === null) return null;
+      return value.map((item) => (typeof item === 'string' ? Number(item) : item));
+    }),
+  notes: z.preprocess(toNullableString, z.string().nullable().optional()),
+  isActive: z.boolean().default(true),
+});
+
+/**
  * Homes validation schema - matches table name 'homes'
  * Defaults: isActive=true
  */
@@ -621,6 +674,8 @@ export const inventoryPurchaseOrdersValidationSchema = createValidationSchema(
   paymentMethod: z.preprocess(toNullableString, z.string().max(50).nullable().optional()),
   hasMediaAssets: z.preprocess(toOptionalBoolean, z.boolean().default(false)),
   currency: z.string().default('USD'),
+  shipperId: z.preprocess(toOptionalInt, z.number().int().positive().optional()).nullable().optional(),
+  shippingStatus: z.enum(['left_warehouse', 'arrived_ja', 'delivered']).nullable().optional(),
 });
 
 export const inventoryActionRequestsValidationSchema = createValidationSchema(

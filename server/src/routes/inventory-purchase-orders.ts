@@ -40,6 +40,19 @@ const coerceStatus = (value: unknown): POStatus => {
   return status;
 };
 
+const SHIPPING_STATUS_VALUES = ['left_warehouse', 'arrived_ja', 'delivered'] as const;
+type ShippingStatus = (typeof SHIPPING_STATUS_VALUES)[number];
+const SHIPPING_STATUS_SET = new Set<ShippingStatus>(SHIPPING_STATUS_VALUES);
+
+const coerceShippingStatus = (value: unknown): ShippingStatus | null => {
+  if (value === undefined || value === null || value === '') return null;
+  const status = String(value) as ShippingStatus;
+  if (!SHIPPING_STATUS_SET.has(status)) {
+    throw new ValidationError(`shippingStatus must be one of ${SHIPPING_STATUS_VALUES.join(', ')}`);
+  }
+  return status;
+};
+
 async function generatePurchaseNumber(scopedDb: any, customerId: number): Promise<string> {
   const prefix = 'PO';
   const result = await scopedDb
@@ -76,6 +89,12 @@ router.get('/', optionalAuth, async (req, res) => {
     }
     if (status) {
       whereConditions.push(eq(inventoryPurchaseOrders.status, status as POStatus));
+    }
+    if (req.query.shipper_id) {
+      whereConditions.push(eq(inventoryPurchaseOrders.shipperId, parseInt(req.query.shipper_id as string)));
+    }
+    if (req.query.shipping_status) {
+      whereConditions.push(eq(inventoryPurchaseOrders.shippingStatus, coerceShippingStatus(req.query.shipping_status)));
     }
 
     const sortColumn = sort === 'purchaseNumber' ? inventoryPurchaseOrders.purchaseNumber :
@@ -192,6 +211,8 @@ router.post('/composite', authenticateToken, async (req, res) => {
             paymentMethod: parseOptionalString(poInput.paymentMethod),
             notes: parseOptionalString(poInput.notes),
             metadata: poInput.metadata ?? null,
+            shipperId: parseOptionalInteger(poInput.shipperId, 'shipperId'),
+            shippingStatus: coerceShippingStatus(poInput.shippingStatus),
             submittedAt: poInput.submittedAt ? new Date(poInput.submittedAt) : null,
             acknowledgedAt: poInput.acknowledgedAt ? new Date(poInput.acknowledgedAt) : null,
             closedAt: poInput.closedAt ? new Date(poInput.closedAt) : null,
@@ -304,6 +325,8 @@ router.put('/:id/composite', authenticateToken, async (req, res) => {
           if (poInput.paymentMethod !== undefined) updates.paymentMethod = parseOptionalString(poInput.paymentMethod);
           if (poInput.notes !== undefined) updates.notes = parseOptionalString(poInput.notes);
           if (poInput.metadata !== undefined) updates.metadata = poInput.metadata;
+          if (poInput.shipperId !== undefined) updates.shipperId = parseOptionalInteger(poInput.shipperId, 'shipperId');
+          if (poInput.shippingStatus !== undefined) updates.shippingStatus = coerceShippingStatus(poInput.shippingStatus);
           if (poInput.submittedAt !== undefined) updates.submittedAt = poInput.submittedAt ? new Date(poInput.submittedAt) : null;
           if (poInput.acknowledgedAt !== undefined) updates.acknowledgedAt = poInput.acknowledgedAt ? new Date(poInput.acknowledgedAt) : null;
           if (poInput.closedAt !== undefined) updates.closedAt = poInput.closedAt ? new Date(poInput.closedAt) : null;

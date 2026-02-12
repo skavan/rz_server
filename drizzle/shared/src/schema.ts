@@ -296,6 +296,8 @@ export const purchaseOrderShipmentStatusEnum = pgEnum('inventory_purchase_order_
   'exception',
   'canceled',
 ]);
+export const shippingStatusEnum = pgEnum('shipping_status', ['left_warehouse', 'arrived_ja', 'delivered']);
+export const contactTypeEnum = pgEnum('contact_type', ['vendor', 'shipper', 'builder', 'service', 'agent', 'sales']);
 export const shippingChargeTypeEnum = pgEnum('shipping_charge_type', ['percent', 'fixed']);
 export const commentVisibilityEnum = pgEnum('comment_visibility', ['tenant', 'internal', 'external']);
 export const commentTypeEnum = pgEnum('comment_type', ['user', 'system', 'email_inbound', 'email_outbound', 'note']);
@@ -757,6 +759,60 @@ export const issues = pgTable('issues', {
 }));
 
 // ============================================
+// CONTACTS TABLE
+// ============================================
+export const contacts = pgTable('contacts', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  firstName: varchar('first_name', { length: 255 }),
+  lastName: varchar('last_name', { length: 255 }),
+  phoneNumber: varchar('phone_number', { length: 50 }),
+  emailAddress: varchar('email_address', { length: 255 }),
+  streetAddress: varchar('street_address', { length: 255 }),
+  city: varchar('city', { length: 100 }),
+  state: varchar('state', { length: 100 }),
+  zipCode: varchar('zip_code', { length: 20 }),
+  country: varchar('country', { length: 100 }),
+  notes: text('notes'),
+  contactType: contactTypeEnum('contact_type'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerIdx: index('idx_contacts_customer').on(table.customerId),
+  typeIdx: index('idx_contacts_type').on(table.contactType),
+  activeIdx: index('idx_contacts_active').on(table.isActive),
+  nameIdx: index('idx_contacts_name').on(table.firstName, table.lastName),
+}));
+
+// ============================================
+// SHIPPERS TABLE
+// ============================================
+export const shippers = pgTable('shippers', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'cascade' }).notNull(),
+  homeId: integer('home_id').references(() => homes.id, { onDelete: 'cascade' }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  shipToName: varchar('ship_to_name', { length: 255 }),
+  street: varchar('street', { length: 255 }),
+  city: varchar('city', { length: 100 }),
+  state: varchar('state', { length: 100 }),
+  zip: varchar('zip', { length: 20 }),
+  country: varchar('country', { length: 100 }),
+  phone: varchar('phone', { length: 50 }),
+  contactIds: integer('contact_ids').array(),
+  notes: text('notes'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  customerIdx: index('idx_shippers_customer').on(table.customerId),
+  homeIdx: index('idx_shippers_home').on(table.homeId),
+  activeIdx: index('idx_shippers_active').on(table.isActive),
+  nameIdx: index('idx_shippers_name').on(table.name),
+}));
+
+// ============================================
 // INVENTORY PURCHASE ORDERS TABLE
 // ============================================
 export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
@@ -780,6 +836,8 @@ export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
   notes: text('notes'),
   metadata: jsonb('metadata'),
   hasMediaAssets: boolean('has_media_assets').default(false),
+  shipperId: integer('shipper_id').references(() => shippers.id, { onDelete: 'set null' }),
+  shippingStatus: shippingStatusEnum('shipping_status'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
@@ -788,6 +846,8 @@ export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
   numberIdx: index('idx_purchase_orders_number').on(table.purchaseNumber),
   statusIdx: index('idx_purchase_orders_status').on(table.status),
   assigneeIdx: index('idx_purchase_orders_assignee').on(table.assignedToUserId),
+  shipperIdx: index('idx_purchase_orders_shipper').on(table.shipperId),
+  shippingStatusIdx: index('idx_purchase_orders_shipping_status').on(table.shippingStatus),
   uniqueCustomerNumber: unique('inventory_purchase_orders_customer_number_unique').on(table.customerId, table.purchaseNumber),
 }));
 
@@ -1245,6 +1305,12 @@ export type InventoryPurchaseOrderShipment = typeof inventoryPurchaseOrderShipme
 export type NewInventoryPurchaseOrderShipment = typeof inventoryPurchaseOrderShipments.$inferInsert;
 export type InventoryPurchaseOrderShipmentItem = typeof inventoryPurchaseOrderShipmentItems.$inferSelect;
 export type NewInventoryPurchaseOrderShipmentItem = typeof inventoryPurchaseOrderShipmentItems.$inferInsert;
+
+export type Contact = typeof contacts.$inferSelect;
+export type NewContact = typeof contacts.$inferInsert;
+
+export type Shipper = typeof shippers.$inferSelect;
+export type NewShipper = typeof shippers.$inferInsert;
 
 // API-friendly types (camelCase) - for client consumption
 export type CustomerAPI = {
