@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD=ashram100 psql -h 192.168.1.45 -p 5432 -U postgres -d rental_inventory_v2 -c \"SELECT id, entity_type, entity_id, asset_type, url FROM media_assets WHERE entity_id = 140 ORDER BY id LIMIT 5;\")"
+    ]
+  }
+}
