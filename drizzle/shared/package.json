@@ -1,6 +1,6 @@
 {
-  "name": "@postgress/shared",
-  "version": "1.0.0",
+  "name": "@rentalzen/drizzle",
+  "version": "1.0.1",
   "description": "Shared database schema and types",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -37,7 +37,8 @@
     "generate-examples": "tsx scripts/generate-zod-examples.ts",
     "rebuild-schemas": "tsx scripts/rebuild-schemas.ts",
     "sync-schemas": "tsx scripts/sync-to-client.ts",
-    "check-defaults": "tsx scripts/check-defaults.ts"
+    "check-defaults": "tsx scripts/check-defaults.ts",
+    "release:shared": "node scripts/release-shared.mjs"
   },
   "dependencies": {
     "dotenv": "^17.2.2",
