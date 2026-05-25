@@ -2,7 +2,20 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
+const WINDOWS_ABS_PATH_RE = /^[A-Za-z]:[\\/]/;
+
+function resolvePathFromCwd(rawPath: string, envVarName: string): string {
+  if (process.platform !== 'win32' && WINDOWS_ABS_PATH_RE.test(rawPath)) {
+    throw new Error(
+      `${envVarName} is set to a Windows-style path (${rawPath}) on ${process.platform}. ` +
+      `Set ${envVarName} to a Linux path (for example: /var/lib/rz_server/media or ./uploads).`
+    );
+  }
+
+  return path.isAbsolute(rawPath) ? rawPath : path.resolve(process.cwd(), rawPath);
+}
+
+const UPLOAD_DIR = resolvePathFromCwd(process.env.UPLOAD_DIR || 'uploads', 'UPLOAD_DIR');
 
 export interface MediaFile {
   filename: string;

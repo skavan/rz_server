@@ -237,7 +237,7 @@ const DATE_ONLY_FIELDS = new Set([
  * Use on response data before sending to client.
  */
 export function normalizeDateOnlyFields<T extends Record<string, any>>(row: T): T {
-  const result = { ...row };
+  const result: Record<string, any> = { ...row };
   for (const key of Object.keys(result)) {
     if (DATE_ONLY_FIELDS.has(key) && result[key] != null) {
       const value = result[key];
@@ -252,7 +252,7 @@ export function normalizeDateOnlyFields<T extends Record<string, any>>(row: T): 
       }
     }
   }
-  return result;
+  return result as T;
 }
 
 /**

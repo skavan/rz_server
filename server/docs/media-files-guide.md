@@ -2,12 +2,12 @@
 
 ## Overview
 
-The media management system allows uploading photos, documents, and other files to entities (products, SKUs, inventory items, locations, homes). Files are stored on disk at `G:\OneDrive\Jamaica\Jamaica\Media` and automatically sync to OneDrive.
+The media management system allows uploading photos, documents, and other files to entities (products, SKUs, inventory items, locations, homes). Files are stored on disk at the path configured by `UPLOAD_DIR` (for example `/var/lib/rz_server/media` on Linux or `G:\OneDrive\Jamaica\Jamaica\Media` on Windows).
 
 ## Storage Structure
 
 ```
-G:\OneDrive\Jamaica\Jamaica\Media\
+{UPLOAD_DIR}/
 └── customers/
     └── {customerId}/
         ├── product/
@@ -81,8 +81,8 @@ User has a form with:
 │  & entity access            │
 └──────┬──────────────────────┘
        │
-       │ 4. File saved to disk:
-       │    G:\OneDrive\...\customers\1\product\42\1730476800-kitchen-faucet.jpg
+      │ 4. File saved to disk:
+      │    {UPLOAD_DIR}/customers/1/product/42/1730476800-kitchen-faucet.jpg
        │
        ▼
 ┌─────────────────────────────┐
@@ -627,7 +627,7 @@ try {
 
 ## OneDrive Sync
 
-Files stored at `G:\OneDrive\Jamaica\Jamaica\Media` automatically sync to OneDrive, providing:
+If `UPLOAD_DIR` points to a OneDrive-synced directory, files automatically sync to OneDrive, providing:
 - ✅ Automatic cloud backup
 - ✅ Access from multiple devices
 - ✅ Version history (OneDrive feature)

@@ -1,0 +1,9 @@
+# Server V2 Environment
+# ALTER ROLE app_user WITH LOGIN PASSWORD '!JellyXavier';
+# postgresql://app_user:!JellyXavier@kavan.us:5432/rental_inventory
+#DATABASE_URL=postgresql://postgres:ashram100@kavan.us:5432/rental_inventory
+DATABASE_URL=postgresql://postgres:ashram100@192.168.1.101:5432/rental_inventory_v2
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+PORT=5000
+CLIENT_URL=http://localhost:3001
+NODE_ENV=development

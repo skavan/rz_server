@@ -560,7 +560,7 @@ router.post('/bulk-import', authenticateToken, requireWriteMiddleware, async (re
             inArray(inventoryPurchaseOrderItems.id, poItemIds)
           ));
 
-        const validPoItemIds = new Set(validPoItems.map(i => i.id));
+        const validPoItemIds = new Set(validPoItems.map((i: { id: number }) => i.id));
         for (const id of poItemIds) {
           if (!validPoItemIds.has(id)) {
             throw new ValidationError(`purchaseOrderItemId ${id} not found or does not belong to this PO`);
@@ -814,7 +814,7 @@ router.post('/bulk-update', authenticateToken, requireWriteMiddleware, async (re
             inArray(inventoryPurchaseOrderShipments.id, shipmentIds)
           ));
 
-        const validIds = existingShipments.map(s => s.id);
+        const validIds = existingShipments.map((s: { id: number }) => s.id);
         if (validIds.length === 0) {
           throw new ValidationError('No valid shipments found for update', 404);
         }

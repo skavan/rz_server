@@ -94,7 +94,10 @@ router.get('/', optionalAuth, async (req, res) => {
       whereConditions.push(eq(inventoryPurchaseOrders.shipperId, parseInt(req.query.shipper_id as string)));
     }
     if (req.query.shipping_status) {
-      whereConditions.push(eq(inventoryPurchaseOrders.shippingStatus, coerceShippingStatus(req.query.shipping_status)));
+      const shippingStatus = coerceShippingStatus(req.query.shipping_status);
+      if (shippingStatus !== null) {
+        whereConditions.push(eq(inventoryPurchaseOrders.shippingStatus, shippingStatus));
+      }
     }
 
     const sortColumn = sort === 'purchaseNumber' ? inventoryPurchaseOrders.purchaseNumber :

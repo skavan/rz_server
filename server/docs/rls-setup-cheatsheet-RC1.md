@@ -45,7 +45,8 @@ Run it via pgAdmin (Query Tool) or your migration tool.
 PowerShell (psql) example:
 ```powershell
 $env:DATABASE_URL = "postgresql://USER:PASSWORD@HOST:5432/DBNAME" # if not already set
-psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f "g:\Documents\Code 2025\repos\rz_postgress\server\scripts\rls\sample-rls-policies.sql"
+psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f "scripts/rls/sample-rls-policies.sql"
+
 ```
 
 ## How the server sets scope

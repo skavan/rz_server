@@ -57,6 +57,19 @@ if (process.env.ENFORCE_AUTH === undefined) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const WINDOWS_ABS_PATH_RE = /^[A-Za-z]:[\\/]/;
+
+function resolvePathFromCwd(rawPath: string, envVarName: string): string {
+  if (process.platform !== 'win32' && WINDOWS_ABS_PATH_RE.test(rawPath)) {
+    throw new Error(
+      `${envVarName} is set to a Windows-style path (${rawPath}) on ${process.platform}. ` +
+      `Set ${envVarName} to a Linux path (for example: /var/lib/rz_server/media or ./uploads).`
+    );
+  }
+
+  return path.isAbsolute(rawPath) ? rawPath : path.resolve(process.cwd(), rawPath);
+}
+
 // Middleware
 if (process.env.LOG_DOUBLE_SLASH_REQUESTS === 'true') {
   const headerWhitelist = [
@@ -137,7 +150,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Temporary public media access (bypasses auth)
-const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads');
+const uploadDir = resolvePathFromCwd(process.env.UPLOAD_DIR || 'uploads', 'UPLOAD_DIR');
 app.use('/public-media', express.static(uploadDir, { fallthrough: false }));
 
 // Request logging

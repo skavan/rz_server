@@ -38,7 +38,7 @@ npx drizzle-kit generate
 npm run migrate
 
 # Update declarative-client
-cd g:\Documents\Code 2025\repos\declarative-client
+cd ../declarative-client
 pnpm install --force
 ```
 **Full details:** `drizzle/shared/DISTRIBUTION_GUIDE.md`

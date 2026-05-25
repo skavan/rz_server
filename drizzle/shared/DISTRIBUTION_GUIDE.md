@@ -93,7 +93,7 @@ tsx scripts/rls/apply-rls-v2.ts
 #### Navigate to Client Repo
 
 ```powershell
-cd g:\Documents\Code 2025\repos\declarative-client
+cd /path/to/declarative-client
 ```
 
 #### Force Reinstall Shared Package
@@ -145,7 +145,7 @@ npx drizzle-kit generate
 npm run migrate
 
 # 3. Update declarative-client
-cd g:\Documents\Code 2025\repos\declarative-client
+cd /path/to/declarative-client
 pnpm install --force
 pnpm run dev
 ```
@@ -246,7 +246,7 @@ pnpm update @postgress/shared
 
 **Fix:**
 ```powershell
-cd g:\Documents\Code 2025\repos\declarative-client
+cd /path/to/declarative-client
 Remove-Item -Recurse -Force node_modules/@postgress/shared
 pnpm install --force
 ```
@@ -257,9 +257,9 @@ pnpm install --force
 
 **Fix:**
 ```powershell
-cd g:\Documents\Code 2025\repos\rz_server\drizzle\shared
+cd /path/to/rz_server/drizzle/shared
 npm run build
-cd g:\Documents\Code 2025\repos\declarative-client
+cd /path/to/declarative-client
 pnpm install --force
 ```
 
@@ -269,7 +269,7 @@ pnpm install --force
 
 **Fix:**
 ```powershell
-cd g:\Documents\Code 2025\repos\declarative-client
+cd /path/to/declarative-client
 pnpm store prune
 pnpm install --force
 ```
@@ -280,7 +280,7 @@ pnpm install --force
 
 **Fix:**
 ```powershell
-cd g:\Documents\Code 2025\repos\rz_server\server
+cd /path/to/rz_server/server
 npm run migrate
 ```
 
@@ -311,7 +311,7 @@ export const productsValidationSchema = createValidationSchema(products).extend(
 ### 3. Build & Distribute
 ```powershell
 # Build shared package
-cd g:\Documents\Code 2025\repos\rz_server\drizzle\shared
+cd /path/to/rz_server/drizzle/shared
 npm run build
 
 # Update server
@@ -321,7 +321,7 @@ npx drizzle-kit generate
 npm run migrate
 
 # Update client
-cd g:\Documents\Code 2025\repos\declarative-client
+cd /path/to/declarative-client
 pnpm install --force
 
 # Verify in client
@@ -416,7 +416,7 @@ cd server
 npx drizzle-kit generate && npm run migrate
 
 # Client
-cd g:\Documents\Code 2025\repos\declarative-client
+cd /path/to/declarative-client
 pnpm install --force
 ```
 

@@ -74,7 +74,7 @@ console.log('');
 console.log('2️⃣  Client (declarative-client):');
 console.log('   ⚠️  You must manually sync the package to the client:');
 console.log('');
-console.log('   cd g:\\Documents\\Code 2025\\repos\\declarative-client');
+console.log('   cd ../declarative-client');
 console.log('   pnpm install --force');
 console.log('');
 console.log('   The --force flag ensures pnpm picks up the rebuilt package.');

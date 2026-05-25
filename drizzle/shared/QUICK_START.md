@@ -17,7 +17,7 @@ npx drizzle-kit generate
 npm run migrate
 
 # 4. Update declarative-client
-cd g:\Documents\Code 2025\repos\declarative-client
+cd ../declarative-client
 pnpm install --force
 ```
 

@@ -21,9 +21,24 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+const WINDOWS_ABS_PATH_RE = /^[A-Za-z]:[\\/]/;
+
+function resolvePathFromCwd(rawPath: string, envVarName: string): string {
+  if (process.platform !== 'win32' && WINDOWS_ABS_PATH_RE.test(rawPath)) {
+    throw new Error(
+      `${envVarName} is set to a Windows-style path (${rawPath}) on ${process.platform}. ` +
+      `Set ${envVarName} to a Linux path (for example: /var/lib/rz_server/media or ./uploads).`
+    );
+  }
+
+  return path.isAbsolute(rawPath) ? rawPath : path.resolve(process.cwd(), rawPath);
+}
+
 // Configuration
-const ROOT_PATH = process.env.MEDIA_EXPORT_PATH || 'S:\\melissa';
-const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
+const ROOT_PATH = process.env.MEDIA_EXPORT_PATH
+  ? resolvePathFromCwd(process.env.MEDIA_EXPORT_PATH, 'MEDIA_EXPORT_PATH')
+  : path.resolve(process.cwd(), 'media-exports');
+const UPLOAD_DIR = resolvePathFromCwd(process.env.UPLOAD_DIR || 'uploads', 'UPLOAD_DIR');
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -42,7 +57,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool, { schema });
 
 /**
- * Normalize a name for use as a Windows directory/file name
+ * Normalize a name for use as a directory/file name across major OSes
  */
 function normalizeName(name: string | null | undefined): string {
   if (!name) return 'unknown';

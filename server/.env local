@@ -1,0 +1,18 @@
+# Server V2 Environment
+# NOTE: This .env is intentionally committed during development to avoid losing settings.
+# When ready for production, switch to using .env.example and remove the negation rule in root .gitignore.
+# ALTER ROLE app_user WITH LOGIN PASSWORD '!JellyXavier';
+# postgresql://app_user:!JellyXavier@kavan.us:5432/rental_inventory
+DATABASE_URL=postgresql://postgres:ashram100@localhost:5432/rental_inventory_v2
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+APP_DB_ROLE=app_role
+PORT=5000
+CLIENT_URLS=https://qnap1688-zeus.myqnapcloud.com, http://localhost:3000,http://localhost:3001,http://neptune:3000,http://kavan.us:3000, http://127.0.0.1, http://kavan.us:8181, http://nike:3000, http://kavan.us:8182
+#CLIENT_URLS=http://localhost:3000,http://localhost:3001,http://neptune:3000,http://kavan.us:3000, http://kavan.us:8181
+NODE_ENV=development
+FIELD_TRANSFORM_DEBUG=true
+UPLOAD_DIR=G:\OneDrive\Jamaica\Jamaica\Media
+LOG_DOUBLE_SLASH_REQUESTS=false
+LOG_DOUBLE_SLASH_STACK=false   # optional, but great for tracing SSR callers
+DEFAULT_PAGE_LIMIT=5000
+MAX_PAGE_LIMIT=10000

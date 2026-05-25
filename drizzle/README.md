@@ -20,9 +20,9 @@ PowerShell:
 cd .\drizzle\shared
 npm run build
 ```
-Head over to client and force a pnmp install
+Head over to client and force a pnpm install
 ```
-cd g:\Documents\Code 2025\repos\declarative-client
+cd ../declarative-client
 pnpm install --force
 ```
 
