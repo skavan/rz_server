@@ -18,7 +18,7 @@ import {
   lte,
   inArray,
   isNull,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import type { RequestScope } from '../utils/scope.js';

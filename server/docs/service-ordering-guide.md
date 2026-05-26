@@ -2,7 +2,7 @@
 
 This document is the sister guide to `procurement-ordering-guide.md`, focused on service work (non-product fulfillment). Each step is written in plain English and in technical terms.
 
-Shared Drizzle schema (`@postgress/shared`) remains the source of truth for all tables, enums, and validators referenced below.
+Shared Drizzle schema (`@skavan/rentalzen-drizzle`) remains the source of truth for all tables, enums, and validators referenced below.
 
 ## Overview
 

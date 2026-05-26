@@ -2,7 +2,7 @@
 
 ## What This Is
 
-The `@postgress/shared` package contains:
+The `@skavan/rentalzen-drizzle` package contains:
 - **Drizzle schema** (single source of truth)
 - **Zod validation schemas** (with sensible defaults built-in)
 - **TypeScript types** (auto-generated from schema)
@@ -28,7 +28,7 @@ import {
   vendorsValidationSchema,
   homesValidationSchema,
   tagsValidationSchema,
-} from '@postgress/shared/zod';
+} from '@skavan/rentalzen-drizzle/zod';
 ```
 
 **Pattern:** Table name (plural) + `ValidationSchema`

@@ -8,7 +8,7 @@
  *   npx tsx scripts/dev/scan-field-mappings.ts skus products --verbose        # flags ok
  */
 import { Pool } from 'pg';
-import * as schemas from '@postgress/shared';
+import * as schemas from '@skavan/rentalzen-drizzle';
 import * as dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';

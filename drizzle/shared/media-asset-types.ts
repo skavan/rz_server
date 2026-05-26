@@ -2,7 +2,7 @@
  * Media Asset Types Reference
  * 
  * Import these in your client:
- * import type { MediaAsset, NewMediaAsset } from '@postgress/shared';
+ * import type { MediaAsset, NewMediaAsset } from '@skavan/rentalzen-drizzle';
  */
 
 /**

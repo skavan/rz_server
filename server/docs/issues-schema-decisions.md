@@ -67,7 +67,7 @@ These map 1:1 to the Postgres enums created by Drizzle migrations and the matchi
 ## TypeScript Types
 
 ```ts
-import type { Issue, NewIssue } from '@postgress/shared';
+import type { Issue, NewIssue } from '@skavan/rentalzen-drizzle';
 
 // Issue = typeof issues.$inferSelect;
 // NewIssue = typeof issues.$inferInsert;
@@ -78,7 +78,7 @@ The `Issue` alias represents rows returned from the database (snake_case columns
 ## Zod Validator
 
 ```ts
-import { issuesValidationSchema } from '@postgress/shared/zod';
+import { issuesValidationSchema } from '@skavan/rentalzen-drizzle/zod';
 
 export const issuesValidationSchema = createValidationSchema(
 	issues,

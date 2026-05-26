@@ -3,10 +3,10 @@
  */
 import { Router } from 'express';
 import { db, withTenantScope } from '../db/index.js';
-import { products, eq, ilike, or, asc, desc, and, ne, sql } from '@postgress/shared';
+import { products, eq, ilike, or, asc, desc, and, ne, sql } from '@skavan/rentalzen-drizzle';
 // Import productComponents if available in shared schema; fallback to raw SQL if not.
 // @ts-ignore - will be resolved by shared package at build time
-import { productComponents } from '@postgress/shared';
+import { productComponents } from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';

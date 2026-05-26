@@ -19,7 +19,7 @@ import {
   asc,
   desc,
   isNull,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';
 import { getRequestScope, type RequestScope } from '../utils/scope.js';

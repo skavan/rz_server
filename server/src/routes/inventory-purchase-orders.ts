@@ -13,7 +13,7 @@ import {
   inArray,
   desc,
   asc,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';

@@ -29,6 +29,9 @@
 ### 3️⃣ **AVAILABLE_SCRIPTS.md**
 **Complete command reference:** All scripts and what they do
 
+### 🆕 **PUBLISH_WORKFLOW.md**
+**Release and registry guide:** How to version and publish `@skavan/rentalzen-drizzle` for downstream clients
+
 **Use this when:**
 - Need to rebuild database
 - Fix sequences after data import
@@ -57,6 +60,7 @@
 | **DISTRIBUTION_GUIDE.md** | 5 | Full distribution to server & client | After schema changes |
 | **SYNC_WORKFLOW.md** | 3 | Server sync process | Server-only changes |
 | **AVAILABLE_SCRIPTS.md** | 3 | Command reference | When you need a script |
+| **PUBLISH_WORKFLOW.md** | 2 | Publish + release flow | When releasing shared package |
 | **ARCHITECTURE.md** | 4 | System design | Learning/troubleshooting |
 | **README.md** | 2 | Quick reference | Schema info lookup |
 
@@ -134,7 +138,7 @@ import {
   productsValidationSchema,
   skusValidationSchema,
   // ... other schemas
-} from '@postgress/shared/zod';
+} from '@skavan/rentalzen-drizzle/zod';
 ```
 
 **Key Principle:**

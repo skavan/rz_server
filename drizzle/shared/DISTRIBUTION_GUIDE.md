@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `@postgress/shared` package is the **single source of truth** for:
+The `@skavan/rentalzen-drizzle` package is the **single source of truth** for:
 - Database schema (Drizzle ORM)
 - TypeScript types
 - Zod validation schemas
@@ -103,7 +103,7 @@ pnpm install --force
 ```
 
 **Why `--force`?**
-- Client uses local file reference: `"@postgress/shared": "file:../rz_server/drizzle/shared"`
+- Client uses local file reference: `"@skavan/rentalzen-drizzle": "file:../rz_server/drizzle/shared"`
 - `--force` ensures pnpm picks up the rebuilt package
 - Without it, pnpm may use cached version
 
@@ -111,10 +111,10 @@ pnpm install --force
 
 ```powershell
 # Check package.json references
-Get-Content package.json | Select-String "@postgress/shared"
+Get-Content package.json | Select-String "@skavan/rentalzen-drizzle"
 
 # Check installed version
-Get-Content node_modules/@postgress/shared/package.json
+Get-Content node_modules/@skavan/rentalzen-drizzle/package.json
 ```
 
 #### Rebuild Client
@@ -168,7 +168,7 @@ pnpm run dev
 
 ### ✅ After Updating Client
 - [ ] `pnpm install --force` completed
-- [ ] `node_modules/@postgress/shared/` has new package
+- [ ] `node_modules/@skavan/rentalzen-drizzle/` has new package
 - [ ] Client builds without TypeScript errors
 - [ ] New fields/schemas available in forms
 
@@ -208,7 +208,7 @@ npm run dev:scan-mappings -- products,skus,inventory_items
 ```json
 {
   "dependencies": {
-    "@postgress/shared": "file:../rz_server/drizzle/shared"
+    "@skavan/rentalzen-drizzle": "file:../rz_server/drizzle/shared"
   }
 }
 ```
@@ -231,7 +231,7 @@ npm publish
 
 Then in client:
 ```powershell
-pnpm update @postgress/shared
+pnpm update @skavan/rentalzen-drizzle
 ```
 
 **Current setup uses file reference, not published package.**
@@ -240,14 +240,14 @@ pnpm update @postgress/shared
 
 ## 🚨 Common Issues
 
-### "Module not found @postgress/shared"
+### "Module not found @skavan/rentalzen-drizzle"
 
 **Cause:** Client's node_modules is stale
 
 **Fix:**
 ```powershell
 cd /path/to/declarative-client
-Remove-Item -Recurse -Force node_modules/@postgress/shared
+Remove-Item -Recurse -Force node_modules/@skavan/rentalzen-drizzle
 pnpm install --force
 ```
 
@@ -364,11 +364,11 @@ drizzle/shared/
 **Use `client.ts` exports only:**
 ```typescript
 // ✅ Good (client)
-import { productsValidationSchema } from '@postgress/shared/zod';
-import type { Product } from '@postgress/shared/types';
+import { productsValidationSchema } from '@skavan/rentalzen-drizzle/zod';
+import type { Product } from '@skavan/rentalzen-drizzle/types';
 
 // ❌ Bad (client)
-import { db } from '@postgress/shared/server-only'; // Don't do this!
+import { db } from '@skavan/rentalzen-drizzle/server-only'; // Don't do this!
 ```
 
 ---

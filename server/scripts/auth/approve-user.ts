@@ -1,4 +1,4 @@
-import { drizzle, users, userHomeAccess, eq } from '@postgress/shared';
+import { drizzle, users, userHomeAccess, eq } from '@skavan/rentalzen-drizzle';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
 import { resolve } from 'path';

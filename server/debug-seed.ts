@@ -1,5 +1,5 @@
 import { db } from './src/db/index.js';
-import { tags, categories, type Tag, type Category, eq } from '@postgress/shared';
+import { tags, categories, type Tag, type Category, eq } from '@skavan/rentalzen-drizzle';
 
 async function debugSeedTags() {
   try {

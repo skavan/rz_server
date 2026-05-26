@@ -15,8 +15,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { Pool } from 'pg';
-import { drizzle, eq, and } from '@postgress/shared';
-import * as schema from '@postgress/shared';
+import { drizzle, eq, and } from '@skavan/rentalzen-drizzle';
+import * as schema from '@skavan/rentalzen-drizzle';
 import * as dotenv from 'dotenv';
 
 dotenv.config();

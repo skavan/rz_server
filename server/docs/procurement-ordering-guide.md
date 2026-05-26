@@ -1,6 +1,6 @@
 # Procurement & Ordering Desk Guide
 
-This document is the hand-off for client developers who need to surface the new replacement workflow. Shared Drizzle schema (`@postgress/shared`) is the source of truth for all tables, enums, and validators referenced below.
+This document is the hand-off for client developers who need to surface the new replacement workflow. Shared Drizzle schema (`@skavan/rentalzen-drizzle`) is the source of truth for all tables, enums, and validators referenced below.
 
 ## Overview
 
@@ -141,7 +141,7 @@ Repairs follow the same data path but can skip catalog/logistics sections entire
 
 ## Developer Checklist
 
-1. **Reinstall `@postgress/shared`** in the client repo so the new enums (`inventory_action_type`, `inventory_action_procurement_status`, `inventory_action_repair_status`, `shipping_charge_type`) and tables are available.
+1. **Reinstall `@skavan/rentalzen-drizzle`** in the client repo so the new enums (`inventory_action_type`, `inventory_action_procurement_status`, `inventory_action_repair_status`, `shipping_charge_type`) and tables are available.
 2. **Use the provided Zod schemas** (`inventoryActionRequestsValidationSchema`, etc.) for form validation; they already coerce booleans/ints.
 3. **Surface the queue + drawer UI** using the field map above. Remember the experience mirrors the BOM editor, so you can reuse components.
 4. **Batch actions** should update `current_purchase_order_id` and timestamps exactly as the backend expects; use existing APIs or wire new ones accordingly.

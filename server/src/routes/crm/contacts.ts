@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { crmContacts, eq, ilike, or, and, desc } from '@postgress/shared';
+import { crmContacts, eq, ilike, or, and, desc } from '@skavan/rentalzen-drizzle';
 import type { RequestScope } from '../../utils/scope.js';
 import { getRequestScope } from '../../utils/scope.js';
 import { withTenantScope } from '../../db/index.js';

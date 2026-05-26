@@ -17,7 +17,7 @@ import {
   inArray,
   isNull,
   desc,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 import type { RequestScope } from '../utils/scope.js';
 import { getRequestScope } from '../utils/scope.js';
 import { withTenantScope } from '../db/index.js';

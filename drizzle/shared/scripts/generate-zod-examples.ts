@@ -144,7 +144,7 @@ for (const { name, table } of schemas) {
  * DO NOT IMPORT THIS FILE IN YOUR CODE
  * 
  * Import from the package instead:
- * import { ${name} } from '@postgress/shared/zod';
+ * import { ${name} } from '@skavan/rentalzen-drizzle/zod';
  */
 
 import { z } from 'zod';
@@ -162,7 +162,7 @@ export const ${name} = ${schemaCode};
 /**
  * Basic usage - defaults auto-populate:
  * 
- * import { ${name} } from '@postgress/shared/zod';
+ * import { ${name} } from '@skavan/rentalzen-drizzle/zod';
  * 
  * const formData = {
  *   name: 'Example',
@@ -176,7 +176,7 @@ export const ${name} = ${schemaCode};
 /**
  * Extend for custom form validation:
  * 
- * import { ${name} } from '@postgress/shared/zod';
+ * import { ${name} } from '@skavan/rentalzen-drizzle/zod';
  * 
  * const formSchema = ${name}.extend({
  *   name: z.string().min(1, "Name is required"),
@@ -203,7 +203,7 @@ export const ${name} = ${schemaCode};
 /**
  * Type inference:
  * 
- * import { ${name} } from '@postgress/shared/zod';
+ * import { ${name} } from '@skavan/rentalzen-drizzle/zod';
  * import type { z } from 'zod';
  * 
  * type FormData = z.infer<typeof ${name}>;
@@ -233,7 +233,7 @@ These files let you see exactly what schemas are available to the client and wha
 These are for **reference only**. Always import from the package:
 
 \`\`\`typescript
-import { productsValidationSchema } from '@postgress/shared/zod';
+import { productsValidationSchema } from '@skavan/rentalzen-drizzle/zod';
 \`\`\`
 
 ## Files

@@ -24,7 +24,7 @@
               └───────────────┬───────────────┘
                               ▼
               ┌──────────────────────────────┐
-              │   @postgress/shared          │
+              │   @skavan/rentalzen-drizzle          │
               │   ├─ schema.ts (Drizzle)    │
               │   ├─ zod.ts (Validation)    │
               │   └─ types/ (TypeScript)    │

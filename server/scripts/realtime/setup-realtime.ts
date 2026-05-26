@@ -2,7 +2,7 @@ import fs from 'fs';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { pool } from '../../src/db/index.js';
-import * as schema from '@postgress/shared';
+import * as schema from '@skavan/rentalzen-drizzle';
 
 function readSql(file: string) {
   return fs.readFileSync(file, 'utf8');

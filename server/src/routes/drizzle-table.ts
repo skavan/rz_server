@@ -4,7 +4,7 @@
  */
 import { Router } from "express";
 import { db, withTenantScope } from "../db/index.js";
-import { sql } from "@postgress/shared";
+import { sql } from "@skavan/rentalzen-drizzle";
 import { optionalAuth } from "../auth/index.js";
 import { transformRows } from "../utils/field-transformer.js";
 import { getRequestScope } from "../utils/scope.js";

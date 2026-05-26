@@ -13,7 +13,7 @@ import {
   desc,
   isNull,
   inArray,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { withTenantScope } from '../db/index.js';
 import { getRequestScope } from '../utils/scope.js';

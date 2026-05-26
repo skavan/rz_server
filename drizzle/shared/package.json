@@ -1,5 +1,5 @@
 {
-  "name": "@rentalzen/drizzle",
+  "name": "@skavan/rentalzen-drizzle",
   "version": "1.0.1",
   "description": "Shared database schema and types",
   "main": "dist/index.js",

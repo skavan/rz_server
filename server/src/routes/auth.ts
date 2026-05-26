@@ -3,7 +3,7 @@
  */
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { users, userHomeAccess, eq, sql } from '@postgress/shared';
+import { users, userHomeAccess, eq, sql } from '@skavan/rentalzen-drizzle';
 import { generateToken, getTokenExpiryMs, hashPassword, comparePassword, verifyTokenIgnoreExpiration } from '../auth/index.js';
 
 const router = Router();

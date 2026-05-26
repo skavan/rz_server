@@ -13,7 +13,7 @@ import {
   or,
   asc,
   desc,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { withTenantScope } from '../db/index.js';
 import { eventBus } from '../utils/event-bus.js';

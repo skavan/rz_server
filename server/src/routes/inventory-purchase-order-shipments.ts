@@ -15,7 +15,7 @@ import {
   desc,
   asc,
   ilike,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { requireWriteMiddleware } from '../utils/auto-inject-middleware.js';

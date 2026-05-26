@@ -4,7 +4,7 @@
  */
 import { Router } from 'express';
 import { withTenantScope } from '../db/index.js';
-import { contacts, eq, and, ilike, or } from '@postgress/shared';
+import { contacts, eq, and, ilike, or } from '@skavan/rentalzen-drizzle';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
 import { requireWriteMiddleware } from '../utils/auto-inject-middleware.js';

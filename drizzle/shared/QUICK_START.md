@@ -78,13 +78,13 @@ import {
   vendorsValidationSchema,
   homesValidationSchema,
   tagsValidationSchema,
-} from '@postgress/shared/zod';
+} from '@skavan/rentalzen-drizzle/zod';
 
 // Database schema (server-only)
-import { products, skus, inventoryItems } from '@postgress/shared/schema';
+import { products, skus, inventoryItems } from '@skavan/rentalzen-drizzle/schema';
 
 // Types
-import type { Product, Sku, InventoryItem } from '@postgress/shared/types';
+import type { Product, Sku, InventoryItem } from '@skavan/rentalzen-drizzle/types';
 ```
 
 ---
@@ -118,7 +118,7 @@ import type { Product, Sku, InventoryItem } from '@postgress/shared/types';
 ### "Module not found" in client
 ```powershell
 cd client
-Remove-Item -Recurse -Force node_modules/@postgress/shared
+Remove-Item -Recurse -Force node_modules/@skavan/rentalzen-drizzle
 npm install
 ```
 

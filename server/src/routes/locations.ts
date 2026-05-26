@@ -3,7 +3,7 @@
  */
 import { Router } from 'express';
 import { withTenantScope } from '../db/index.js';
-import { locations, eq, asc, desc, and, ilike } from '@postgress/shared';
+import { locations, eq, asc, desc, and, ilike } from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';

@@ -1,0 +1,10 @@
+; Registry auth examples for @skavan/rentalzen-drizzle
+; Copy to ~/.npmrc or project .npmrc (never commit real tokens)
+
+; ---- npmjs (recommended for current scope) ----
+@skavan:registry=https://registry.npmjs.org/
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}
+
+; ---- GitHub Packages (requires scope/owner alignment) ----
+; @skavan:registry=https://npm.pkg.github.com
+; //npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}

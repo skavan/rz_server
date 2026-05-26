@@ -243,7 +243,7 @@ Use these Zod schemas in your forms:
 import { 
   productComponentsValidationSchema,
   skuComponentsValidationSchema 
-} from '@postgress/shared/zod';
+} from '@skavan/rentalzen-drizzle/zod';
 
 // Product component form
 const productComponentSchema = productComponentsValidationSchema.extend({

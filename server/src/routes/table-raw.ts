@@ -4,7 +4,7 @@
  */
 import { Router } from "express";
 import { db } from "../db/index.js";
-import { sql } from "@postgress/shared";
+import { sql } from "@skavan/rentalzen-drizzle";
 import { optionalAuth } from "../auth/index.js";
 import { getRequestScope } from "../utils/scope.js";
 import { getTablePolicy } from "../utils/policy-registry.js";

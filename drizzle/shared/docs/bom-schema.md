@@ -1,6 +1,6 @@
 # BOM Schema Integration Guide
 
-> Applies to: `@postgress/shared` consumers (server + declarative-client)
+> Applies to: `@skavan/rentalzen-drizzle` consumers (server + declarative-client)
 
 This guide explains how to work with Bill Of Materials (BOM) data for both Products and SKUs using the shared validation package. Follow these steps whenever you need to read, validate, or persist component relationships.
 
@@ -22,13 +22,13 @@ These are built on the Drizzle table definitions, so column-level constraints st
 
 ## 2. Client Form Usage
 
-Replace any hand-rolled BOM validators with imports from `@postgress/shared`:
+Replace any hand-rolled BOM validators with imports from `@skavan/rentalzen-drizzle`:
 
 ```ts
 import {
   relationArrayField,
   skuComponentsValidationSchema,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 
 const bomItemSchema = skuComponentsValidationSchema.pick({
   componentSkuId: true,
@@ -71,7 +71,7 @@ Example normalization in a route:
 import {
   skuComponentsValidationSchema,
   relationArrayField,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 
 const bomArrayValidator = relationArrayField(
   skuComponentsValidationSchema.pick({

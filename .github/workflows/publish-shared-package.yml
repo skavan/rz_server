@@ -1,0 +1,83 @@
+name: Publish Shared Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      registry:
+        description: Target registry
+        required: true
+        default: npmjs
+        type: choice
+        options:
+          - npmjs
+          - github
+      dry_run:
+        description: Build and package only (no publish)
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  publish-shared:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install shared dependencies
+        working-directory: drizzle/shared
+        run: npm ci
+
+      - name: Build shared package
+        working-directory: drizzle/shared
+        run: npm run build
+
+      - name: Pack dry run
+        if: ${{ inputs.dry_run }}
+        working-directory: drizzle/shared
+        run: npm pack --dry-run
+
+      - name: Publish to npmjs
+        if: ${{ !inputs.dry_run && inputs.registry == 'npmjs' }}
+        working-directory: drizzle/shared
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access restricted
+
+      - name: Validate GitHub scope alignment
+        if: ${{ !inputs.dry_run && inputs.registry == 'github' }}
+        working-directory: drizzle/shared
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_SCOPE=$(echo "$PACKAGE_NAME" | sed -E 's/^@([^/]+)\/.*/\1/')
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          PACKAGE_SCOPE_LC=$(echo "$PACKAGE_SCOPE" | tr '[:upper:]' '[:lower:]')
+
+          if [ "$PACKAGE_SCOPE_LC" != "$REPO_OWNER" ]; then
+            echo "GitHub Packages requires scope alignment with repository owner."
+            echo "Package scope: $PACKAGE_SCOPE"
+            echo "Repository owner: ${{ github.repository_owner }}"
+            echo "Use npmjs registry for @skavan/rentalzen-drizzle from this repository,"
+            echo "or move ownership to matching org/user."
+            exit 1
+          fi
+
+      - name: Publish to GitHub Packages
+        if: ${{ !inputs.dry_run && inputs.registry == 'github' }}
+        working-directory: drizzle/shared
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm config set @${{ github.repository_owner }}:registry https://npm.pkg.github.com
+          npm publish --registry https://npm.pkg.github.com

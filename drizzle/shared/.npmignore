@@ -1,0 +1,6 @@
+.env
+.env*
+.env.*
+*.tgz
+files.zip
+npm-debug.log*

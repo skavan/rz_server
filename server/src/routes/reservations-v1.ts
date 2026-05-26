@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { withTenantScope } from '../db/index.js';
-import { reservations, eq, and } from '@postgress/shared';
+import { reservations, eq, and } from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../auth/index.js';
 import { getRequestScope } from '../utils/scope.js';
 import { autoInjectMiddleware, getScopeFromRequest, requireWriteMiddleware } from '../utils/auto-inject-middleware.js';

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { withTenantScope } from '../db/index.js';
-import { homes, eq, and, ilike } from '@postgress/shared';
+import { homes, eq, and, ilike } from '@skavan/rentalzen-drizzle';
 import { getRequestScope } from '../utils/scope.js';
 import { eventBus } from '../utils/event-bus.js';
 import { resolveSlug, SlugValidationError } from '../utils/slug.js';

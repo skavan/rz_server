@@ -13,6 +13,23 @@ cd drizzle/shared
 npm run build
 ```
 
+### `npm run release:shared -- <level> -- [--note "..."] [--publish] [--push]`
+**Location:** `drizzle/shared/`  
+**Purpose:** Scripted shared release workflow (build, version bump, release note, commit, tag; optional publish/push)  
+**When to use:** Publishing `@skavan/rentalzen-drizzle` for external client consumption
+
+Examples:
+
+```powershell
+cd drizzle/shared
+npm run release:shared -- patch -- --note "Add reservation status defaults"
+```
+
+```powershell
+cd drizzle/shared
+npm run release:shared -- minor -- --note "Add vendor category fields" --publish --push
+```
+
 ---
 
 ## Database Management

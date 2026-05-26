@@ -2,7 +2,7 @@
  * Simple Drizzle Table Rebuild Tool
  * Handles single table operations: drop -> recreate -> seed
  */
-import { drizzle } from '@postgress/shared';
+import { drizzle } from '@skavan/rentalzen-drizzle';
 import { Pool } from 'pg';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';

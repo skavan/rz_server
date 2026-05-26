@@ -3,8 +3,8 @@
  * Uses shared schema package for single source of truth
  */
 import { Pool } from 'pg';
-import { drizzle } from '@postgress/shared';
-import * as schema from '@postgress/shared';
+import { drizzle } from '@skavan/rentalzen-drizzle';
+import * as schema from '@skavan/rentalzen-drizzle';
 import dotenv from 'dotenv';
 
 // Load environment variables

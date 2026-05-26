@@ -1,4 +1,4 @@
-import { normalizeSlug } from '@postgress/shared';
+import { normalizeSlug } from '@skavan/rentalzen-drizzle';
 
 export class SlugValidationError extends Error {
   status = 400;

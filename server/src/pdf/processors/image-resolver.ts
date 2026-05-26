@@ -8,7 +8,7 @@ import * as cheerio from 'cheerio';
 import fs from 'fs/promises';
 import path from 'path';
 import sharp from 'sharp';
-import { mediaAssets, eq, and } from '@postgress/shared';
+import { mediaAssets, eq, and } from '@skavan/rentalzen-drizzle';
 import { withTenantScope } from '../../db/index.js';
 import { storage } from '../../utils/storage.js';
 import type { ProcessingContext, ImageOptions, MediaReference } from '../types.js';

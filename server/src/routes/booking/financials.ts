@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { bookingFinancials, bookingReservations, eq, and, desc } from '@postgress/shared';
+import { bookingFinancials, bookingReservations, eq, and, desc } from '@skavan/rentalzen-drizzle';
 import { authenticateToken, optionalAuth } from '../../auth/index.js';
 import { requireWriteMiddleware } from '../../utils/auto-inject-middleware.js';
 import { getRequestScope } from '../../utils/scope.js';

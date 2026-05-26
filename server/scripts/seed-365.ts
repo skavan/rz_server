@@ -13,7 +13,7 @@ import {
   financeCommissions,
   pricingRates,
   sql,
-} from '@postgress/shared';
+} from '@skavan/rentalzen-drizzle';
 import { db, pool } from '../src/db/index.js';
 
 dotenv.config();

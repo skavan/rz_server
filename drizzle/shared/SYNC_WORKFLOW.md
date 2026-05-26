@@ -76,7 +76,7 @@ tsx scripts/drizzle/apply-migrations.ts
 
 ### Step 5: Sync to Client
 
-The `@postgress/shared` package is linked via npm workspace or local file reference.
+The `@skavan/rentalzen-drizzle` package is linked via npm workspace or local file reference.
 
 **For npm workspace:**
 ```powershell
@@ -89,7 +89,7 @@ npm install
 // client/package.json
 {
   "dependencies": {
-    "@postgress/shared": "file:../drizzle/shared"
+    "@skavan/rentalzen-drizzle": "file:../drizzle/shared"
   }
 }
 ```
@@ -110,7 +110,7 @@ If you added new schemas or changed names:
 import { 
   productsValidationSchema,
   newTableValidationSchema  // ← New import
-} from '@postgress/shared/zod';
+} from '@skavan/rentalzen-drizzle/zod';
 ```
 
 ---
@@ -152,7 +152,7 @@ npx drizzle-kit check
 **Check client has latest:**
 ```powershell
 cd client
-Get-Content node_modules/@postgress/shared/package.json  # Check version
+Get-Content node_modules/@skavan/rentalzen-drizzle/package.json  # Check version
 ```
 
 ---
@@ -160,12 +160,12 @@ Get-Content node_modules/@postgress/shared/package.json  # Check version
 ## ⚠️ Common Pitfalls
 
 ### 1. "Module not found" in client
-**Cause:** Client's `node_modules/@postgress/shared` is stale
+**Cause:** Client's `node_modules/@skavan/rentalzen-drizzle` is stale
 
 **Fix:**
 ```powershell
 cd client
-Remove-Item -Recurse -Force node_modules/@postgress/shared
+Remove-Item -Recurse -Force node_modules/@skavan/rentalzen-drizzle
 npm install
 ```
 

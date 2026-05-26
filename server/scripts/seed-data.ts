@@ -14,7 +14,7 @@
 
 import { db } from '../src/db/index.js';
 import { hashPassword } from '../src/auth/index.js';
-import * as schema from '@postgress/shared';
+import * as schema from '@skavan/rentalzen-drizzle';
 import dotenv from 'dotenv';
 
 // Load environment variables

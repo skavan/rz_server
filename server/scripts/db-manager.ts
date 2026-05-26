@@ -1,9 +1,9 @@
 /**
  * Simple Drizzle-powered Database Management
  * Because why reinvent the wheel? 🛞
- * Uses existing @postgress/shared package
+ * Uses existing @skavan/rentalzen-drizzle package
  */
-import { drizzle } from '@postgress/shared';
+import { drizzle } from '@skavan/rentalzen-drizzle';
 import { Pool } from 'pg';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
@@ -59,7 +59,7 @@ export async function seedDatabase() {
     const customersData = await loadSeedData('1-customers.json');
     if (customersData.customers?.length > 0) {
       // Import schema dynamically to avoid circular dependencies
-      const { customers } = await import('@postgress/shared/src/customers-updated');
+      const { customers } = await import('@skavan/rentalzen-drizzle/src/customers-updated');
       await db.insert(customers).values(customersData.customers);
       console.log(`✅ Seeded ${customersData.customers.length} customers`);
     }
@@ -68,7 +68,7 @@ export async function seedDatabase() {
     const usersData = await loadSeedData('2-users.json');
     
     if (usersData.users?.length > 0) {
-      const { users, accounts, sessions } = await import('@postgress/shared/src/users-updated');
+      const { users, accounts, sessions } = await import('@skavan/rentalzen-drizzle/src/users-updated');
       
       await db.insert(users).values(usersData.users);
       console.log(`✅ Seeded ${usersData.users.length} users`);

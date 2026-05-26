@@ -5,7 +5,7 @@
  * to match Drizzle's camelCase naming convention.
  */
 
-import * as schemas from '@postgress/shared';
+import * as schemas from '@skavan/rentalzen-drizzle';
 
 // Cache for field mappings to avoid repeated computation
 const fieldMappingCache = new Map<string, Record<string, string>>();

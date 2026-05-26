@@ -10,7 +10,7 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { db } from '../../../src/db/index.js';
-import { reservations } from '@postgress/shared';
+import { reservations } from '@skavan/rentalzen-drizzle';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

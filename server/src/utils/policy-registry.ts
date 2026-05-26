@@ -1,5 +1,5 @@
 import { db } from "../db/index.js";
-import { sql } from "@postgress/shared";
+import { sql } from "@skavan/rentalzen-drizzle";
 
 export type TablePolicy = {
   hasCustomerId?: boolean;

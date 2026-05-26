@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { crmLeadSources, eq, ilike, and, desc } from '@postgress/shared';
+import { crmLeadSources, eq, ilike, and, desc } from '@skavan/rentalzen-drizzle';
 import type { RequestScope } from '../../utils/scope.js';
 import { getRequestScope } from '../../utils/scope.js';
 import { withTenantScope } from '../../db/index.js';

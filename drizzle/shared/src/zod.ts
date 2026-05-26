@@ -16,7 +16,7 @@ import { slugSchema, slugInputSchema } from "./utils/slug.js";
  * USAGE IN CLIENT FORMS:
  * ----------------------
  * 1. Import the base schema: 
- *    import { inventoryItemValidationSchema } from '@postgress/shared';
+ *    import { inventoryItemValidationSchema } from '@skavan/rentalzen-drizzle';
  * 
  * 2. Extend with form-specific validations:
  *    export const inventoryItemFormSchema = inventoryItemValidationSchema.extend({
