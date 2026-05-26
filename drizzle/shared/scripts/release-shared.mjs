@@ -196,7 +196,7 @@ function main() {
   const newVersion = readVersion(sharedDir);
 
   console.log(`Creating release note for v${newVersion}...`);
-  createReleaseNote(sharedDir, newVersion, options.note);
+  const notePath = createReleaseNote(sharedDir, newVersion, options.note);
 
   console.log('Creating commit + tag...');
   stageSharedChanges(sharedDir);
