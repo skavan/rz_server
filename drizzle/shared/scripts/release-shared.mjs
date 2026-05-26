@@ -4,6 +4,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ALLOWED_LEVELS = new Set(['patch', 'minor', 'major', 'prerelease']);
+const SHARED_PREFIX = 'drizzle/shared/';
 
 function run(command, cwd) {
   execSync(command, { cwd, stdio: 'inherit' });
@@ -22,6 +23,7 @@ function parseArgs(argv) {
     publish: false,
     push: false,
     skipCleanCheck: false,
+    detail: false,
   };
 
   while (args.length > 0) {
@@ -55,6 +57,11 @@ function parseArgs(argv) {
 
     if (token === '--skip-clean-check') {
       options.skipCleanCheck = true;
+      continue;
+    }
+
+    if (token === '--detail') {
+      options.detail = true;
       continue;
     }
 
@@ -117,6 +124,43 @@ function createReleaseNote(sharedDir, version, note) {
   return filePath;
 }
 
+function stageSharedChanges(sharedDir) {
+  run('git add -A .', sharedDir);
+}
+
+function getStagedPaths(repoRoot) {
+  const output = runCapture('git diff --cached --name-only', repoRoot);
+  if (!output) return [];
+  return output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function ensureOnlySharedPathsStaged(repoRoot) {
+  const stagedPaths = getStagedPaths(repoRoot);
+  if (stagedPaths.length === 0) {
+    throw new Error('No files are staged for release commit.');
+  }
+
+  const outsideShared = stagedPaths.filter((path) => !path.startsWith(SHARED_PREFIX));
+  if (outsideShared.length > 0) {
+    throw new Error(
+      `Release staging includes files outside ${SHARED_PREFIX}: ${outsideShared.join(', ')}`
+    );
+  }
+
+  return stagedPaths;
+}
+
+function printStagedSharedPaths(stagedPaths) {
+  console.log('Staged shared files:');
+  for (const path of stagedPaths) {
+    console.log(`- ${path}`);
+  }
+  console.log('');
+}
+
 function printPlan(options) {
   console.log('');
   console.log('Release plan:');
@@ -125,6 +169,7 @@ function printPlan(options) {
   console.log(`- Commit + tag: yes`);
   console.log(`- Publish package: ${options.publish ? 'yes' : 'no'}`);
   console.log(`- Push commit + tags: ${options.push ? 'yes' : 'no'}`);
+  console.log(`- Detail output: ${options.detail ? 'yes' : 'no'}`);
   console.log(`- Dry run: ${options.dryRun ? 'yes' : 'no'}`);
   console.log('');
 }
@@ -151,11 +196,14 @@ function main() {
   const newVersion = readVersion(sharedDir);
 
   console.log(`Creating release note for v${newVersion}...`);
-  const notePath = createReleaseNote(sharedDir, newVersion, options.note);
+  createReleaseNote(sharedDir, newVersion, options.note);
 
   console.log('Creating commit + tag...');
-  run('git add package.json package-lock.json', sharedDir);
-  run(`git add "${notePath}"`, sharedDir);
+  stageSharedChanges(sharedDir);
+  const stagedPaths = ensureOnlySharedPathsStaged(repoRoot);
+  if (options.detail) {
+    printStagedSharedPaths(stagedPaths);
+  }
   run(`git commit -m "release(shared): v${newVersion}"`, sharedDir);
   run(`git tag shared-v${newVersion}`, sharedDir);
 
