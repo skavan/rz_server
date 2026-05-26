@@ -3,6 +3,14 @@
   "private": true,
   "scripts": {
     "seed:365": "npm run seed:365 --prefix server",
-    "sync:db-and-shared": "node scripts/sync-db-and-shared.mjs"
+    "sync:db-and-shared": "node scripts/sync-db-and-shared.mjs",
+    "publish_updated_drizzle_patch": "powershell -ExecutionPolicy Bypass -File scripts/publish_updated_drizzle_patch.ps1",
+    "publish_updated_drizzle_minor": "powershell -ExecutionPolicy Bypass -File scripts/publish_updated_drizzle_minor.ps1",
+    "setup:gh-packages-auth": "powershell -ExecutionPolicy Bypass -File scripts/setup-gh-packages-auth.ps1",
+    "setup:gh-packages-auth:sh": "bash scripts/setup-gh-packages-auth.sh",
+    "gh-packages-token:length": "powershell -NoProfile -Command \"if ($env:GITHUB_PACKAGES_TOKEN) { $env:GITHUB_PACKAGES_TOKEN.Length } else { 0 }\"",
+    "publish:shared:dry": "gh workflow run publish-shared-package.yml -f registry=github -f dry_run=true",
+    "publish:shared": "gh workflow run publish-shared-package.yml -f registry=github -f dry_run=false",
+    "publish:shared:status": "gh run list --workflow \"Publish Shared Package\" --limit 5"
   }
 }
