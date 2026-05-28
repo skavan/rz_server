@@ -5,7 +5,7 @@
  */
 
 import { chromium, Browser, BrowserContext } from 'playwright';
-import { PdfOptions, DEFAULT_PDF_OPTIONS, PDF_LIMITS } from './types';
+import { PdfOptions, DEFAULT_PDF_OPTIONS, PDF_LIMITS } from './types.js';
 
 interface PooledBrowser {
   browser: Browser;

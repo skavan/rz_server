@@ -6,13 +6,13 @@ Simple command sheet for day-to-day work in this repo.
 
 Use the exact workspace root first:
 
-- Set-Location "G:\Documents\Code 2025\repos\rz_server"
+- navigate to repo root
 
 Do not use any Code 25 path. The correct folder is Code 2025.
 
 ## Quick Repeat Flow (shared publish)
 
-1. Set-Location "G:\Documents\Code 2025\repos\rz_server"
+1. Set-Location "G:\Documents\Code 2025\repos\rz_server" ***
 2. cd drizzle/shared
 3. npm run release:shared -- patch -- --note "Short note" --skip-clean-check
 4. cd ../..
@@ -65,6 +65,17 @@ Start dev server:
 
 - cd server
 - npm run dev
+
+Start prod server (with development flags intact)
+- npm start 
+
+PM2:
+see ecosystem.config.cjs
+pm2 restart ecosystem.config.cjs --only rentalzen-server
+pm2 save
+
+
+
 
 Build server:
 

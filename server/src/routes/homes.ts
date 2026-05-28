@@ -54,6 +54,9 @@ router.get('/', async (req, res) => {
     res.json({ data: results, count: results.length });
   } catch (error) {
     console.error('Homes GET error:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -82,6 +85,9 @@ router.get('/:id', async (req, res) => {
     res.json({ data: results[0] });
   } catch (error) {
     console.error('Home GET by ID error:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -7,84 +7,94 @@ const router = Router();
 
 // GET /api/events/stream?resources=products,inventory_items
 router.get('/stream', async (req, res) => {
-  // Setup SSE headers
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  // Disable proxy buffering if behind Nginx
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders?.();
-
-  // Heartbeat to keep connections alive on some proxies
-  const heartbeat = setInterval(() => {
-    try {
-      res.write(`: ping ${Date.now()}\n\n`);
-    } catch {
-      clearInterval(heartbeat);
-    }
-  }, 25000);
-
-  const resources = typeof req.query.resources === 'string'
-    ? (req.query.resources as string).split(',').map(s => s.trim()).filter(Boolean)
-    : undefined;
-
-  // Resolve server-side scope (authoritative)
-  let scope = await getRequestScope(req as any);
-
-  // In development, allow optional query overrides for scope since EventSource cannot set headers
-  if (process.env.NODE_ENV !== 'production') {
-    const qCustomer = typeof req.query.customerId === 'string' ? parseInt(String(req.query.customerId), 10) : undefined;
-    const qHomes = typeof req.query.homeIds === 'string'
-      ? String(req.query.homeIds)
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .map((n) => parseInt(n, 10))
-          .filter((n) => !Number.isNaN(n))
+  try {
+    const resources = typeof req.query.resources === 'string'
+      ? (req.query.resources as string).split(',').map(s => s.trim()).filter(Boolean)
       : undefined;
-    if ((qCustomer && Number.isFinite(qCustomer)) || (qHomes && qHomes.length)) {
-      scope = {
-        customerId: qCustomer && Number.isFinite(qCustomer) ? qCustomer : scope.customerId,
-        homeIds: qHomes && qHomes.length ? qHomes : scope.homeIds,
-        homeAccessRole: scope.homeAccessRole,
-      };
-    }
-  }
-  const unsubscribe = eventBus.subscribe(res, resources, { customerId: scope.customerId, homeIds: scope.homeIds });
 
-  // Debug: log connection and liveness heartbeats
-  const subCount = eventBus.getSubscriberCount();
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`🔗 SSE client connected (${subCount} total)`, { resources: resources ?? '*', scope });
-  }
+    // Resolve server-side scope (authoritative)
+    let scope = await getRequestScope(req as any);
 
-  // Periodic heartbeat event every 60s so clients can show alive indicator
-  const alive = setInterval(() => {
-    try {
-      const ts = Date.now();
-      res.write(`event: heartbeat\nid: ${ts}\ndata: ${JSON.stringify({ timestamp: ts })}\n\n`);
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('💓 SSE heartbeat sent');
-      }
-    } catch {
-      clearInterval(alive);
-    }
-  }, 60000);
-
-  // Clean up on client disconnect
-  req.on('close', () => {
-    clearInterval(heartbeat);
-    clearInterval(alive);
-    unsubscribe();
-    const leftCount = eventBus.getSubscriberCount();
+    // In development, allow optional query overrides for scope since EventSource cannot set headers
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`🔌 SSE client disconnected (${leftCount} remaining)`);
+      const qCustomer = typeof req.query.customerId === 'string' ? parseInt(String(req.query.customerId), 10) : undefined;
+      const qHomes = typeof req.query.homeIds === 'string'
+        ? String(req.query.homeIds)
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .map((n) => parseInt(n, 10))
+            .filter((n) => !Number.isNaN(n))
+        : undefined;
+      if ((qCustomer && Number.isFinite(qCustomer)) || (qHomes && qHomes.length)) {
+        scope = {
+          customerId: qCustomer && Number.isFinite(qCustomer) ? qCustomer : scope.customerId,
+          homeIds: qHomes && qHomes.length ? qHomes : scope.homeIds,
+          homeAccessRole: scope.homeAccessRole,
+        };
+      }
     }
-  });
 
-  // Initial hello
-  res.write(`retry: 5000\n`);
-  res.write(`event: hello\ndata: ${JSON.stringify({ timestamp: Date.now(), resources: resources ?? '*', scope: { customerId: scope.customerId, homeIds: scope.homeIds } })}\n\n`);
+    // Setup SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    // Disable proxy buffering if behind Nginx
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    // Heartbeat to keep connections alive on some proxies
+    const heartbeat = setInterval(() => {
+      try {
+        res.write(`: ping ${Date.now()}\n\n`);
+      } catch {
+        clearInterval(heartbeat);
+      }
+    }, 25000);
+
+    const unsubscribe = eventBus.subscribe(res, resources, { customerId: scope.customerId, homeIds: scope.homeIds });
+
+    // Debug: log connection and liveness heartbeats
+    const subCount = eventBus.getSubscriberCount();
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔗 SSE client connected (${subCount} total)`, { resources: resources ?? '*', scope });
+    }
+
+    // Periodic heartbeat event every 60s so clients can show alive indicator
+    const alive = setInterval(() => {
+      try {
+        const ts = Date.now();
+        res.write(`event: heartbeat\nid: ${ts}\ndata: ${JSON.stringify({ timestamp: ts })}\n\n`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('💓 SSE heartbeat sent');
+        }
+      } catch {
+        clearInterval(alive);
+      }
+    }, 60000);
+
+    // Clean up on client disconnect
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      clearInterval(alive);
+      unsubscribe();
+      const leftCount = eventBus.getSubscriberCount();
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`🔌 SSE client disconnected (${leftCount} remaining)`);
+      }
+    });
+
+    // Initial hello
+    res.write('retry: 5000\n');
+    res.write(`event: hello\ndata: ${JSON.stringify({ timestamp: Date.now(), resources: resources ?? '*', scope: { customerId: scope.customerId, homeIds: scope.homeIds } })}\n\n`);
+  } catch (error: any) {
+    const message = error?.message || 'Internal server error';
+    const status = message === 'Unauthorized' ? 401 : 500;
+    if (!res.headersSent) {
+      return res.status(status).json({ error: message });
+    }
+    res.end();
+  }
 });
 
 // GET /api/events/health - runtime health of realtime system
