@@ -18,6 +18,15 @@ if (!process.env.DATABASE_URL) {
 // Create PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  // Enable TCP keepalive on pooled sockets so idle connections aren't reaped
+  // by NAT/firewall (default OS keepalive idle is ~2h, far longer than most
+  // routers will hold an idle flow). 10s initial delay puts probes on the
+  // wire well before any reasonable idle-eviction window.
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
+  // Recycle pool clients that sit idle longer than 30s, so we never hand out
+  // a connection that the network has silently dropped.
+  idleTimeoutMillis: 30_000,
 });
 
 // Create Drizzle database instance with schema
@@ -31,8 +40,13 @@ export { pool };
 // Startup connectivity and DB info are logged in server.ts after a one-time test query.
 
 pool.on('error', (err) => {
-  console.error('❌ PostgreSQL connection error:', err);
-  process.exit(1);
+  // pg emits 'error' when an *idle* pooled client's socket dies (e.g. a NAT
+  // table entry was evicted overnight). This is not fatal — the pool will
+  // discard the dead client and create a fresh one on next checkout. Do NOT
+  // exit the process here; doing so would drop all in-flight requests, SSE
+  // subscribers, the PG LISTEN connection, and the Playwright browser pool
+  // every time the network blinks.
+  console.error('PostgreSQL idle client error (pool will recycle):', err);
 });
 
 // Graceful shutdown

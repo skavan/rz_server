@@ -431,11 +431,16 @@ process.on('SIGINT', shutdown);
 
 // Unhandled errors
 process.on('unhandledRejection', (reason, promise) => {
+  // Log and continue. An unhandled rejection is usually a stray async error
+  // from a half-dead query, aborted client, or background task — not a
+  // reason to drop every active connection. If it indicates real corruption,
+  // it will resurface as an uncaughtException below.
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
 });
 
 process.on('uncaughtException', (error) => {
+  // Node's state is genuinely undefined after this; exit and let the
+  // supervisor (PM2) restart cleanly.
   console.error('❌ Uncaught Exception:', error);
   process.exit(1);
 });
