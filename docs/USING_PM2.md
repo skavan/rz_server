@@ -43,6 +43,55 @@ Subtle gotcha
 If you pm2 stop an app and then edit the ecosystem file, pm2 restart <app> uses the cached config, not the file. To re-read the file you need pm2 restart <app> --update-env (for env only) or pm2 delete <app> followed by pm2 start ecosystem.config.cjs (for cwd, script, args, etc. — those aren't covered by --update-env).
 
 
+## Deploying new code
+
+The ecosystem entry runs `npm start`, which is `node dist/server.js` — PM2 only ever executes the **built** output. Source changes in `src/` are invisible until you rebuild.
+
+### Code-only change (no dependency or ecosystem edits)
+
+```bash
+cd ~/repos/apps/rentalzen/rz-server/server
+npm run build              # tsc → dist/
+pm2 restart rentalzen-server
+pm2 logs rentalzen-server --lines 50   # confirm clean startup
+```
+
+### Pulling from git
+
+```bash
+cd ~/repos/apps/rentalzen/rz-server
+git pull
+cd server
+npm install                # only if package.json or lockfile changed
+npm run build
+pm2 restart rentalzen-server
+pm2 logs rentalzen-server --lines 50
+```
+
+### Notes
+
+- **Order matters.** Build first, then restart. `tsc` writes files as it goes (not atomically), so restarting mid-build can launch a half-written `dist/`.
+- **No `--update-env` needed for code changes.** That flag only re-reads the ecosystem file's `env` blocks. Code changes don't touch env.
+- **Restart loops.** If startup throws, PM2 keeps respawning — `pm2 status` shows climbing `↺ restarts`. Fix the issue, then `pm2 reset rentalzen-server` to zero the counter.
+- **Dev iteration doesn't use PM2.** For local edit-reload cycles use `npm run dev` (which is `tsx watch src/server.ts`) in a terminal. PM2 is for the running deployment.
+
+### If you edited the ecosystem file itself
+
+A code change only needs `pm2 restart`. Ecosystem-file edits are a different operation depending on what changed:
+
+```bash
+# Env block changes (NODE_ENV, ports, feature flags):
+pm2 restart ~/repos/apps/ecosystem.config.js --update-env
+
+# Structural changes (cwd, script, args, name, max_memory_restart):
+pm2 delete rentalzen-server
+pm2 start ~/repos/apps/ecosystem.config.js
+pm2 save                   # so the new definition survives reboot
+```
+
+`pm2 restart` without `--update-env` uses PM2's cached in-memory config — your ecosystem edits won't take effect.
+
+
 ## Logs
 
 ```bash
@@ -113,6 +162,7 @@ A few things worth knowing:
 | Start everything (production env) | `pm2 start ~/repos/apps/ecosystem.config.js --env production` |
 | Status | `pm2 status` |
 | Detail for one app | `pm2 info rentalzen-server` |
+| Deploy new code | `npm run build && pm2 restart rentalzen-server` |
 | Tail logs (all) | `pm2 logs` |
 | Tail logs (one app) | `pm2 logs rentalzen-server` |
 | Restart picking up env changes | `pm2 restart <app> --update-env` |
